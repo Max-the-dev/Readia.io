@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Clock, User, Lock } from 'lucide-react';
+import { Clock, User, Lock, HeartHandshake } from 'lucide-react';
 
 // Mock article data - in real app this would come from API
 const mockArticles = {
@@ -239,6 +239,13 @@ function Article() {
   const { isConnected, address } = useWallet();
   const [hasPaid, setHasPaid] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showPaymentToast, setShowPaymentToast] = useState(false);
+
+  // Tipping state
+  const [showTipModal, setShowTipModal] = useState(false);
+  const [tipAmount, setTipAmount] = useState(0.05);
+  const [isProcessingTip, setIsProcessingTip] = useState(false);
+  const [hasTipped, setHasTipped] = useState(false);
 
   const article = mockArticles[Number(id) as keyof typeof mockArticles];
   
@@ -269,8 +276,24 @@ function Article() {
     setTimeout(() => {
       setHasPaid(true);
       setIsProcessingPayment(false);
+      setShowPaymentToast(true);
+      // Hide toast after 3 seconds
+      setTimeout(() => setShowPaymentToast(false), 3000);
     }, 2000);
   };
+
+  const handleTip = async () => {
+    setIsProcessingTip(true);
+    // Simulate tip processing
+    setTimeout(() => {
+      setHasTipped(true);
+      setIsProcessingTip(false);
+      // Don't close modal automatically - let user see success message and close manually
+    }, 1500);
+  };
+
+  // Set default tip options
+  const tipOptions = [0.01, 0.05, 0.10, 0.25, 0.50, 1.00];
 
   return (
     <div className="article-page">
@@ -339,11 +362,6 @@ function Article() {
 
             {(hasPaid || isAuthor) && (
               <div className="full-content">
-                {hasPaid && !isAuthor && (
-                  <div className="payment-success">
-                    <p>✓ Payment successful! Enjoy the full article.</p>
-                  </div>
-                )}
                 {article.fullContent.split('\n\n').map((paragraph, index) => {
                   if (paragraph.startsWith('## ')) {
                     return <h2 key={index}>{paragraph.replace('## ', '')}</h2>;
@@ -381,6 +399,94 @@ function Article() {
             )}
           </div>
         </article>
+
+        {/* Floating Tip Button - only show for readers after payment */}
+        {(hasPaid && !isAuthor) && (
+          <div className="floating-tip-container">
+            <button 
+              className="floating-tip-button"
+              onClick={() => {
+                setShowTipModal(true);
+                setHasTipped(false); // Reset tip success state when opening modal
+              }}
+              title="Tip the author"
+            >
+              <HeartHandshake size={15}/> Tip Author
+            </button>
+          </div>
+        )}
+
+        {/* Tip Modal */}
+        {showTipModal && (
+          <div className="tip-modal-overlay" onClick={() => setShowTipModal(false)}>
+            <div className="tip-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="tip-modal-header">
+                <h3><HeartHandshake size={16}/> Tip the Author</h3>
+                <button 
+                  className="tip-modal-close"
+                  onClick={() => setShowTipModal(false)}
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="tip-modal-content">
+                <p>Show your appreciation for this great content!</p>
+                
+                <div className="tip-amount-selector">
+                  <label>Select tip amount:</label>
+                  <div className="tip-options">
+                    {tipOptions.map((amount) => (
+                      <button
+                        key={amount}
+                        className={`tip-option ${tipAmount === amount ? 'selected' : ''}`}
+                        onClick={() => setTipAmount(amount)}
+                      >
+                        ${amount.toFixed(2)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="tip-custom-amount">
+                  <label>Or enter custom amount:</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    max="1.00"
+                    step="0.01"
+                    value={tipAmount}
+                    onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0.01)}
+                    className="tip-amount-input"
+                  />
+                </div>
+                
+                <div className="tip-modal-actions">
+                  <button
+                    className="tip-submit-button"
+                    onClick={handleTip}
+                    disabled={isProcessingTip || tipAmount < 0.01 || tipAmount > 1.00}
+                  >
+                    {isProcessingTip ? 'Processing...' : `Send Tip $${tipAmount.toFixed(2)}`}
+                  </button>
+                </div>
+                
+                {hasTipped && (
+                  <div className="tip-success">
+                    <p>✨ Tip sent successfully! Thank you for supporting the author.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Success Toast */}
+        {showPaymentToast && (
+          <div className="payment-toast">
+            <p>✓ Payment successful!</p>
+          </div>
+        )}
       </div>
     </div>
   );

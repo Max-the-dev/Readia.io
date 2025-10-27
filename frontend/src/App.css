@@ -916,19 +916,46 @@ main {
   margin: 0;
 }
 
-.payment-success {
-  background-color: #d4edda;
-  border: 1px solid #c3e6cb;
+/* Payment Success Toast */
+.payment-toast {
+  position: fixed;
+  top: 84px;
+  left: 20px;
+  background-color: #00ba7c;
+  color: white;
+  padding: 12px 20px;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 32px;
-  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 186, 124, 0.3);
+  z-index: 1000;
+  animation: toastSlideIn 0.3s ease-out, toastFadeOut 0.5s ease-in 2.5s forwards;
 }
 
-.payment-success p {
-  color: #155724;
-  font-weight: 500;
+.payment-toast p {
   margin: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastFadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
 }
 
 .full-content {
@@ -996,6 +1023,224 @@ main {
 .article-not-found p {
   font-size: 1.125rem;
   color: #536471;
+}
+
+/* Floating Tip Button */
+.floating-tip-container {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1000;
+}
+
+.floating-tip-button {
+  background: linear-gradient(135deg, #00ba7c 0%, #00a86b 100%);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 186, 124, 0.3);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.floating-tip-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 186, 124, 0.4);
+  background: linear-gradient(135deg, #00a86b 0%, #009955 100%);
+}
+
+.floating-tip-button:active {
+  transform: translateY(0);
+}
+
+/* Tip Modal */
+.tip-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.tip-modal {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: tipModalSlideIn 0.3s ease-out;
+}
+
+@keyframes tipModalSlideIn {
+  from {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.tip-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0;
+  border-bottom: 1px solid #e1e8ed;
+  margin-bottom: 24px;
+}
+
+.tip-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.tip-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #8b98a5;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tip-modal-close:hover {
+  background-color: #f8f9fa;
+  color: #536471;
+}
+
+.tip-modal-content {
+  padding: 0 24px 24px;
+}
+
+.tip-modal-content > p {
+  color: #536471;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.tip-amount-selector {
+  margin-bottom: 24px;
+}
+
+.tip-amount-selector label {
+  display: block;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.tip-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.tip-option {
+  background: #f8f9fa;
+  border: 2px solid #e1e8ed;
+  border-radius: 8px;
+  padding: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.tip-option:hover {
+  border-color: #00ba7c;
+  background-color: #f0fdf9;
+}
+
+.tip-option.selected {
+  background-color: #00ba7c;
+  border-color: #00ba7c;
+  color: white;
+}
+
+.tip-custom-amount {
+  margin-bottom: 24px;
+}
+
+.tip-custom-amount label {
+  display: block;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.tip-amount-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.tip-amount-input:focus {
+  outline: none;
+  border-color: #00ba7c;
+}
+
+.tip-submit-button {
+  width: 100%;
+  background: linear-gradient(135deg, #00ba7c 0%, #00a86b 100%);
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tip-submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00a86b 0%, #009955 100%);
+  transform: translateY(-1px);
+}
+
+.tip-submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.tip-success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.tip-success p {
+  color: #155724;
+  font-weight: 500;
+  margin: 0;
 }
 
 /* Responsive Design */
@@ -1090,6 +1335,24 @@ main {
   
   .payment-overlay {
     padding: 32px 20px;
+  }
+  
+  .floating-tip-container {
+    right: 16px;
+  }
+
+  .floating-tip-button {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+  }
+
+  .tip-modal {
+    margin: 16px;
+    width: calc(100% - 32px);
+  }
+
+  .tip-options {
+    grid-template-columns: repeat(2, 1fr);
   }
   
   .dashboard {
@@ -1216,5 +1479,53 @@ main {
   .cta-simple-button {
     padding: 8px 14px;
     font-size: 0.85rem;
+  }
+  
+  .floating-tip-container {
+    right: 12px;
+    bottom: 20px;
+    top: auto;
+    transform: none;
+  }
+
+  .floating-tip-button {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    border-radius: 20px;
+  }
+
+  .tip-modal {
+    margin: 12px;
+    width: calc(100% - 24px);
+    max-height: 85vh;
+  }
+
+  .tip-modal-header {
+    padding: 16px 16px 0;
+    margin-bottom: 16px;
+  }
+
+  .tip-modal-content {
+    padding: 0 16px 16px;
+  }
+
+  .tip-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .tip-option {
+    padding: 10px 8px;
+    font-size: 0.875rem;
+  }
+
+  .tip-amount-input {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+  }
+
+  .tip-submit-button {
+    padding: 12px;
+    font-size: 0.875rem;
   }
 }
