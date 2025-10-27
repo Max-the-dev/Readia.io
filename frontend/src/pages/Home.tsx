@@ -57,9 +57,10 @@ function Home() {
   const benefits = [
     "Instant payouts",
     "You set the price", 
-    "Access infinite knowledge",
+    "Access infinite resources",
     "No subscriptions needed",
-    "Support creators directly"
+    "Support creators directly",
+    "Empower AI agents with knowledge"
   ];
 
   const [currentBenefit, setCurrentBenefit] = useState(0);
@@ -102,12 +103,17 @@ function Home() {
       </div>
       
       <div className="typing-cta-section">
-        <div className="typing-cta-container">
-          <div className="typing-text-box">
-            <span className="typing-text">
-              {displayText}
-              <span className="cursor">|</span>
-            </span>
+        <div className="typing-cta-wrapper">
+          <div className="typing-cta-container">
+            <div className="logo-section">
+              <span className="typing-prefix">LOGO</span>
+            </div>
+            <div className="typing-text-box">
+              <span className="typing-text">
+                {displayText}
+                <span className="cursor">|</span>
+              </span>
+            </div>
           </div>
           <Link to="/write" className="cta-simple-button">
             <PenTool size={18} />
@@ -120,17 +126,19 @@ function Home() {
         <h2>Explore Articles</h2>
         <div className="article-grid">
           {mockArticles.map((article) => (
-            <div key={article.id} className="article-card">
-              <h3>{article.title}</h3>
-              <p>{article.preview}</p>
-              <div className="article-meta">
-                <span className="price">${article.price.toFixed(2)}</span>
-                <div className="author-info">
-                  <span className="author">by @{article.author}</span>
-                  <span className="read-time">• {article.readTime}</span>
+            <Link key={article.id} to={`/article/${article.id}`} className="article-card-link">
+              <div className="article-card">
+                <h3>{article.title}</h3>
+                <p>{article.preview}</p>
+                <div className="article-meta">
+                  <span className="price">${article.price.toFixed(2)}</span>
+                  <div className="author-info">
+                    <span className="author">by @{article.author}</span>
+                    <span className="read-time">• {article.readTime}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

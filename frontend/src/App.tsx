@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import Home from './pages/Home';
 import Write from './pages/Write';
 import Dashboard from './pages/Dashboard';
+import Article from './pages/Article';
 import './App.css'
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/write" element={<Write />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/article/:id" element={<Article />} />
             </Routes>
           </main>
           <Footer />
