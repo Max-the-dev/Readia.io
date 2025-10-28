@@ -295,6 +295,14 @@ function Article() {
   // Set default tip options
   const tipOptions = [0.01, 0.05, 0.10, 0.25, 0.50, 1.00];
 
+  // Format text with basic markdown support
+  const formatText = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold text
+      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic text
+      .replace(/`(.*?)`/g, '<code>$1</code>'); // Inline code
+  };
+
   return (
     <div className="article-page">
       <div className="container">
@@ -377,9 +385,10 @@ function Article() {
                     const items = paragraph.split('\n').filter(item => item.startsWith('- '));
                     return (
                       <ul key={index}>
-                        {items.map((item, i) => (
-                          <li key={i}>{item.replace('- ', '')}</li>
-                        ))}
+                        {items.map((item, i) => {
+                          const text = item.replace('- ', '');
+                          return <li key={i} dangerouslySetInnerHTML={{__html: formatText(text)}} />;
+                        })}
                       </ul>
                     );
                   }
@@ -387,13 +396,14 @@ function Article() {
                     const items = paragraph.split('\n').filter(item => item.match(/^\d+\./));
                     return (
                       <ol key={index}>
-                        {items.map((item, i) => (
-                          <li key={i}>{item.replace(/^\d+\.\s*/, '')}</li>
-                        ))}
+                        {items.map((item, i) => {
+                          const text = item.replace(/^\d+\.\s*/, '');
+                          return <li key={i} dangerouslySetInnerHTML={{__html: formatText(text)}} />;
+                        })}
                       </ol>
                     );
                   }
-                  return <p key={index}>{paragraph}</p>;
+                  return <p key={index} dangerouslySetInnerHTML={{__html: formatText(paragraph)}} />;
                 })}
               </div>
             )}

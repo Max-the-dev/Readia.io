@@ -1,14 +1,16 @@
+import { useState } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
-import { TrendingUp, DollarSign, Eye, Users, Calendar, Edit3, LayoutDashboard } from 'lucide-react';
+import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X } from 'lucide-react';
+import { getDateDaysAgo, isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
 
 // Mock analytics data - function to create articles based on connected address
 const createMockArticles = (userAddress: string | undefined) => [
   {
     id: 4,
     title: "Getting Started with Penny.io: A Writer's Guide",
-    publishDate: "2024-10-27",
+    publishDate: getDateDaysAgo(1), // Yesterday
     price: 0.05,
     views: 234,
     purchases: 23,
@@ -19,7 +21,7 @@ const createMockArticles = (userAddress: string | undefined) => [
   {
     id: 1,
     title: "Building Scalable Web3 Applications with x402 Protocol",
-    publishDate: "2024-10-20",
+    publishDate: getDateDaysAgo(3), // 3 days ago
     price: 0.12,
     views: 1247,
     purchases: 89,
@@ -29,7 +31,7 @@ const createMockArticles = (userAddress: string | undefined) => [
   {
     id: 2,
     title: "The Future of Creator Economy: Beyond Subscriptions",
-    publishDate: "2024-10-18",
+    publishDate: getDateDaysAgo(5), // 5 days ago
     price: 0.08,
     views: 892,
     purchases: 156,
@@ -38,8 +40,8 @@ const createMockArticles = (userAddress: string | undefined) => [
   },
   {
     id: 3,
-    title: "Smart Contract Security Best Practices in 2024",
-    publishDate: "2024-10-15",
+    title: "Smart Contract Security Best Practices in 2025",
+    publishDate: getDateDaysAgo(14), // 2 weeks ago
     price: 0.15,
     views: 2108,
     purchases: 203,
@@ -62,6 +64,70 @@ const mockStats = {
 function Dashboard() {
   const { isConnected, address, balance } = useWallet();
   const mockArticles = createMockArticles(address);
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState('date'); // date, title, price, earnings, views
+  const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
+  const [dateFilter, setDateFilter] = useState('all'); // all, week, month, quarter
+
+  // Filter and search logic
+  const filteredAndSortedArticles = mockArticles
+    .filter(article => {
+      // Search filter
+      const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Date filter
+      let matchesDate = true;
+      if (dateFilter !== 'all') {
+        matchesDate = isDateWithinRange(article.publishDate, dateFilter as 'week' | 'month' | 'quarter');
+      }
+      
+      return matchesSearch && matchesDate;
+    })
+    .sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'price':
+          aValue = a.price;
+          bValue = b.price;
+          break;
+        case 'earnings':
+          aValue = a.earnings;
+          bValue = b.earnings;
+          break;
+        case 'views':
+          aValue = a.views;
+          bValue = b.views;
+          break;
+        case 'date':
+        default:
+          aValue = new Date(a.publishDate);
+          bValue = new Date(b.publishDate);
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+  // Clear search function
+  const clearSearch = () => {
+    setSearchTerm('');
+    setSortBy('date');
+    setSortOrder('desc');
+    setDateFilter('all');
+    setShowFilters(false);
+  };
 
   if (!isConnected) {
     return (
@@ -176,6 +242,97 @@ function Dashboard() {
             </a>
           </div>
           
+          {/* Search and Filter Controls */}
+          <div className="articles-controls">
+            <div className="search-container">
+              <div className="search-icon-section">
+                <Search size={18} />
+              </div>
+              <div className="search-input-wrapper">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search your articles..."
+                  className="search-input"
+                />
+                {searchTerm && (
+                  <button 
+                    className="clear-search-btn"
+                    onClick={clearSearch}
+                    title="Clear search"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="filter-container">
+              <button 
+                className={`filter-button ${showFilters ? 'active' : ''}`}
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter size={18} />
+                Filter
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Dropdown */}
+          {showFilters && (
+            <div className="filter-panel">
+              <div className="filter-group">
+                <label>Sort by:</label>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="date">Date</option>
+                  <option value="title">Title</option>
+                  <option value="price">Price</option>
+                  <option value="earnings">Earnings</option>
+                  <option value="views">Views</option>
+                </select>
+              </div>
+              
+              <div className="filter-group">
+                <label>Order:</label>
+                <select 
+                  value={sortOrder} 
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="desc">Descending</option>
+                  <option value="asc">Ascending</option>
+                </select>
+              </div>
+              
+              <div className="filter-group">
+                <label>Date range:</label>
+                <select 
+                  value={dateFilter} 
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All time</option>
+                  <option value="week">Last week</option>
+                  <option value="month">Last month</option>
+                  <option value="quarter">Last 3 months</option>
+                </select>
+              </div>
+              
+              <div className="filter-actions">
+                <button 
+                  className="clear-filters-btn"
+                  onClick={clearSearch}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          )}
+          
           <div className="articles-table">
             <div className="table-header">
               <div className="table-cell">Article</div>
@@ -187,34 +344,55 @@ function Dashboard() {
               <div className="table-cell">Rate</div>
             </div>
             
-            {mockArticles.map((article) => (
-              <Link key={article.id} to={`/article/${article.id}`} className="table-row-link">
-                <div className="table-row">
-                  <div className="table-cell article-info">
-                    <div className="article-title">{article.title}</div>
-                    <div className="article-meta">{article.readTime} read</div>
-                  </div>
-                <div className="table-cell">
-                  {new Date(article.publishDate).toLocaleDateString()}
-                </div>
-                <div className="table-cell">
-                  ${article.price.toFixed(2)}
-                </div>
-                <div className="table-cell">
-                  {article.views.toLocaleString()}
-                </div>
-                <div className="table-cell">
-                  {article.purchases}
-                </div>
-                <div className="table-cell earnings">
-                  ${article.earnings.toFixed(2)}
-                </div>
+            {filteredAndSortedArticles.length > 0 ? (
+              filteredAndSortedArticles.map((article) => (
+                <Link key={article.id} to={`/article/${article.id}`} className="table-row-link">
+                  <div className="table-row">
+                    <div className="table-cell article-info">
+                      <div className="article-title">{article.title}</div>
+                      <div className="article-meta">{article.readTime} read</div>
+                    </div>
                   <div className="table-cell">
-                    {((article.purchases / article.views) * 100).toFixed(1)}%
+                    <div className="date-info">
+                      <div className="date-primary">{new Date(article.publishDate).toLocaleDateString()}</div>
+                      <div className="date-relative">{getRelativeTimeString(article.publishDate)}</div>
+                    </div>
                   </div>
+                  <div className="table-cell">
+                    ${article.price.toFixed(2)}
+                  </div>
+                  <div className="table-cell">
+                    {article.views.toLocaleString()}
+                  </div>
+                  <div className="table-cell">
+                    {article.purchases}
+                  </div>
+                  <div className="table-cell earnings">
+                    ${article.earnings.toFixed(2)}
+                  </div>
+                    <div className="table-cell">
+                      {((article.purchases / article.views) * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="no-results">
+                <div className="no-results-content">
+                  <Search size={48} />
+                  <h3>No articles found</h3>
+                  <p>Try adjusting your search terms or filters</p>
+                  {(searchTerm || dateFilter !== 'all') && (
+                    <button 
+                      className="clear-filters-btn"
+                      onClick={clearSearch}
+                    >
+                      Clear search and filters
+                    </button>
+                  )}
                 </div>
-              </Link>
-            ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
