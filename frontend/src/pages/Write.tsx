@@ -3,26 +3,56 @@ import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Bold, Italic, Code, List, Hash, Eye, EyeOff, Save, Send } from 'lucide-react';
 import { getCurrentDateString } from '../utils/dateUtils';
+import { apiService } from '../services/api';
 
 function Write() {
-  const { isConnected } = useWallet();
+  const { isConnected, address } = useWallet();
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [price, setPrice] = useState<string>('0.05');
   const [showPreview, setShowPreview] = useState<boolean>(true);
   const [isDraft, setIsDraft] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>('');
+  const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const articleData = {
-      title,
-      content,
-      price: parseFloat(price),
-      publishDate: getCurrentDateString(),
-      createdAt: new Date().toISOString()
-    };
-    console.log('Article submitted:', articleData);
-    // TODO: Send to backend API
+    
+    if (!address) {
+      setSubmitError('Please connect your wallet first');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess(false);
+
+    try {
+      const articleData = {
+        title,
+        content,
+        price: parseFloat(price),
+        authorAddress: address
+      };
+
+      const response = await apiService.createArticle(articleData);
+
+      if (response.success) {
+        setSubmitSuccess(true);
+        setTitle('');
+        setContent('');
+        setPrice('0.05');
+        setTimeout(() => setSubmitSuccess(false), 5000);
+      } else {
+        setSubmitError(response.error || 'Failed to create article');
+      }
+    } catch (error) {
+      setSubmitError('An unexpected error occurred');
+      console.error('Error creating article:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const saveDraft = () => {
@@ -205,10 +235,28 @@ function Write() {
                 />
               </div>
 
+              {/* Error Message */}
+              {submitError && (
+                <div className="submit-error">
+                  {submitError}
+                </div>
+              )}
+
+              {/* Success Message */}
+              {submitSuccess && (
+                <div className="submit-success">
+                  ✅ Article published successfully!
+                </div>
+              )}
+
               {/* Publish Button */}
-              <button type="submit" className="publish-btn">
+              <button 
+                type="submit" 
+                className="publish-btn"
+                disabled={isSubmitting || !title || !content}
+              >
                 <Send size={18} />
-                Publish Article
+                {isSubmitting ? 'Publishing...' : 'Publish Article'}
               </button>
             </form>
           </div>

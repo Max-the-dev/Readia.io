@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
 import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X } from 'lucide-react';
 import { getDateDaysAgo, isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
+import { apiService, Article } from '../services/api';
 
 // Mock analytics data - function to create articles based on connected address
 const createMockArticles = (userAddress: string | undefined) => [
@@ -63,7 +64,11 @@ const mockStats = {
 
 function Dashboard() {
   const { isConnected, address, balance } = useWallet();
-  const mockArticles = createMockArticles(address);
+  
+  // Articles state
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,53 +77,72 @@ function Dashboard() {
   const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
   const [dateFilter, setDateFilter] = useState('all'); // all, week, month, quarter
 
-  // Filter and search logic
-  const filteredAndSortedArticles = mockArticles
-    .filter(article => {
-      // Search filter
-      const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch articles on component mount and when address changes
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchArticles();
+    } else {
+      setArticles([]);
+      setLoading(false);
+    }
+  }, [isConnected, address]);
+
+  const fetchArticles = async () => {
+    if (!address) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await apiService.getArticles({ 
+        authorAddress: address,
+        search: searchTerm,
+        sortBy: sortBy as any,
+        sortOrder: sortOrder as any
+      });
       
-      // Date filter
-      let matchesDate = true;
-      if (dateFilter !== 'all') {
-        matchesDate = isDateWithinRange(article.publishDate, dateFilter as 'week' | 'month' | 'quarter');
-      }
-      
-      return matchesSearch && matchesDate;
-    })
-    .sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'price':
-          aValue = a.price;
-          bValue = b.price;
-          break;
-        case 'earnings':
-          aValue = a.earnings;
-          bValue = b.earnings;
-          break;
-        case 'views':
-          aValue = a.views;
-          bValue = b.views;
-          break;
-        case 'date':
-        default:
-          aValue = new Date(a.publishDate);
-          bValue = new Date(b.publishDate);
-          break;
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      if (response.success && response.data) {
+        setArticles(response.data);
       } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+        setError(response.error || 'Failed to fetch articles');
       }
-    });
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Error fetching articles:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refetch when search/filter changes
+  useEffect(() => {
+    if (isConnected && address) {
+      const timeoutId = setTimeout(() => {
+        fetchArticles();
+      }, 300); // Debounce search
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchTerm, sortBy, sortOrder]);
+
+  // Filter articles by date (client-side filtering for date ranges)
+  const filteredAndSortedArticles = articles.filter(article => {
+    if (dateFilter !== 'all') {
+      return isDateWithinRange(article.publishDate, dateFilter as 'week' | 'month' | 'quarter');
+    }
+    return true;
+  });
+
+  // Calculate stats from real articles
+  const stats = {
+    totalEarnings: filteredAndSortedArticles.reduce((sum, article) => sum + article.earnings, 0),
+    totalArticles: filteredAndSortedArticles.length,
+    totalViews: filteredAndSortedArticles.reduce((sum, article) => sum + article.views, 0),
+    totalPurchases: filteredAndSortedArticles.reduce((sum, article) => sum + article.purchases, 0),
+    avgEarningsPerArticle: filteredAndSortedArticles.length > 0 
+      ? filteredAndSortedArticles.reduce((sum, article) => sum + article.earnings, 0) / filteredAndSortedArticles.length 
+      : 0
+  };
 
   // Clear search function
   const clearSearch = () => {
@@ -162,8 +186,8 @@ function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Total Earnings</h3>
-              <p className="stat-value">${mockStats.totalEarnings.toFixed(2)}</p>
-              <span className="stat-change positive">+${(mockStats.thisMonthEarnings - mockStats.lastMonthEarnings).toFixed(2)} this month</span>
+              <p className="stat-value">${stats.totalEarnings.toFixed(2)}</p>
+              <span className="stat-change">From {stats.totalArticles} articles</span>
             </div>
           </div>
           
@@ -173,8 +197,8 @@ function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Articles Published</h3>
-              <p className="stat-value">{mockStats.totalArticles}</p>
-              <span className="stat-change">Avg. ${mockStats.avgEarningsPerArticle.toFixed(2)} per article</span>
+              <p className="stat-value">{stats.totalArticles}</p>
+              <span className="stat-change">Avg. ${stats.avgEarningsPerArticle.toFixed(2)} per article</span>
             </div>
           </div>
           
@@ -184,8 +208,8 @@ function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Total Views</h3>
-              <p className="stat-value">{mockStats.totalViews.toLocaleString()}</p>
-              <span className="stat-change">{mockStats.conversionRate}% conversion rate</span>
+              <p className="stat-value">{stats.totalViews.toLocaleString()}</p>
+              <span className="stat-change">{stats.totalViews > 0 ? ((stats.totalPurchases / stats.totalViews) * 100).toFixed(1) : '0'}% conversion rate</span>
             </div>
           </div>
           
@@ -195,42 +219,19 @@ function Dashboard() {
             </div>
             <div className="stat-content">
               <h3>Total Purchases</h3>
-              <p className="stat-value">{mockStats.totalPurchases}</p>
-              <span className="stat-change">{(mockStats.totalPurchases / mockStats.totalViews * 100).toFixed(1)}% of viewers</span>
+              <p className="stat-value">{stats.totalPurchases}</p>
+              <span className="stat-change">{stats.totalViews > 0 ? ((stats.totalPurchases / stats.totalViews) * 100).toFixed(1) : '0'}% of viewers</span>
             </div>
           </div>
         </div>
 
-        {/* Performance Overview */}
-        <div className="performance-section">
-          <h2>Performance Overview</h2>
-          <div className="performance-grid">
-            <div className="performance-card">
-              <h3>This Month</h3>
-              <div className="performance-stat">
-                <span className="performance-value">${mockStats.thisMonthEarnings.toFixed(2)}</span>
-                <span className="performance-label">Earnings</span>
-              </div>
-            </div>
-            <div className="performance-card">
-              <h3>Last Month</h3>
-              <div className="performance-stat">
-                <span className="performance-value">${mockStats.lastMonthEarnings.toFixed(2)}</span>
-                <span className="performance-label">Earnings</span>
-              </div>
-            </div>
-            <div className="performance-card">
-              <h3>Growth</h3>
-              <div className="performance-stat">
-                <span className={`performance-value ${mockStats.thisMonthEarnings > mockStats.lastMonthEarnings ? 'positive' : 'negative'}`}>
-                  {mockStats.thisMonthEarnings > mockStats.lastMonthEarnings ? '+' : ''}
-                  {(((mockStats.thisMonthEarnings - mockStats.lastMonthEarnings) / mockStats.lastMonthEarnings) * 100).toFixed(1)}%
-                </span>
-                <span className="performance-label">Month over Month</span>
-              </div>
-            </div>
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <p>❌ {error}</p>
+            <button onClick={fetchArticles} className="retry-btn">Try Again</button>
           </div>
-        </div>
+        )}
 
         {/* Articles List */}
         <div className="articles-section">
@@ -344,7 +345,11 @@ function Dashboard() {
               <div className="table-cell">Rate</div>
             </div>
             
-            {filteredAndSortedArticles.length > 0 ? (
+            {loading ? (
+              <div className="loading-state">
+                <p>Loading your articles...</p>
+              </div>
+            ) : filteredAndSortedArticles.length > 0 ? (
               filteredAndSortedArticles.map((article) => (
                 <Link key={article.id} to={`/article/${article.id}`} className="table-row-link">
                   <div className="table-row">

@@ -1,57 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { PenTool } from 'lucide-react';
+import { apiService, Article } from '../services/api';
 
-const mockArticles = [
-  {
-    id: 1,
-    title: "Building Scalable Web3 Applications with x402 Protocol",
-    preview: "Learn how to implement instant micropayments in your dApps using the latest x402 protocol. This comprehensive guide covers everything from setup to deployment...",
-    price: 0.12,
-    author: "alex_crypto",
-    readTime: "8 min read"
-  },
-  {
-    id: 2,
-    title: "The Future of Creator Economy: Beyond Subscriptions",
-    preview: "Traditional subscription models are failing creators. Discover how micropayments are revolutionizing content monetization and creating new opportunities...",
-    price: 0.08,
-    author: "sarah_writes",
-    readTime: "6 min read"
-  },
-  {
-    id: 3,
-    title: "Smart Contract Security Best Practices in 2024",
-    preview: "A deep dive into the latest security vulnerabilities and how to protect your smart contracts from common attack vectors. Real-world examples included...",
-    price: 0.15,
-    author: "dev_security",
-    readTime: "12 min read"
-  },
-  {
-    id: 4,
-    title: "AI Agents and Autonomous Content Consumption",
-    preview: "How AI agents are changing the way we discover and consume content. Explore the technical implementation of autonomous payment systems...",
-    price: 0.10,
-    author: "ai_researcher",
-    readTime: "7 min read"
-  },
-  {
-    id: 5,
-    title: "Decentralized Publishing: A Technical Deep Dive",
-    preview: "Understanding IPFS, content addressing, and how decentralized storage is reshaping digital publishing. Code examples and deployment strategies...",
-    price: 0.18,
-    author: "blockchain_dev",
-    readTime: "15 min read"
-  },
-  {
-    id: 6,
-    title: "UX Design for Web3: Bridging Traditional and Crypto Users",
-    preview: "Design patterns that make Web3 applications accessible to mainstream users. Case studies from successful DeFi and NFT platforms...",
-    price: 0.06,
-    author: "ux_designer",
-    readTime: "5 min read"
-  }
-];
+// We'll fetch real articles from the backend instead of using mock data
 
 function Home() {
   const benefits = [
@@ -66,6 +18,27 @@ function Home() {
   const [currentBenefit, setCurrentBenefit] = useState(0);
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch articles on component mount
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const response = await apiService.getArticles();
+        if (response.success && response.data) {
+          // Show first 6 articles for the home page
+          setArticles(response.data.slice(0, 6));
+        }
+      } catch (error) {
+        console.error('Error fetching articles:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
 
   useEffect(() => {
     const currentText = benefits[currentBenefit];
@@ -125,21 +98,35 @@ function Home() {
       <div className="featured-articles">
         <h2>Explore Articles</h2>
         <div className="article-grid">
-          {mockArticles.map((article) => (
-            <Link key={article.id} to={`/article/${article.id}`} className="article-card-link">
-              <div className="article-card">
-                <h3>{article.title}</h3>
-                <p>{article.preview}</p>
-                <div className="article-meta">
-                  <span className="price">${article.price.toFixed(2)}</span>
-                  <div className="author-info">
-                    <span className="author">by @{article.author}</span>
-                    <span className="read-time">• {article.readTime}</span>
+          {loading ? (
+            <div className="loading-articles">
+              <p>Loading articles...</p>
+            </div>
+          ) : articles.length > 0 ? (
+            articles.map((article) => (
+              <Link key={article.id} to={`/article/${article.id}`} className="article-card-link">
+                <div className="article-card">
+                  <h3>{article.title}</h3>
+                  <p>{article.preview}</p>
+                  <div className="article-meta">
+                    <span className="price">${article.price.toFixed(2)}</span>
+                    <div className="author-info">
+                      <span className="author">by @{article.authorAddress.slice(0, 6)}...{article.authorAddress.slice(-4)}</span>
+                      <span className="read-time">• {article.readTime}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))
+          ) : (
+            <div className="no-articles">
+              <p>No articles available yet. Be the first to write one!</p>
+              <Link to="/write" className="write-first-btn">
+                <PenTool size={18} />
+                Write First Article
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>

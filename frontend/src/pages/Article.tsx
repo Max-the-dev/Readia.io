@@ -1,242 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Clock, User, Lock, HeartHandshake } from 'lucide-react';
+import { apiService, Article as ArticleType } from '../services/api';
 
-// Mock article data - in real app this would come from API
-const mockArticles = {
-  4: {
-    id: 4,
-    title: "Getting Started with Penny.io: A Writer's Guide",
-    author: "connected_user",
-    authorAddress: "DYNAMIC", // Will be replaced with actual connected address
-    readTime: "4 min read",
-    publishDate: "2024-10-27",
-    price: 0.05,
-    preview: `Welcome to Penny.io! This comprehensive guide will walk you through everything you need to know about creating, publishing, and monetizing your content on our revolutionary micropayment platform.
-
-Whether you're a seasoned writer looking for a new revenue stream or a newcomer to content creation, this guide covers all the essentials to get you started and thriving on Penny.io.`,
-    fullContent: `Welcome to Penny.io! This comprehensive guide will walk you through everything you need to know about creating, publishing, and monetizing your content on our revolutionary micropayment platform.
-
-Whether you're a seasoned writer looking for a new revenue stream or a newcomer to content creation, this guide covers all the essentials to get you started and thriving on Penny.io.
-
-## What Makes Penny.io Different
-
-Penny.io represents a fundamental shift from traditional content monetization models. Instead of relying on subscriptions, ads, or paywalls that block entire articles, we use the x402 protocol to enable true micropayments.
-
-### Key Benefits for Writers
-
-1. **Instant Payouts**: Get paid immediately when readers purchase your content
-2. **You Set the Price**: Complete control over your article pricing ($0.01-$1.00)
-3. **No Platform Fees**: Keep 100% of your earnings
-4. **Global Reach**: Accessible to anyone with a Web3 wallet
-5. **Transparent Analytics**: Real-time insights into your content performance
-
-## Getting Started: Your First Article
-
-Creating your first article on Penny.io is straightforward:
-
-### Step 1: Connect Your Wallet
-- Use MetaMask, Coinbase Wallet, or any Web3-compatible wallet
-- Ensure you're on a supported network (Ethereum, Polygon, etc.)
-- Your wallet address becomes your unique writer identity
-
-### Step 2: Write Your Content
-- Use our markdown editor for rich formatting
-- Include engaging headlines and clear structure
-- Optimize for readability and value delivery
-
-### Step 3: Set Your Price
-- Consider your content's value and target audience
-- Start with lower prices to build readership
-- Test different price points to find your sweet spot
-
-### Step 4: Publish and Promote
-- Share your article link on social media
-- Engage with the Penny.io community
-- Build your reader base organically
-
-## Maximizing Your Earnings
-
-Success on Penny.io comes from understanding your audience and consistently delivering value.
-
-### Content Strategy Tips
-
-**Focus on Quality Over Quantity**: One well-researched, valuable article often outperforms multiple rushed pieces.
-
-**Understand Your Niche**: Develop expertise in specific areas and become known for that content.
-
-**Engage with Readers**: Respond to feedback and build relationships with your audience.
-
-**Optimize Pricing**: Use your dashboard analytics to understand what pricing works best.
-
-### Analytics and Optimization
-
-Your writer dashboard provides comprehensive insights:
-- View counts and conversion rates
-- Earnings tracking and trends
-- Reader engagement metrics
-- Performance comparisons across articles
-
-Use this data to refine your content strategy and pricing approach.
-
-## Best Practices for Success
-
-### Writing Guidelines
-- Clear, engaging headlines
-- Strong opening paragraphs
-- Well-structured content with headers
-- Actionable insights and takeaways
-- Proper grammar and formatting
-
-### Pricing Strategy
-- Research similar content pricing
-- Consider your target audience's willingness to pay
-- Factor in content length and research depth
-- Test and iterate based on performance
-
-### Community Building
-- Consistently publish quality content
-- Engage with other writers
-- Share insights and tips
-- Build your reputation within the ecosystem
-
-## Technical Considerations
-
-### Wallet Security
-- Use hardware wallets for large earnings
-- Keep your seed phrase secure
-- Enable two-factor authentication where possible
-- Regularly monitor your account activity
-
-### Platform Features
-- Bookmark your favorite articles
-- Follow writers you enjoy
-- Use the search functionality to discover content
-- Participate in community discussions
-
-## Troubleshooting Common Issues
-
-### Payment Problems
-- Ensure sufficient network fees for transactions
-- Check wallet connectivity
-- Verify network compatibility
-- Contact support if issues persist
-
-### Content Issues
-- Use supported markdown formatting
-- Check image upload requirements
-- Ensure content meets community guidelines
-- Review for proper formatting before publishing
-
-## The Future of Content Monetization
-
-Penny.io is pioneering the future of how creators get paid for their work. By removing traditional barriers and enabling direct value exchange, we're creating a more equitable content ecosystem.
-
-As you begin your journey on Penny.io, remember that success comes from consistently providing value to your readers. Focus on creating content that genuinely helps, informs, or entertains your audience, and the financial rewards will follow.
-
-Welcome to the future of content creation!`
-  },
-  1: {
-    id: 1,
-    title: "Building Scalable Web3 Applications with x402 Protocol",
-    author: "alex_crypto",
-    authorAddress: "0x742d35Cc6634C0532925a3b8D6A9DdC6C7C10f12", // Mock author wallet address
-    readTime: "8 min read",
-    publishDate: "2024-10-25",
-    price: 0.12,
-    preview: `The x402 protocol represents a fundamental shift in how we think about content monetization and micropayments on the web. Unlike traditional subscription models that create barriers between readers and content, x402 enables seamless, per-article payments that benefit both creators and consumers.
-
-In this comprehensive guide, we'll explore how to implement x402 in your applications, covering everything from basic setup to advanced payment flows. We'll also examine real-world case studies and performance optimizations that can make or break your implementation.`,
-    fullContent: `The x402 protocol represents a fundamental shift in how we think about content monetization and micropayments on the web. Unlike traditional subscription models that create barriers between readers and content, x402 enables seamless, per-article payments that benefit both creators and consumers.
-
-In this comprehensive guide, we'll explore how to implement x402 in your applications, covering everything from basic setup to advanced payment flows. We'll also examine real-world case studies and performance optimizations that can make or break your implementation.
-
-## Getting Started with x402
-
-First, let's understand the core components of the x402 protocol:
-
-1. **Payment Pointer**: A standardized way to identify payment endpoints
-2. **Receipt Service**: Validates and tracks payments
-3. **Content Gates**: Conditionally serve content based on payment status
-
-### Setting Up Your Payment Infrastructure
-
-To begin implementing x402, you'll need to establish a few key components in your application architecture. The payment pointer serves as your primary identifier and should be included in your site's meta tags:
-
-\`\`\`html
-<meta name="monetization" content="$ilp.uphold.com/your-payment-pointer">
-\`\`\`
-
-### Implementing Dynamic Content Gates
-
-The real power of x402 comes from its ability to create dynamic payment gates that don't disrupt the user experience. Here's how to implement a basic content gate:
-
-\`\`\`javascript
-class ContentGate {
-  constructor(price, content) {
-    this.price = price;
-    this.content = content;
-    this.paid = false;
-  }
-
-  async verifyPayment(receipt) {
-    // Verify payment with receipt service
-    const isValid = await this.validateReceipt(receipt);
-    if (isValid) {
-      this.paid = true;
-      return this.content;
-    }
-    throw new Error('Invalid payment');
-  }
-}
-\`\`\`
-
-## Advanced Implementation Patterns
-
-Once you have the basics working, there are several advanced patterns that can significantly improve user experience:
-
-### Progressive Payment Gates
-
-Instead of blocking all content, consider implementing progressive gates that allow readers to consume increasingly valuable content as they pay more. This creates a natural progression and reduces friction.
-
-### Smart Caching Strategies
-
-Implement intelligent caching that respects payment status while optimizing for performance. Paid content should be cached differently than free content to prevent unauthorized access.
-
-### Analytics and Optimization
-
-Track payment conversion rates and optimize your pricing strategy based on real data. The x402 protocol provides rich analytics capabilities that traditional payment systems lack.
-
-## Real-World Case Studies
-
-Several major publications have successfully implemented x402 with impressive results:
-
-- **TechDaily**: Increased revenue by 340% while reducing churn by 60%
-- **CryptoInsights**: Achieved 85% payment conversion rate on premium content
-- **DevBlog**: Reduced payment friction by 90% compared to traditional paywalls
-
-## Performance Considerations
-
-When implementing x402, keep these performance tips in mind:
-
-1. Lazy-load payment verification scripts
-2. Cache payment status locally with appropriate expiration
-3. Implement graceful fallbacks for unsupported browsers
-4. Monitor payment latency and optimize accordingly
-
-## Conclusion
-
-The x402 protocol offers unprecedented flexibility for content monetization while maintaining excellent user experience. By following the patterns outlined in this guide, you can create a robust payment system that scales with your content strategy.
-
-Remember that the key to success with x402 is balancing monetization with user experience. Start with simple implementations and gradually add complexity as you understand your audience's behavior patterns.`
-  }
-};
+// Article page now uses real API data instead of mock data
 
 function Article() {
   const { id } = useParams();
   const { isConnected, address } = useWallet();
+  const [article, setArticle] = useState<ArticleType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [hasPaid, setHasPaid] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [showPaymentToast, setShowPaymentToast] = useState(false);
@@ -247,23 +23,54 @@ function Article() {
   const [isProcessingTip, setIsProcessingTip] = useState(false);
   const [hasTipped, setHasTipped] = useState(false);
 
-  const article = mockArticles[Number(id) as keyof typeof mockArticles];
-  
-  // Set dynamic author address for article 4 (connected user's article)
-  if (article && article.id === 4 && article.authorAddress === "DYNAMIC" && address) {
-    article.authorAddress = address;
-  }
+  // Fetch article on component mount
+  useEffect(() => {
+    const fetchArticle = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      setError('');
+      
+      try {
+        const response = await apiService.getArticleById(parseInt(id));
+        if (response.success && response.data) {
+          setArticle(response.data);
+        } else {
+          setError(response.error || 'Article not found');
+        }
+      } catch (err) {
+        setError('Failed to load article');
+        console.error('Error fetching article:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticle();
+  }, [id]);
   
   // Check if current user is the author of this article
   const isAuthor = address && article && address.toLowerCase() === article.authorAddress.toLowerCase();
 
-  if (!article) {
+  if (loading) {
+    return (
+      <div className="article-page">
+        <div className="container">
+          <div className="article-loading">
+            <h1>Loading article...</h1>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !article) {
     return (
       <div className="article-page">
         <div className="container">
           <div className="article-not-found">
             <h1>Article not found</h1>
-            <p>The article you're looking for doesn't exist.</p>
+            <p>{error || "The article you're looking for doesn't exist."}</p>
           </div>
         </div>
       </div>
@@ -312,7 +119,7 @@ function Article() {
             <div className="article-meta">
               <div className="author-info">
                 <User size={16} />
-                <span>@{article.author}</span>
+                <span>@{article.authorAddress.slice(0, 6)}...{article.authorAddress.slice(-4)}</span>
               </div>
               <div className="read-info">
                 <Clock size={16} />
@@ -325,11 +132,13 @@ function Article() {
           </header>
 
           <div className="article-body">
-            <div className="article-preview">
-              {article.preview.split('\n\n').map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
-            </div>
+            {!isAuthor && !hasPaid && (
+              <div className="article-preview">
+                {article.preview.split('\n\n').map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
+            )}
 
             {!hasPaid && !isAuthor && (
               <div className="payment-gate">
@@ -370,7 +179,7 @@ function Article() {
 
             {(hasPaid || isAuthor) && (
               <div className="full-content">
-                {article.fullContent.split('\n\n').map((paragraph, index) => {
+                {article.content.split('\n\n').map((paragraph, index) => {
                   if (paragraph.startsWith('## ')) {
                     return <h2 key={index}>{paragraph.replace('## ', '')}</h2>;
                   }
