@@ -2377,13 +2377,6 @@ main {
     margin: 0 0 16px 0;
   }
 
-  .founder-info p {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #374151;
-    margin-bottom: 16px;
-  }
-
   .x-link {
     display: inline-flex;
     align-items: center;
@@ -2396,6 +2389,7 @@ main {
     font-weight: 500;
     font-size: 0.875rem;
     transition: all 0.2s ease;
+    margin-bottom: 16px;
   }
 
   .x-link:hover {
@@ -2408,7 +2402,7 @@ main {
   font-size: 1.125rem;
   line-height: 1.7;
   color: #374151;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
@@ -2419,6 +2413,7 @@ main {
   justify-content: center;
   gap: 48px;
   flex-wrap: wrap;
+  margin-top: 16px;
 }
 
 .stat {

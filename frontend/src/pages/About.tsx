@@ -120,12 +120,8 @@ function About() {
               My name is Maxim. An enthusiast who believe in the power of blockchain & decentralized content monetization.
             </p>
 
-            <div className='founder-section'>
+            
               <div className='founder-info'>
-                <p>
-                  Connect with me on X (Twitter) for updates on Penny.io 
-                  development and insights into the future of content monetization.
-                </p>
                 <a
                   href='https://x.com/devvinggold'
                   target='_blank'
@@ -136,7 +132,7 @@ function About() {
                   follow @devinggold
                 </a>
               </div>
-            </div>
+            
       
             <div className="team-stats">
               <div className="stat">
