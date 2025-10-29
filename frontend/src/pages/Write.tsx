@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Save, Send, FileText, Clock } from 'lucide-react';
+import { Save, Send, FileText, Clock, Eye, CheckCircle, X } from 'lucide-react';
 import { getCurrentDateString } from '../utils/dateUtils';
 import { apiService, Draft } from '../services/api';
 import { Editor } from '@tinymce/tinymce-react';
@@ -19,6 +19,8 @@ function Write() {
   const [availableDrafts, setAvailableDrafts] = useState<Draft[]>([]);
   const [showDrafts, setShowDrafts] = useState<boolean>(false);
   const [loadingDrafts, setLoadingDrafts] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState<boolean>(false);
   
   // Content limits
   const MAX_TITLE_LENGTH = 200;
@@ -100,29 +102,54 @@ function Write() {
       return;
     }
 
+    // Show confirmation modal instead of publishing immediately
+    setShowPublishConfirm(true);
+  };
+
+  const handlePublishConfirm = async () => {
     setIsSubmitting(true);
     setSubmitError('');
     setSubmitSuccess(false);
+    setShowPublishConfirm(false);
 
     try {
       const articleData = {
         title,
         content,
         price: parseFloat(price),
-        authorAddress: address
+        authorAddress: address!
       };
 
       const response = await apiService.createArticle(articleData);
 
       if (response.success) {
         setSubmitSuccess(true);
+        
+        // Clean up drafts that match the published article
+        try {
+          const matchingDrafts = availableDrafts.filter(draft => 
+            draft.title.trim() === title.trim() && 
+            draft.content.trim() === content.trim()
+          );
+          
+          for (const draft of matchingDrafts) {
+            await apiService.deleteDraft(draft.id, address!);
+          }
+          
+          // Update local drafts state to remove deleted drafts
+          setAvailableDrafts(prev => prev.filter(draft => 
+            !matchingDrafts.some(matchingDraft => matchingDraft.id === draft.id)
+          ));
+        } catch (error) {
+          console.error('Error cleaning up matching drafts:', error);
+          // Don't fail the publication if draft cleanup fails
+        }
+        
         // Clear current form
         setTitle('');
         setContent('');
         setPrice('0.05');
         setShowValidation(false);
-        // Note: Server will auto-cleanup expired drafts, but we keep the latest one
-        setTimeout(() => setSubmitSuccess(false), 5000);
       } else {
         setSubmitError(response.error || 'Failed to create article');
       }
@@ -132,6 +159,20 @@ function Write() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const generatePreview = (content: string) => {
+    // Remove HTML tags for preview
+    const textContent = content.replace(/<[^>]*>/g, '');
+    return textContent.substring(0, 300) + (textContent.length > 300 ? '...' : '');
+  };
+
+  const estimateReadTime = (content: string) => {
+    const wordsPerMinute = 200;
+    const textContent = content.replace(/<[^>]*>/g, '');
+    const wordCount = textContent.trim().split(/\s+/).length;
+    const minutes = Math.ceil(wordCount / wordsPerMinute);
+    return `${minutes} min read`;
   };
 
   // Validation helper
@@ -264,6 +305,38 @@ function Write() {
         {/* Main Content */}
         <div className="write-layout">
           <form id="write-form" onSubmit={handleSubmit} className="write-form">
+            {/* Success Message */}
+            {submitSuccess && (
+              <div className="submit-success">
+                <div className="success-icon">
+                  <CheckCircle size={24} />
+                </div>
+                <div className="success-content">
+                  <h4>Article Published Successfully! 🎉</h4>
+                  <p>Your article is now live and available for readers to discover. You'll earn <strong>${parseFloat(price).toFixed(2)}</strong> each time someone purchases and reads your article.</p>
+                  <div className="success-actions">
+                    <a href="/dashboard" className="action-btn secondary-btn">
+                      View in Dashboard
+                    </a>
+                    <button 
+                      type="button"
+                      onClick={() => setSubmitSuccess(false)}
+                      className="action-btn draft-btn"
+                    >
+                      Write Another Article
+                    </button>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setSubmitSuccess(false)}
+                  className="success-close-btn"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="article-actions">
               <div className="draft-actions">
@@ -291,6 +364,15 @@ function Write() {
                 >
                   <Save size={18} />
                   {isDraft ? 'Saved!' : 'Save Draft'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowPreview(true)}
+                  className="action-btn preview-btn"
+                  disabled={!title.trim() || !content.trim()}
+                >
+                  <Eye size={18} />
+                  Preview
                 </button>
               </div>
               <button 
@@ -355,6 +437,107 @@ function Write() {
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Preview Modal */}
+            {showPreview && (
+              <div className="modal-overlay">
+                <div className="preview-modal">
+                  <div className="preview-modal-header">
+                    <h3>Article Preview</h3>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPreview(false)}
+                      className="close-btn"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="preview-content">
+                    <div className="preview-meta">
+                      <h1 className="preview-title">{title}</h1>
+                      <div className="preview-stats">
+                        <span className="preview-price">${parseFloat(price).toFixed(2)}</span>
+                        <span>•</span>
+                        <span className="preview-read-time">{estimateReadTime(content)}</span>
+                        <span>•</span>
+                        <span className="preview-word-count">{content.trim().split(/\s+/).filter(word => word.length > 0).length} words</span>
+                      </div>
+                    </div>
+                    <div className="preview-body">
+                      <div className="preview-text">
+                        {generatePreview(content)}
+                      </div>
+                      {content.length > 300 && (
+                        <p className="preview-more">...view more</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="preview-actions">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPreview(false)}
+                      className="action-btn secondary-btn"
+                    >
+                      Edit Article
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setShowPreview(false);
+                        setShowPublishConfirm(true);
+                      }}
+                      className="action-btn publish-btn"
+                    >
+                      <Send size={18} />
+                      Publish Article
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Publish Confirmation Modal */}
+            {showPublishConfirm && (
+              <div className="modal-overlay">
+                <div className="confirm-modal">
+                  <div className="confirm-modal-header">
+                    <h3>Ready to Publish?</h3>
+                  </div>
+                  <div className="confirm-content">
+                    <div className="confirm-article-info">
+                      <h4>{title}</h4>
+                      <div className="confirm-stats">
+                        <span>Price: <strong>${parseFloat(price).toFixed(2)}</strong></span>
+                        <span>Read time: <strong>{estimateReadTime(content)}</strong></span>
+                        <span>Word count: <strong>{content.trim().split(/\s+/).filter(word => word.length > 0).length} words</strong></span>
+                      </div>
+                    </div>
+                    <p className="confirm-message">
+                      Once published, your article will be available for readers to discover and purchase. 
+                      You'll earn <strong>${parseFloat(price).toFixed(2)}</strong> each time someone reads your article.
+                    </p>
+                  </div>
+                  <div className="confirm-actions">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPublishConfirm(false)}
+                      className="action-btn secondary-btn"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handlePublishConfirm}
+                      className="action-btn publish-btn"
+                      disabled={isSubmitting}
+                    >
+                      <CheckCircle size={18} />
+                      {isSubmitting ? 'Publishing...' : 'Confirm & Publish'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -530,12 +713,6 @@ function Write() {
               </div>
             )}
 
-            {/* Success Message */}
-            {submitSuccess && (
-              <div className="submit-success">
-                ✅ Article published successfully!
-              </div>
-            )}
 
           </form>
         </div>
