@@ -432,9 +432,49 @@ function Write() {
                     resize: false,
                     statusbar: false,
                     plugins: [
-                      'link', 'lists', 'code', 'table', 'media', 'codesample', 'autolink', 'powerpaste', 'wordcount'
+                      'image', 'link', 'lists', 'code', 'table', 'media', 'codesample', 'autolink', 'powerpaste', 'wordcount'
                     ],
-                    toolbar: 'undo redo | blocks | bold italic underline | link media table | code codesample | bullist numlist outdent indent | removeformat',
+                    toolbar: 'undo redo | blocks | bold italic underline | link image media table | code codesample | bullist numlist outdent indent | removeformat',
+                    
+                    // Image upload configuration
+                    images_upload_url: 'http://localhost:3001/api/upload',
+                    images_upload_base_path: 'http://localhost:3001',
+                    images_upload_credentials: false,
+                    automatic_uploads: true,
+                    
+                    // File picker for more control
+                    file_picker_types: 'image',
+                    file_picker_callback: (callback: any, value: any, meta: any) => {
+                      if (meta.filetype === 'image') {
+                        const input = document.createElement('input');
+                        input.setAttribute('type', 'file');
+                        input.setAttribute('accept', 'image/*');
+                        
+                        input.onchange = function() {
+                          const file = (this as HTMLInputElement).files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            fetch('http://localhost:3001/api/upload', {
+                              method: 'POST',
+                              body: formData
+                            })
+                            .then(response => response.json())
+                            .then(result => {
+                              if (result.location) {
+                                callback('http://localhost:3001' + result.location, { alt: file.name });
+                              }
+                            })
+                            .catch(error => {
+                              console.error('Upload failed:', error);
+                            });
+                          }
+                        };
+                        
+                        input.click();
+                      }
+                    },
                     content_style: `
                       body { 
                         font-family: 'Inter', system-ui, -apple-system, sans-serif; 

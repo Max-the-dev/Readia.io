@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
-import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X } from 'lucide-react';
+import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X, Book } from 'lucide-react';
 import { getDateDaysAgo, isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
 import { apiService, Article } from '../services/api';
 
@@ -236,7 +236,7 @@ function Dashboard() {
         {/* Articles List */}
         <div className="articles-section">
           <div className="articles-header">
-            <h2>Your Articles</h2>
+            <h2><Book size={20} />Your Articles</h2>
             <a href="/write" className="write-new-btn">
               <Edit3 size={18} />
               Write New Article
