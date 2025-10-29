@@ -3,64 +3,9 @@ import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Link } from 'react-router-dom';
 import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X, Book, Trash2, Edit } from 'lucide-react';
-import { getDateDaysAgo, isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
+import { isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
 import { apiService, Article } from '../services/api';
 
-// Mock analytics data - function to create articles based on connected address
-const createMockArticles = (userAddress: string | undefined) => [
-  {
-    id: 4,
-    title: "Getting Started with Penny.io: A Writer's Guide",
-    publishDate: getDateDaysAgo(1), // Yesterday
-    price: 0.05,
-    views: 234,
-    purchases: 23,
-    earnings: 1.15,
-    readTime: "4 min",
-    authorAddress: userAddress || "0x0000000000000000000000000000000000000000"
-  },
-  {
-    id: 1,
-    title: "Building Scalable Web3 Applications with x402 Protocol",
-    publishDate: getDateDaysAgo(3), // 3 days ago
-    price: 0.12,
-    views: 1247,
-    purchases: 89,
-    earnings: 10.68,
-    readTime: "8 min"
-  },
-  {
-    id: 2,
-    title: "The Future of Creator Economy: Beyond Subscriptions",
-    publishDate: getDateDaysAgo(5), // 5 days ago
-    price: 0.08,
-    views: 892,
-    purchases: 156,
-    earnings: 12.48,
-    readTime: "6 min"
-  },
-  {
-    id: 3,
-    title: "Smart Contract Security Best Practices in 2025",
-    publishDate: getDateDaysAgo(14), // 2 weeks ago
-    price: 0.15,
-    views: 2108,
-    purchases: 203,
-    earnings: 30.45,
-    readTime: "12 min"
-  }
-];
-
-const mockStats = {
-  totalEarnings: 54.76,
-  totalArticles: 4,
-  totalViews: 4481,
-  totalPurchases: 471,
-  conversionRate: 10.5,
-  thisMonthEarnings: 25.28,
-  lastMonthEarnings: 29.48,
-  avgEarningsPerArticle: 13.69
-};
 
 function Dashboard() {
   const { isConnected, address, balance } = useWallet();
