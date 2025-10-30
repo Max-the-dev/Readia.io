@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { House, LayoutDashboard, PenTool, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PenTool, BookOpen } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 function Header() {

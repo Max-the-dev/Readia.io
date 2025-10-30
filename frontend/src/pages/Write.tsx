@@ -8,9 +8,30 @@ import { Editor } from '@tinymce/tinymce-react';
 
 function Write() {
   const { isConnected, address } = useWallet();
+  
+  // Available categories (same as in Explore page)
+  const availableCategories = [
+    'Technology',
+    'Crypto', 
+    'AI & Machine Learning',
+    'Web Development',
+    'Blockchain',
+    'Startup',
+    'Business',
+    'Finance',
+    'Science',
+    'Programming',
+    'Design',
+    'Marketing',
+    'Productivity',
+    'Security',
+    'Data Science'
+  ];
+
   const [title, setTitle] = useState<string>('');
   const [content, setContent] = useState<string>('');
   const [price, setPrice] = useState<string>('0.05');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isDraft, setIsDraft] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string>('');
@@ -43,6 +64,17 @@ function Write() {
       setHasTyped(true);
     }
   }, [displayText, hasTyped, fullText]);
+
+  // Category management functions
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(category)) {
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
 
   // Real-time validation (only update errors, don't show them yet)
   useEffect(() => {
@@ -117,7 +149,8 @@ function Write() {
         title,
         content,
         price: parseFloat(price),
-        authorAddress: address!
+        authorAddress: address!,
+        categories: selectedCategories
       };
 
       const response = await apiService.createArticle(articleData);
@@ -589,6 +622,33 @@ function Write() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Categories Section */}
+              <div className="categories-section">
+                <label className="input-label">Categories (Optional)</label>
+                <p className="categories-description">
+                  Select categories that best describe your article. This helps readers discover your content.
+                </p>
+                <div className="categories-grid">
+                  {availableCategories.map(category => (
+                    <button
+                      key={category}
+                      type="button"
+                      className={`category-tag ${selectedCategories.includes(category) ? 'selected' : ''}`}
+                      onClick={() => toggleCategory(category)}
+                    >
+                      {category}
+                      {selectedCategories.includes(category) && <span className="check-mark">✓</span>}
+                    </button>
+                  ))}
+                </div>
+                {selectedCategories.length > 0 && (
+                  <div className="selected-categories-summary">
+                    <span className="selected-count">{selectedCategories.length} selected:</span>
+                    <span className="selected-list">{selectedCategories.join(', ')}</span>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -16,6 +16,7 @@ export interface Article {
   purchases: number;
   earnings: number;
   readTime: string;
+  categories: string[];
 }
 
 export interface Author {
@@ -33,6 +34,7 @@ export interface CreateArticleRequest {
   content: string;
   price: number;
   authorAddress: string;
+  categories: string[];
 }
 
 export interface ApiResponse<T> {
@@ -66,6 +68,7 @@ export interface GetArticlesQuery {
   search?: string;
   sortBy?: 'date' | 'title' | 'price' | 'earnings' | 'views';
   sortOrder?: 'asc' | 'desc';
+  categories?: string[];
 }
 
 class ApiService {
@@ -107,6 +110,9 @@ class ApiService {
     if (query.search) params.append('search', query.search);
     if (query.sortBy) params.append('sortBy', query.sortBy);
     if (query.sortOrder) params.append('sortOrder', query.sortOrder);
+    if (query.categories && query.categories.length > 0) {
+      query.categories.forEach(category => params.append('categories', category));
+    }
 
     const queryString = params.toString();
     const endpoint = `/articles${queryString ? `?${queryString}` : ''}`;

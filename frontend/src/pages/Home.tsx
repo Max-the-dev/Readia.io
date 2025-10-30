@@ -102,7 +102,7 @@ function Home() {
       </div>
       
       <div className="featured-articles">
-        <h2>Featured Articles</h2>
+        <h2>Latest Articles</h2>
         <div className="article-grid">
           {loading ? (
             <div className="loading-articles">
