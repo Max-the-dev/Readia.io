@@ -40,10 +40,10 @@ Coinbase Wallet Localhost Configuration
   ** EXPLORE PAGE / FUNCTIONALITY **
 
   2. Explore Page (Public Discovery)
-
+  - Validate home page will always shows 6 latest articles 
   - /explore route with article grid
+        - all articles shows top articles 
   - Categories/tags system
-  - Filter by: price, date, popularity, author
   - Sort by: newest, most viewed, highest rated
   - Pagination for large article lists
 

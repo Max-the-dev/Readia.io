@@ -695,6 +695,8 @@ main {
 .clear-search-btn {
   position: absolute;
   right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 2;
   padding: 6px;
   background: rgba(100, 116, 139, 0.1);
@@ -787,27 +789,37 @@ main {
   box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);
 }
 
+.filter-separator {
+  width: 1px;
+  height: 40px;
+  background-color: #e1e8ed;
+  margin: 0 20px;
+  align-self: center;
+}
+
 .filter-actions {
   display: flex;
-  justify-content: flex-end;
-  padding-top: 16px;
-  border-top: 1px solid #e1e8ed;
+  align-items: end;
+  align-self: end;
 }
 
 .clear-filters-btn {
   padding: 8px 16px;
-  background: #f7f9fa;
-  border: 1px solid #e1e8ed;
-  border-radius: 8px;
-  color: #657786;
-  font-size: 14px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
   transition: all 0.2s ease;
+  align-self: flex-end;
 }
 
 .clear-filters-btn:hover {
-  background: #e1e8ed;
+  background: #e9ecef;
   color: #1a1a1a;
+  border-color: #1a1a1a;
 }
 
 .no-results {
@@ -5965,6 +5977,7 @@ main {
 .filter-actions {
   display: flex;
   align-items: end;
+  align-self: end;
 }
 
 .clear-btn {
@@ -5977,6 +5990,7 @@ main {
   font-weight: 500;
   color: #666;
   transition: all 0.2s ease;
+  align-self: flex-end;
 }
 
 .clear-btn:hover {
@@ -6152,20 +6166,22 @@ main {
 }
 
 .clear-filters-btn {
-  background: #1a1a1a;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 8px 16px;
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s ease;
+  align-self: flex-end;
 }
 
 .clear-filters-btn:hover {
-  background: #333;
-  transform: translateY(-1px);
+  background: #e9ecef;
+  color: #1a1a1a;
+  border-color: #1a1a1a;
 }
 
 /* Responsive Design for Explore Page */

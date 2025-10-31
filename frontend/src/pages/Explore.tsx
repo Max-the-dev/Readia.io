@@ -231,8 +231,10 @@ function Explore() {
                       </select>
                     </div>
                     
-                    <div className="filter-actions">
-                      <button onClick={clearFilters} className="clear-btn">
+                    <div className="filter-separator"></div>
+                    
+                    <div className="filter-group" style={{minWidth: 'auto'}}>
+                      <button onClick={clearFilters} className="clear-btn" style={{marginTop: 'auto'}}>
                         Clear All
                       </button>
                     </div>

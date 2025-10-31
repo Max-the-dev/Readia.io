@@ -22,8 +22,8 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('date'); // date, title, price, earnings, views
-  const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
   const [dateFilter, setDateFilter] = useState('all'); // all, week, month, quarter
+  const [categoryFilter, setCategoryFilter] = useState('all'); // all, or specific category
 
   // Fetch articles and author data on component mount and when address changes
   useEffect(() => {
@@ -48,7 +48,7 @@ function Dashboard() {
         authorAddress: address,
         search: searchTerm,
         sortBy: sortBy as any,
-        sortOrder: sortOrder as any
+        sortOrder: 'desc' // Always descending for dashboard
       });
       
       if (response.success && response.data) {
@@ -102,7 +102,7 @@ function Dashboard() {
     }
   };
 
-  // Refetch when search/filter changes
+  // Refetch when search/sort changes
   useEffect(() => {
     if (isConnected && address) {
       const timeoutId = setTimeout(() => {
@@ -111,13 +111,24 @@ function Dashboard() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [searchTerm, sortBy, sortOrder]);
+  }, [searchTerm, sortBy]);
 
-  // Filter articles by date (client-side filtering for date ranges)
+  // Filter articles by date and category (client-side filtering)
   const filteredAndSortedArticles = articles.filter(article => {
+    // Date filter
     if (dateFilter !== 'all') {
-      return isDateWithinRange(article.publishDate, dateFilter as 'week' | 'month' | 'quarter');
+      if (!isDateWithinRange(article.publishDate, dateFilter as 'week' | 'month' | 'quarter')) {
+        return false;
+      }
     }
+    
+    // Category filter
+    if (categoryFilter !== 'all') {
+      if (!article.categories || !article.categories.includes(categoryFilter)) {
+        return false;
+      }
+    }
+    
     return true;
   });
 
@@ -132,12 +143,12 @@ function Dashboard() {
       : 0
   };
 
-  // Clear search function
+  // Clear search and filters function
   const clearSearch = () => {
     setSearchTerm('');
     setSortBy('date');
-    setSortOrder('desc');
     setDateFilter('all');
+    setCategoryFilter('all');
     setShowFilters(false);
   };
 
@@ -262,7 +273,7 @@ function Dashboard() {
                 onClick={() => setShowFilters(!showFilters)}
               >
                 <Filter size={18} />
-                Filter
+                
               </button>
             </div>
           </div>
@@ -270,54 +281,73 @@ function Dashboard() {
           {/* Filter Dropdown */}
           {showFilters && (
             <div className="filter-panel">
-              <div className="filter-group">
-                <label>Sort by:</label>
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="date">Date</option>
-                  <option value="title">Title</option>
-                  <option value="price">Price</option>
-                  <option value="earnings">Earnings</option>
-                  <option value="views">Views</option>
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label>Order:</label>
-                <select 
-                  value={sortOrder} 
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="desc">Descending</option>
-                  <option value="asc">Ascending</option>
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label>Date range:</label>
-                <select 
-                  value={dateFilter} 
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="filter-select"
-                >
-                  <option value="all">All time</option>
-                  <option value="week">Last week</option>
-                  <option value="month">Last month</option>
-                  <option value="quarter">Last 3 months</option>
-                </select>
-              </div>
-              
-              <div className="filter-actions">
-                <button 
-                  className="clear-filters-btn"
-                  onClick={clearSearch}
-                >
-                  Clear all
-                </button>
+              <div className="filter-row">
+                <div className="filter-group">
+                  <label>Sort by:</label>
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="date">Latest First</option>
+                    <option value="title">Title A-Z</option>
+                    <option value="price">Price (High to Low)</option>
+                    <option value="earnings">Earnings (High to Low)</option>
+                    <option value="views">Most Viewed</option>
+                  </select>
+                </div>
+                
+                <div className="filter-group">
+                  <label>Date range:</label>
+                  <select 
+                    value={dateFilter} 
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All time</option>
+                    <option value="week">Last week</option>
+                    <option value="month">Last month</option>
+                    <option value="quarter">Last 3 months</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Category:</label>
+                  <select 
+                    value={categoryFilter} 
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Crypto">Crypto</option>
+                    <option value="AI & Machine Learning">AI & Machine Learning</option>
+                    <option value="Web Development">Web Development</option>
+                    <option value="Blockchain">Blockchain</option>
+                    <option value="Startup">Startup</option>
+                    <option value="Business">Business</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Science">Science</option>
+                    <option value="Programming">Programming</option>
+                    <option value="Design">Design</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Productivity">Productivity</option>
+                    <option value="Security">Security</option>
+                    <option value="Data Science">Data Science</option>
+                  </select>
+                </div>
+                
+                <div className="filter-separator"></div>
+                
+                <div className="filter-group" style={{minWidth: 'auto'}}>
+                  <button 
+                    className="clear-filters-btn"
+                    onClick={clearSearch}
+                    style={{marginTop: 'auto'}}
+                  >
+                    Clear all
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -389,7 +419,7 @@ function Dashboard() {
                   <Search size={48} />
                   <h3>No articles found</h3>
                   <p>Try adjusting your search terms or filters</p>
-                  {(searchTerm || dateFilter !== 'all') && (
+                  {(searchTerm || dateFilter !== 'all' || categoryFilter !== 'all') && (
                     <button 
                       className="clear-filters-btn"
                       onClick={clearSearch}
