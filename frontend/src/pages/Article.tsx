@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Clock, User, Lock, HeartHandshake } from 'lucide-react';
+import { Clock, User, Lock, HeartHandshake, Tag } from 'lucide-react';
 import { apiService, Article as ArticleType } from '../services/api';
 import { x402PaymentService } from '../services/x402PaymentService';
 import { useSignMessage } from 'wagmi';
+import LikeButton from '../components/LikeButton';
 
 // Article page now uses real API data instead of mock data
 
@@ -25,6 +26,13 @@ function Article() {
   const [tipAmount, setTipAmount] = useState(0.05);
   const [isProcessingTip, setIsProcessingTip] = useState(false);
   const [hasTipped, setHasTipped] = useState(false);
+
+  // Handle like count changes
+  const handleLikeChange = (articleId: number, newLikeCount: number) => {
+    if (article && article.id === articleId) {
+      setArticle(prev => prev ? { ...prev, likes: newLikeCount } : null);
+    }
+  };
 
   // Fetch article on component mount and check payment status
   useEffect(() => {
@@ -227,7 +235,26 @@ function Article() {
               <div className="publish-date">
                 <span>{new Date(article.publishDate).toLocaleDateString()}</span>
               </div>
+              <LikeButton 
+                articleId={article.id} 
+                userAddress={address} 
+                initialLikes={article.likes}
+                className="article-header-like-button"
+                onLikeChange={handleLikeChange}
+              />
             </div>
+            {article.categories && article.categories.length > 0 && (
+              <div className="article-categories">
+                <Tag size={16} />
+                <div className="category-list">
+                  {article.categories.map((category, index) => (
+                    <span key={index} className="category-tag">
+                      {category}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </header>
 
           <div className="article-body">
