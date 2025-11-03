@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useAsyncError } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Search, Filter, X, BookOpen, Tag, Grid, List, ArrowUp } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 import { useWallet } from '../contexts/WalletContext';

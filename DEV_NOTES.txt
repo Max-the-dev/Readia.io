@@ -1,18 +1,3 @@
- // UX Expansion 
-
-  ** EXPLORE PAGE / FUNCTIONALITY **
-
-  2. Explore Page (Public Discovery)
-    - Pagination for large article lists
-
-  3. Article Ranking System
-  Current State Analysis:
-
-  - ✅ Views tracking: Already implemented and working
-  - ✅ Purchases tracking: Already implemented (represents "readers")
-  - ✅ Categories system: Already implemented with 16 categories
-  - ❌ Popularity scoring: No unified popularity metric
-
   
   POPULARITY ALGO:
   
@@ -34,10 +19,6 @@
   - Author highlighting
 
   🎯 Success Metrics:
-
-  - Articles with purchases/likes rank higher than view-only articles
-  - Recent popular content surfaces above old popular content
-  - Category selection defaults to most engaging content
   - Users can easily discover trending content in their interests
 
 
