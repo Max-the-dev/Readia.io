@@ -1,0 +1,12 @@
+Conntection strings: 
+TRANSACTION POOLER: postgresql://postgres.okftigzmxfkghibhlnjo:[YOUR-PASSWORD]@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+SESSION POOLER: postgresql://postgres.okftigzmxfkghibhlnjo:[YOUR-PASSWORD]@aws-1-us-east-2.pooler.supabase.com:5432/postgres
+
+Project URL: https://okftigzmxfkghibhlnjo.supabase.co
+
+anon/public API KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rZnRpZ3pteGZrZ2hpYmhsbmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE5MTMyODQsImV4cCI6MjA3NzQ4OTI4NH0.8WT37Y_WNjngujs2AcvXTtDBY6NG3NkK-rG_qLWQmbY
+
+Service_role API KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rZnRpZ3pteGZrZ2hpYmhsbmpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTkxMzI4NCwiZXhwIjoyMDc3NDg5Mjg0fQ.4pwRXIVwDxprBGpbpcZHo8kRkQUDWVD8fdK4oTujpf4
+
+DB Password: In manager
+
