@@ -349,11 +349,7 @@ function Explore() {
               {/* Results count and view toggle */}
               <div className="search-results-info">
                 <div className="results-count">
-                  {searchTerm || authorFilter || dateFilter !== 'all' || selectedCategory !== 'All Articles' ? (
-                    <p>Found {filteredArticles.length} articles</p>
-                  ) : (
-                    <p>{filteredArticles.length} articles available</p>
-                  )}
+                  <p>Found {filteredArticles.length} articles</p>
                 </div>
                 <div className="view-toggle">
                   <button
