@@ -79,15 +79,21 @@ pgPool.on('error', (err) => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, closing PostgreSQL pool...');
-  await pgPool.end();
-});
+let isClosing = false;
 
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, closing PostgreSQL pool...');
-  await pgPool.end();
-});
+const closePool = async () => {
+  if (isClosing) return;
+  isClosing = true;
+  console.log('Closing PostgreSQL pool...');
+  try {
+    await pgPool.end();
+  } catch (err) {
+    // Ignore "already closed" errors
+  }
+};
+
+process.on('SIGTERM', closePool);
+process.on('SIGINT', closePool);
 
 /**
  * Helper function to test database connection

@@ -226,7 +226,13 @@ export function validate(
       const validated = await schema.parseAsync(data);
 
       // Replace request data with validated (and transformed) data
-      req[source] = validated;
+      if (source === 'query' || source === 'params') {
+        // For query and params, we need to merge because they're getter properties
+        Object.assign(req[source], validated);
+      } else {
+        // For body, we can directly assign
+        req[source] = validated;
+      }
 
       next();
     } catch (error) {
@@ -245,6 +251,7 @@ export function validate(
       }
 
       // Unexpected error
+      console.error('❌ Validation error (non-Zod):', error);
       return res.status(500).json({
         success: false,
         error: 'Internal validation error'

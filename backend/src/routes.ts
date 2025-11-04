@@ -21,6 +21,7 @@ import { checkForSpam } from './spamPrevention';
 
 const router = express.Router();
 const db = new Database();
+const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================
 // RATE LIMITING CONFIGURATION
@@ -33,13 +34,14 @@ const db = new Database();
  */
 const readLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: isProduction ? 100 : 1000, // Relax limits in development
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false,  // Disable `X-RateLimit-*` headers
+  skip: () => !isProduction, // Disable limiter entirely outside production
 });
 
 /**
@@ -49,13 +51,14 @@ const readLimiter = rateLimit({
  */
 const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests per window
+  max: isProduction ? 20 : 200,
   message: {
     success: false,
     error: 'Too many write requests. Please slow down and try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => !isProduction,
 });
 
 /**
@@ -65,13 +68,14 @@ const writeLimiter = rateLimit({
  */
 const criticalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per window
+  max: isProduction ? 10 : 100,
   message: {
     success: false,
     error: 'Too many attempts. Please wait before trying again.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => !isProduction,
 });
 
 /**
@@ -81,13 +85,14 @@ const criticalLimiter = rateLimit({
  */
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 uploads per window
+  max: isProduction ? 30 : 300,
   message: {
     success: false,
     error: 'Too many upload requests. Please wait before uploading more files.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => !isProduction,
 });
 
 // Configure multer for file uploads (memory storage for Supabase)
@@ -481,20 +486,26 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       // Return 402 Payment Required with x402 format
       const priceInCents = Math.round(article.price * 100);
       const priceInMicroUSDC = priceInCents * 10000; // Convert to micro USDC
-      
+
+      const facilitatorUrl = process.env.COINBASE_CDP_API_KEY
+        ? `https://facilitator.cdp.coinbase.com`
+        : process.env.X402_FACILITATOR_URL || 'https://x402.org/facilitator';
+
       return res.status(402).json({
         x402Version: 1,
         error: "X-PAYMENT header is required",
         accepts: [{
           scheme: "exact",
-          network: "base-sepolia",
+          network: process.env.X402_NETWORK || "base-sepolia",
           maxAmountRequired: priceInMicroUSDC.toString(),
-          resource: `http://localhost:3001/api/articles/${articleId}/purchase`,
+          resource: `${req.protocol}://${req.get('host')}/api/articles/${articleId}/purchase`,
           description: `Purchase access to: ${article.title}`,
-          mimeType: "",
-          payTo: article.authorAddress, // PAY TO ARTICLE AUTHOR!
+          mimeType: "application/json",
+          payTo: article.authorAddress, // Dynamic recipient - payment goes to author!
           maxTimeoutSeconds: 60,
-          asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC on Base Sepolia
+          asset: process.env.X402_NETWORK === 'base'
+            ? "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" // USDC Base mainnet
+            : "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC Base Sepolia
           outputSchema: {
             input: {
               type: "http",
@@ -504,7 +515,18 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
           },
           extra: {
             name: "USDC",
-            version: "2"
+            version: "2",
+            // Bazaar discovery metadata
+            title: `Purchase: ${article.title}`,
+            category: article.categories?.[0] || "content",
+            tags: article.categories || ["article", "content"],
+            serviceName: "Penny.io Article Access",
+            serviceDescription: `Unlock full access to "${article.title}" by ${article.authorAddress.slice(0, 6)}...${article.authorAddress.slice(-4)}`,
+            pricing: {
+              currency: "USD",
+              amount: article.price.toString(),
+              display: `$${article.price.toFixed(2)}`
+            }
           }
         }]
       });
@@ -895,15 +917,14 @@ router.post('/articles/recalculate-popularity', criticalLimiter, async (req: Req
 // x402 Payment Verification Routes
 
 interface PaymentPayload {
+  from: string;
+  to: string;
+  value: number;
   signature: string;
-  authorization: {
-    from: string;
-    to: string;
-    value: string;
-    validAfter: number;
-    validBefore: number;
-    nonce: string;
-  };
+  message?: string;
+  validAfter?: number;
+  validBefore?: number;
+  nonce?: string;
 }
 
 // Verify x402 payment
@@ -942,7 +963,9 @@ router.post('/verify-payment', criticalLimiter, validate(verifyPaymentSchema), a
     }
 
     const requiredAmount = Math.round(article.price * 100 * 10000); // Convert to micro USDC
-    const paidAmount = parseInt(paymentPayload.authorization.value);
+    const paidAmount = typeof paymentPayload.value === 'number'
+      ? paymentPayload.value
+      : parseInt(paymentPayload.value as unknown as string, 10);
 
     if (paidAmount < requiredAmount) {
       return res.status(400).json({
@@ -951,20 +974,22 @@ router.post('/verify-payment', criticalLimiter, validate(verifyPaymentSchema), a
       });
     }
 
-    // Verify payment timing
-    const now = Math.floor(Date.now() / 1000);
-    if (now < paymentPayload.authorization.validAfter || now > paymentPayload.authorization.validBefore) {
-      return res.status(400).json({
-        success: false,
-        error: 'Payment authorization expired'
-      });
+    // Verify payment timing if provided
+    if (paymentPayload.validAfter && paymentPayload.validBefore) {
+      const now = Math.floor(Date.now() / 1000);
+      if (now < paymentPayload.validAfter || now > paymentPayload.validBefore) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment authorization expired'
+        });
+      }
     }
 
     // Record successful payment
     const purchaseResponse = await recordArticlePurchase(articleId);
 
     // Track payment for this user
-    await recordPayment(articleId, paymentPayload.authorization.from, article.price);
+    await recordPayment(articleId, paymentPayload.from, article.price);
 
     res.json({
       success: true,
@@ -1170,10 +1195,10 @@ async function verifyPaymentSignature(paymentPayload: PaymentPayload): Promise<b
     // 3. Validate the signature format and cryptographic integrity
     
     // For demo purposes, we'll do basic validation
-    const { signature, authorization } = paymentPayload;
-    
+    const { signature, from, to, value } = paymentPayload;
+
     // Check required fields
-    if (!signature || !authorization.from || !authorization.to || !authorization.value) {
+    if (!signature || !from || !to || value === undefined || value === null) {
       return false;
     }
 
@@ -1183,8 +1208,13 @@ async function verifyPaymentSignature(paymentPayload: PaymentPayload): Promise<b
     }
 
     // Check addresses format
-    if (!/^0x[a-fA-F0-9]{40}$/.test(authorization.from) || 
-        !/^0x[a-fA-F0-9]{40}$/.test(authorization.to)) {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(from) || 
+        !/^0x[a-fA-F0-9]{40}$/.test(to)) {
+      return false;
+    }
+
+    // Basic value validation (micro USDC, must be positive integer)
+    if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
       return false;
     }
 
