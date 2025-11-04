@@ -64,7 +64,7 @@ export const createArticleSchema = z.object({
 
   content: z.string()
     .min(50, 'Content must be at least 50 characters')
-    .max(25000, 'Content must be 25,000 characters or less')
+    .max(50000, 'Content must be 50,000 characters or less')
     .trim(),
 
   price: z.number()
@@ -102,7 +102,7 @@ export const createDraftSchema = z.object({
     .default(''),
 
   content: z.string()
-    .max(25000, 'Content must be 25,000 characters or less')
+    .max(50000, 'Content must be 50,000 characters or less')
     .trim()
     .optional()
     .default(''),

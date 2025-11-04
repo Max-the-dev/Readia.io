@@ -53,7 +53,7 @@ function Write() {
   // Content limits
   const MAX_TITLE_LENGTH = 200;
   const MIN_CONTENT_LENGTH = 50;
-  const MAX_CONTENT_LENGTH = 25000; // ~12-15 pages of text
+  const MAX_CONTENT_LENGTH = 50000; // ~12-15 pages of text
   const MAX_CATEGORIES = 5;
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   
