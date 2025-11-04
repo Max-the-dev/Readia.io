@@ -54,8 +54,8 @@ export const createArticleSchema = z.object({
     .trim(),
 
   content: z.string()
-    .min(100, 'Content must be at least 100 characters')
-    .max(50000, 'Content must be 50,000 characters or less')
+    .min(50, 'Content must be at least 50 characters')
+    .max(25000, 'Content must be 25,000 characters or less')
     .trim(),
 
   price: z.number()
@@ -66,7 +66,7 @@ export const createArticleSchema = z.object({
   authorAddress: ethereumAddressSchema,
 
   categories: z.array(categorySchema)
-    .max(3, 'Maximum 3 categories allowed')
+    .max(5, 'Maximum 5 categories allowed')
     .optional()
     .default([])
 });
@@ -93,7 +93,7 @@ export const createDraftSchema = z.object({
     .default(''),
 
   content: z.string()
-    .max(50000, 'Content must be 50,000 characters or less')
+    .max(25000, 'Content must be 25,000 characters or less')
     .trim()
     .optional()
     .default(''),
@@ -116,6 +116,18 @@ export const createDraftSchema = z.object({
 /**
  * Article List Query Parameters
  */
+const articleSortOptions = [
+  'date',
+  'publishDate',
+  'title',
+  'price',
+  'earnings',
+  'views',
+  'likes',
+  'purchases',
+  'popularityScore'
+] as const;
+
 export const getArticlesQuerySchema = z.object({
   authorAddress: ethereumAddressSchema.optional(),
 
@@ -124,9 +136,9 @@ export const getArticlesQuerySchema = z.object({
     .trim()
     .optional(),
 
-  sortBy: z.enum(['publishDate', 'views', 'likes', 'purchases', 'popularityScore'])
+  sortBy: z.enum(articleSortOptions)
     .optional()
-    .default('publishDate'),
+    .default('date'),
 
   sortOrder: z.enum(['asc', 'desc'])
     .optional()

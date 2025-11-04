@@ -45,7 +45,9 @@ function Write() {
   
   // Content limits
   const MAX_TITLE_LENGTH = 200;
-  const MAX_CONTENT_LENGTH = 50000; // ~25-30 pages of text
+  const MIN_CONTENT_LENGTH = 50;
+  const MAX_CONTENT_LENGTH = 25000; // ~12-15 pages of text
+  const MAX_CATEGORIES = 5;
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   
   // Typing animation state
@@ -69,8 +71,18 @@ function Write() {
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(category)) {
+        // Always allow deselecting
         return prev.filter(c => c !== category);
+      } else if (prev.length >= MAX_CATEGORIES) {
+        // Show error when trying to select more than max
+        setSubmitError(`Maximum ${MAX_CATEGORIES} categories allowed. Remove one to add another.`);
+        setTimeout(() => setSubmitError(''), 3000); // Clear after 3 seconds
+        return prev;
       } else {
+        // Allow selecting
+        if (submitError.includes('categories')) {
+          setSubmitError(''); // Clear category error when valid selection
+        }
         return [...prev, category];
       }
     });
@@ -157,37 +169,55 @@ function Write() {
 
       if (response.success) {
         setSubmitSuccess(true);
-        
+
         // Clean up drafts that match the published article
         try {
-          const matchingDrafts = availableDrafts.filter(draft => 
-            draft.title.trim() === title.trim() && 
+          const matchingDrafts = availableDrafts.filter(draft =>
+            draft.title.trim() === title.trim() &&
             draft.content.trim() === content.trim()
           );
-          
+
           for (const draft of matchingDrafts) {
             await apiService.deleteDraft(draft.id, address!);
           }
-          
+
           // Update local drafts state to remove deleted drafts
-          setAvailableDrafts(prev => prev.filter(draft => 
+          setAvailableDrafts(prev => prev.filter(draft =>
             !matchingDrafts.some(matchingDraft => matchingDraft.id === draft.id)
           ));
         } catch (error) {
           console.error('Error cleaning up matching drafts:', error);
           // Don't fail the publication if draft cleanup fails
         }
-        
+
         // Clear current form
         setTitle('');
         setContent('');
         setPrice('0.05');
+        setSelectedCategories([]);
         setShowValidation(false);
       } else {
-        setSubmitError(response.error || 'Failed to create article');
+        // Handle backend validation errors with details
+        const errorMessage = response.error || 'Failed to create article';
+        const details = (response as any).details;
+
+        if (details && Array.isArray(details)) {
+          // Format validation errors from backend
+          const detailedErrors = details.map((d: any) => `${d.field}: ${d.message}`).join('; ');
+          setSubmitError(`${errorMessage}\n${detailedErrors}`);
+        } else {
+          setSubmitError(errorMessage);
+        }
       }
     } catch (error) {
-      setSubmitError('An unexpected error occurred');
+      const err = error as any;
+      // Check if error has validation details
+      if (err.details && Array.isArray(err.details)) {
+        const detailedErrors = err.details.map((d: any) => `${d.field}: ${d.message}`).join('; ');
+        setSubmitError(`Validation failed: ${detailedErrors}`);
+      } else {
+        setSubmitError(err.message || 'An unexpected error occurred');
+      }
       console.error('Error creating article:', error);
     } finally {
       setIsSubmitting(false);
@@ -211,36 +241,45 @@ function Write() {
   // Validation helper
   const validateForm = () => {
     const errors: string[] = [];
-    
+
     if (!title.trim()) {
       errors.push('Article title is required');
     }
-    
-    if (!content.trim()) {
-      errors.push('Article content is required');
-    }
-    
-    if (!price || parseFloat(price) <= 0) {
-      errors.push('Valid price is required');
-    }
-    
+
     if (title.length > MAX_TITLE_LENGTH) {
       errors.push(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
     }
-    
-    if (content.length > MAX_CONTENT_LENGTH) {
-      errors.push(`Content must be ${MAX_CONTENT_LENGTH} characters or less`);
+
+    if (!content.trim()) {
+      errors.push('Article content is required');
     }
-    
+
+    const textContent = content.replace(/<[^>]*>/g, '').trim();
+    if (textContent.length < MIN_CONTENT_LENGTH) {
+      errors.push(`Content must be at least ${MIN_CONTENT_LENGTH} characters`);
+    }
+
+    if (content.length > MAX_CONTENT_LENGTH) {
+      errors.push(`Content must be ${MAX_CONTENT_LENGTH.toLocaleString()} characters or less`);
+    }
+
+    if (!price || parseFloat(price) <= 0) {
+      errors.push('Valid price is required');
+    }
+
     const priceNum = parseFloat(price);
     if (price && priceNum < 0.01) {
       errors.push('Article price must be at least $0.01');
     }
-    
+
     if (price && priceNum > 1.00) {
       errors.push('Article price cannot exceed $1.00');
     }
-    
+
+    if (selectedCategories.length > MAX_CATEGORIES) {
+      errors.push(`Maximum ${MAX_CATEGORIES} categories allowed`);
+    }
+
     return errors;
   };
 
@@ -628,24 +667,32 @@ function Write() {
               <div className="categories-section">
                 <label className="input-label">Categories (Optional)</label>
                 <p className="categories-description">
-                  Select categories that best describe your article. This helps readers discover your content.
+                  Select up to {MAX_CATEGORIES} categories that best describe your article. This helps readers discover your content.
                 </p>
                 <div className="categories-grid">
-                  {availableCategories.map(category => (
-                    <button
-                      key={category}
-                      type="button"
-                      className={`category-tag ${selectedCategories.includes(category) ? 'selected' : ''}`}
-                      onClick={() => toggleCategory(category)}
-                    >
-                      {category}
-                      {selectedCategories.includes(category) && <span className="check-mark">✓</span>}
-                    </button>
-                  ))}
+                  {availableCategories.map(category => {
+                    const isSelected = selectedCategories.includes(category);
+                    const isDisabled = !isSelected && selectedCategories.length >= MAX_CATEGORIES;
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        className={`category-tag ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                        onClick={() => toggleCategory(category)}
+                        disabled={isDisabled}
+                        title={isDisabled ? `Maximum ${MAX_CATEGORIES} categories selected. Remove one to add another.` : ''}
+                      >
+                        {category}
+                        {isSelected && <span className="check-mark">✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
                 {selectedCategories.length > 0 && (
                   <div className="selected-categories-summary">
-                    <span className="selected-count">{selectedCategories.length} selected:</span>
+                    <span className="selected-count">
+                      {selectedCategories.length}/{MAX_CATEGORIES} selected:
+                    </span>
                     <span className="selected-list">{selectedCategories.join(', ')}</span>
                   </div>
                 )}

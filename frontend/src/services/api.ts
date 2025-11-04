@@ -68,7 +68,7 @@ export interface CreateDraftRequest {
 export interface GetArticlesQuery {
   authorAddress?: string;
   search?: string;
-  sortBy?: 'date' | 'title' | 'price' | 'earnings' | 'views';
+  sortBy?: 'date' | 'publishDate' | 'title' | 'price' | 'earnings' | 'views' | 'likes' | 'purchases' | 'popularityScore';
   sortOrder?: 'asc' | 'desc';
   categories?: string[];
 }

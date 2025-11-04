@@ -167,6 +167,26 @@ function buildPaymentRequirement(article: Article, req: Request): PaymentRequire
   };
 }
 
+async function ensureAuthorRecord(address: string): Promise<Author> {
+  const existingAuthor = await db.getAuthor(address);
+  if (existingAuthor) {
+    return existingAuthor;
+  }
+
+  const now = new Date().toISOString();
+  const newAuthor: Author = {
+    address,
+    createdAt: now,
+    totalArticles: 0,
+    totalEarnings: 0,
+    totalViews: 0,
+    totalPurchases: 0
+  };
+
+  await db.createOrUpdateAuthor(newAuthor);
+  return newAuthor;
+}
+
 // Utility function to generate preview from content
 function generatePreview(content: string, maxLength: number = 300): string {
   // Remove markdown formatting for preview
@@ -198,59 +218,12 @@ router.get('/articles', readLimiter, validate(getArticlesQuerySchema, 'query'), 
   try {
     const { authorAddress, search, sortBy, sortOrder } = req.query as GetArticlesQuery;
 
-    let articles: Article[];
-
-    if (authorAddress) {
-      articles = await db.getArticlesByAuthor(authorAddress);
-    } else {
-      articles = await db.getAllArticles();
-    }
-
-    // Apply search filter
-    if (search) {
-      const searchLower = search.toLowerCase();
-      articles = articles.filter(article => 
-        article.title.toLowerCase().includes(searchLower) ||
-        article.content.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply sorting
-    if (sortBy) {
-      articles.sort((a, b) => {
-        let aValue: any, bValue: any;
-
-        switch (sortBy) {
-          case 'title':
-            aValue = a.title.toLowerCase();
-            bValue = b.title.toLowerCase();
-            break;
-          case 'price':
-            aValue = a.price;
-            bValue = b.price;
-            break;
-          case 'earnings':
-            aValue = a.earnings;
-            bValue = b.earnings;
-            break;
-          case 'views':
-            aValue = a.views;
-            bValue = b.views;
-            break;
-          case 'date':
-          default:
-            aValue = new Date(a.publishDate);
-            bValue = new Date(b.publishDate);
-            break;
-        }
-
-        if (sortOrder === 'asc') {
-          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-        } else {
-          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-        }
-      });
-    }
+    const articles = await db.getArticles({
+      authorAddress,
+      search,
+      sortBy,
+      sortOrder
+    });
 
     const response: ApiResponse<Article[]> = {
       success: true,
@@ -331,6 +304,9 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
       return res.status(429).json(response); // 429 Too Many Requests
     }
 
+    // Ensure author exists BEFORE creating article (required by foreign key constraint)
+    const author = await ensureAuthorRecord(authorAddress);
+
     // Generate preview and read time
     const preview = generatePreview(content);
     const readTime = estimateReadTime(content);
@@ -357,21 +333,8 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
 
     const article = await db.createArticle(articleData);
 
-    // Create or update author record
-    let author = await db.getAuthor(authorAddress);
-    if (!author) {
-      author = {
-        address: authorAddress,
-        createdAt: now,
-        totalEarnings: 0,
-        totalArticles: 1,
-        totalViews: 0,
-        totalPurchases: 0
-      };
-    } else {
-      author.totalArticles += 1;
-    }
-
+    // Update author statistics
+    author.totalArticles += 1;
     await db.createOrUpdateAuthor(author);
 
     const response: ApiResponse<Article> = {
@@ -395,15 +358,7 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
 router.get('/authors/:address', readLimiter, async (req: Request, res: Response) => {
   try {
     const { address } = req.params;
-    const author = await db.getAuthor(address);
-
-    if (!author) {
-      const response: ApiResponse<never> = {
-        success: false,
-        error: 'Author not found'
-      };
-      return res.status(404).json(response);
-    }
+    const author = await ensureAuthorRecord(address);
 
     const response: ApiResponse<Author> = {
       success: true,
@@ -576,6 +531,8 @@ router.post('/drafts', writeLimiter, validate(createDraftSchema), async (req: Re
       };
       return res.status(400).json(response);
     }
+
+    await ensureAuthorRecord(authorAddress);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now

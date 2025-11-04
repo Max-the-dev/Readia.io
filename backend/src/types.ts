@@ -66,7 +66,7 @@ export interface GetArticlesQuery {
   authorAddress?: string;
   limit?: number;
   offset?: number;
-  sortBy?: 'date' | 'title' | 'price' | 'earnings' | 'views';
+  sortBy?: 'date' | 'publishDate' | 'title' | 'price' | 'earnings' | 'views' | 'likes' | 'purchases' | 'popularityScore';
   sortOrder?: 'asc' | 'desc';
   search?: string;
   categories?: string[];

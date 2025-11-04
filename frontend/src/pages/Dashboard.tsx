@@ -44,14 +44,10 @@ function Dashboard() {
     setError('');
     
     try {
-      const backendSortBy = sortBy === 'views'
-        ? 'views'
-        : 'publishDate';
-
       const response = await apiService.getArticles({ 
         authorAddress: address,
         search: searchTerm,
-        sortBy: backendSortBy as any,
+        sortBy: sortBy as any,
         sortOrder: 'desc' // Always descending for dashboard
       });
       
@@ -134,22 +130,6 @@ function Dashboard() {
     }
     
     return true;
-  });
-
-  const filteredAndSortedArticles = [...filteredArticles].sort((a, b) => {
-    switch (sortBy) {
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'price':
-        return b.price - a.price;
-      case 'earnings':
-        return b.earnings - a.earnings;
-      case 'views':
-        return b.views - a.views;
-      case 'date':
-      default:
-        return new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime();
-    }
   });
 
   // Calculate stats from author data (lifetime totals) and current articles (for average)
@@ -388,8 +368,8 @@ function Dashboard() {
               <div className="loading-state">
                 <p>Loading your articles...</p>
               </div>
-            ) : filteredAndSortedArticles.length > 0 ? (
-              filteredAndSortedArticles.map((article) => (
+            ) : filteredArticles.length > 0 ? (
+              filteredArticles.map((article) => (
                 <div key={article.id} className="table-row">
                   <div className="table-cell article-info">
                     <Link to={`/article/${article.id}`} className="article-title-link">

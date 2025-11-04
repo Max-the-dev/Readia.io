@@ -76,9 +76,63 @@ class Database {
     };
   }
 
+  private readonly articleSortColumnMap: Record<string, string> = {
+    date: 'publish_date',
+    publishDate: 'publish_date',
+    title: 'title',
+    price: 'price',
+    earnings: 'earnings',
+    views: 'views',
+    likes: 'likes',
+    purchases: 'purchases',
+    popularityScore: 'popularity_score'
+  };
+
+  private escapeSearchTerm(term: string): string {
+    return term
+      .replace(/\\/g, '\\\\')
+      .replace(/%/g, '\\%')
+      .replace(/_/g, '\\_')
+      .replace(/,/g, '\\,');
+  }
+
   // ============================================
   // ARTICLE METHODS
   // ============================================
+
+  async getArticles(options: {
+    authorAddress?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<Article[]> {
+    const sortColumn = options.sortBy
+      ? this.articleSortColumnMap[options.sortBy] || 'created_at'
+      : 'created_at';
+    const ascending = options.sortOrder === 'asc';
+
+    let query = supabase.from('articles').select('*');
+
+    if (options.authorAddress) {
+      query = query.eq('author_address', options.authorAddress);
+    }
+
+    if (options.search) {
+      const sanitized = this.escapeSearchTerm(options.search);
+      query = query.or(`title.ilike.%${sanitized}%,content.ilike.%${sanitized}%`);
+    }
+
+    query = query.order(sortColumn, { ascending });
+
+    if (sortColumn !== 'created_at') {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return (data || []).map(row => this.parseArticleFromRow(row));
+  }
 
   async createArticle(article: Omit<Article, 'id'>): Promise<Article> {
     const { data, error } = await supabase
@@ -107,15 +161,13 @@ class Database {
     return this.parseArticleFromRow(data);
   }
 
-  async getArticlesByAuthor(authorAddress: string): Promise<Article[]> {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .eq('author_address', authorAddress)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data.map(row => this.parseArticleFromRow(row));
+  async getArticlesByAuthor(authorAddress: string, options?: { search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; }): Promise<Article[]> {
+    return this.getArticles({
+      authorAddress,
+      search: options?.search,
+      sortBy: options?.sortBy,
+      sortOrder: options?.sortOrder
+    });
   }
 
   async getArticleById(id: number): Promise<Article | null> {
@@ -133,14 +185,12 @@ class Database {
     return this.parseArticleFromRow(data);
   }
 
-  async getAllArticles(): Promise<Article[]> {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data.map(row => this.parseArticleFromRow(row));
+  async getAllArticles(options?: { search?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; }): Promise<Article[]> {
+    return this.getArticles({
+      search: options?.search,
+      sortBy: options?.sortBy,
+      sortOrder: options?.sortOrder
+    });
   }
 
   async updateArticle(

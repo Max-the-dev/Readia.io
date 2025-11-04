@@ -6848,6 +6848,20 @@ main {
   font-weight: 600;
 }
 
+.category-tag.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: #f1f5f9;
+  border-color: #e1e8ed;
+  color: #94a3b8;
+}
+
+.category-tag.disabled:hover {
+  background-color: #f1f5f9;
+  border-color: #e1e8ed;
+  transform: none;
+}
+
 .check-mark {
   font-size: 12px;
   font-weight: 700;
