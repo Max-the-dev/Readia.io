@@ -6,6 +6,7 @@
  */
 
 import { pgPool } from './supabaseClient';
+import { normalizeAddress } from './utils/address';
 
 // ============================================
 // CONFIGURATION
@@ -47,12 +48,14 @@ export interface SpamCheckResult {
  */
 export async function checkWalletRateLimit(authorAddress: string): Promise<SpamCheckResult> {
   try {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     // Check hourly limit
     const hourlyResult = await pgPool.query(
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '1 hour'`,
-      [authorAddress]
+      [normalizedAddress]
     );
 
     const hourlyCount = parseInt(hourlyResult.rows[0].count);
@@ -70,7 +73,7 @@ export async function checkWalletRateLimit(authorAddress: string): Promise<SpamC
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '1 day'`,
-      [authorAddress]
+      [normalizedAddress]
     );
 
     const dailyCount = parseInt(dailyResult.rows[0].count);
@@ -100,11 +103,13 @@ export async function checkWalletRateLimit(authorAddress: string): Promise<SpamC
  */
 export async function checkRapidSubmission(authorAddress: string): Promise<SpamCheckResult> {
   try {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     const result = await pgPool.query(
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '${SPAM_CONFIG.RAPID_SUBMISSION_WINDOW_MS} milliseconds'`,
-      [authorAddress]
+      [normalizedAddress]
     );
 
     const recentCount = parseInt(result.rows[0].count);
@@ -160,6 +165,8 @@ export async function checkDuplicateContent(
   content: string
 ): Promise<SpamCheckResult> {
   try {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     // Get author's recent articles (last 30 days)
     const result = await pgPool.query(
       `SELECT title, content FROM articles
@@ -167,7 +174,7 @@ export async function checkDuplicateContent(
        AND created_at > NOW() - INTERVAL '30 days'
        ORDER BY created_at DESC
        LIMIT 20`,
-      [authorAddress]
+      [normalizedAddress]
     );
 
     const existingArticles = result.rows;

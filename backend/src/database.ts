@@ -14,6 +14,7 @@
 import { supabase, pgPool } from './supabaseClient';
 import { Article, Author, Draft } from './types';
 import { calculatePopularityScore } from './popularityScorer';
+import { normalizeAddress, tryNormalizeAddress } from './utils/address';
 
 class Database {
   constructor() {
@@ -113,7 +114,8 @@ class Database {
     let query = supabase.from('articles').select('*');
 
     if (options.authorAddress) {
-      query = query.eq('author_address', options.authorAddress);
+      const normalizedAddress = normalizeAddress(options.authorAddress);
+      query = query.eq('author_address', normalizedAddress);
     }
 
     if (options.search) {
@@ -134,6 +136,8 @@ class Database {
   }
 
   async createArticle(article: Omit<Article, 'id'>): Promise<Article> {
+    const normalizedAuthorAddress = normalizeAddress(article.authorAddress);
+
     const { data, error } = await supabase
       .from('articles')
       .insert({
@@ -141,7 +145,7 @@ class Database {
         content: article.content,
         preview: article.preview,
         price: article.price,
-        author_address: article.authorAddress,
+        author_address: normalizedAuthorAddress,
         publish_date: article.publishDate,
         created_at: article.createdAt,
         updated_at: article.updatedAt,
@@ -339,10 +343,12 @@ class Database {
   // ============================================
 
   async createOrUpdateAuthor(author: Author): Promise<Author> {
+    const normalizedAddress = normalizeAddress(author.address);
+
     const { data, error } = await supabase
       .from('authors')
       .upsert({
-        address: author.address,
+        address: normalizedAddress,
         created_at: author.createdAt,
         total_earnings: author.totalEarnings,
         total_articles: author.totalArticles,
@@ -357,10 +363,12 @@ class Database {
   }
 
   async getAuthor(address: string): Promise<Author | null> {
+    const normalizedAddress = normalizeAddress(address);
+
     const { data, error } = await supabase
       .from('authors')
       .select('*')
-      .eq('address', address)
+      .eq('address', normalizedAddress)
       .single();
 
     if (error) {
@@ -372,9 +380,11 @@ class Database {
   }
 
   async recalculateAuthorTotals(authorAddress: string): Promise<void> {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     // Use PostgreSQL function
     const { error } = await supabase.rpc('recalculate_author_totals', {
-      target_author_address: authorAddress,
+      target_author_address: normalizedAddress,
     });
 
     if (error) {
@@ -388,11 +398,11 @@ class Database {
             COALESCE(SUM(purchases), 0) as total_purchases,
             COALESCE(SUM(earnings), 0) as total_earnings
            FROM articles WHERE author_address = $1`,
-          [authorAddress]
+          [normalizedAddress]
         );
 
         const row = result.rows[0];
-        const author = await this.getAuthor(authorAddress);
+        const author = await this.getAuthor(normalizedAddress);
 
         if (author) {
           author.totalViews = Math.max(parseInt(row.total_views), 0);
@@ -413,13 +423,15 @@ class Database {
   // ============================================
 
   async createDraft(draft: Omit<Draft, 'id'>): Promise<Draft> {
+    const normalizedAuthorAddress = normalizeAddress(draft.authorAddress);
+
     const { data, error } = await supabase
       .from('drafts')
       .insert({
         title: draft.title,
         content: draft.content,
         price: draft.price,
-        author_address: draft.authorAddress,
+        author_address: normalizedAuthorAddress,
         created_at: draft.createdAt,
         updated_at: draft.updatedAt,
         expires_at: draft.expiresAt,
@@ -432,6 +444,8 @@ class Database {
   }
 
   async updateDraft(draftId: number, draft: Omit<Draft, 'id'>): Promise<Draft> {
+    const normalizedAuthorAddress = normalizeAddress(draft.authorAddress);
+
     const { data, error } = await supabase
       .from('drafts')
       .update({
@@ -442,7 +456,7 @@ class Database {
         expires_at: draft.expiresAt,
       })
       .eq('id', draftId)
-      .eq('author_address', draft.authorAddress)
+      .eq('author_address', normalizedAuthorAddress)
       .select()
       .single();
 
@@ -462,11 +476,12 @@ class Database {
 
     // Auto-save: check for recent draft (within 1 hour)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const normalizedAuthorAddress = normalizeAddress(draft.authorAddress);
 
     const { data: recentDraft, error: fetchError } = await supabase
       .from('drafts')
       .select('id')
-      .eq('author_address', draft.authorAddress)
+      .eq('author_address', normalizedAuthorAddress)
       .gt('updated_at', oneHourAgo)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -486,10 +501,12 @@ class Database {
   }
 
   async getDraftsByAuthor(authorAddress: string): Promise<Draft[]> {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     const { data, error } = await supabase
       .from('drafts')
       .select('*')
-      .eq('author_address', authorAddress)
+      .eq('author_address', normalizedAddress)
       .gt('expires_at', new Date().toISOString())
       .order('updated_at', { ascending: false });
 
@@ -498,11 +515,13 @@ class Database {
   }
 
   async deleteDraft(draftId: number, authorAddress: string): Promise<boolean> {
+    const normalizedAddress = normalizeAddress(authorAddress);
+
     const { error } = await supabase
       .from('drafts')
       .delete()
       .eq('id', draftId)
-      .eq('author_address', authorAddress);
+      .eq('author_address', normalizedAddress);
 
     if (error) throw error;
     return true;
@@ -525,10 +544,11 @@ class Database {
 
   async likeArticle(articleId: number, userAddress: string): Promise<boolean> {
     const now = new Date().toISOString();
+    const normalizedUserAddress = normalizeAddress(userAddress);
 
     const { error } = await supabase.from('user_likes').insert({
       article_id: articleId,
-      user_address: userAddress,
+      user_address: normalizedUserAddress,
       created_at: now,
     });
 
@@ -546,22 +566,26 @@ class Database {
   }
 
   async unlikeArticle(articleId: number, userAddress: string): Promise<boolean> {
+    const normalizedUserAddress = normalizeAddress(userAddress);
+
     const { error } = await supabase
       .from('user_likes')
       .delete()
       .eq('article_id', articleId)
-      .eq('user_address', userAddress);
+      .eq('user_address', normalizedUserAddress);
 
     if (error) throw error;
     return true;
   }
 
   async checkUserLikedArticle(articleId: number, userAddress: string): Promise<boolean> {
+    const normalizedUserAddress = normalizeAddress(userAddress);
+
     const { data, error } = await supabase
       .from('user_likes')
       .select('id')
       .eq('article_id', articleId)
-      .eq('user_address', userAddress)
+      .eq('user_address', normalizedUserAddress)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -605,9 +629,12 @@ class Database {
     amount: number,
     transactionHash?: string
   ): Promise<boolean> {
+    const normalizedUserAddress =
+      tryNormalizeAddress(userAddress) ?? userAddress;
+
     const { error } = await supabase.from('payments').insert({
       article_id: articleId,
-      user_address: userAddress,
+      user_address: normalizedUserAddress,
       amount,
       transaction_hash: transactionHash,
       payment_verified: true,
@@ -617,7 +644,7 @@ class Database {
     if (error) {
       // Ignore duplicate payment errors (UNIQUE constraint)
       if (error.code === '23505') {
-        console.log(`Payment already recorded for article ${articleId} by ${userAddress}`);
+        console.log(`Payment already recorded for article ${articleId} by ${normalizedUserAddress}`);
         return false;
       }
       throw error;
@@ -627,11 +654,13 @@ class Database {
   }
 
   async checkPaymentStatus(articleId: number, userAddress: string): Promise<boolean> {
+    const normalizedUserAddress = normalizeAddress(userAddress);
+
     const { data, error } = await supabase
       .from('payments')
       .select('id')
       .eq('article_id', articleId)
-      .eq('user_address', userAddress)
+      .eq('user_address', normalizedUserAddress)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -652,10 +681,12 @@ class Database {
   }
 
   async getPaymentsByUser(userAddress: string): Promise<number> {
+    const normalizedUserAddress = normalizeAddress(userAddress);
+
     const { count, error } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
-      .eq('user_address', userAddress);
+      .eq('user_address', normalizedUserAddress);
 
     if (error) throw error;
     return count || 0;

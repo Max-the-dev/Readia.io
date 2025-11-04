@@ -20,6 +20,7 @@ import { checkForSpam } from './spamPrevention';
 import { facilitator as defaultFacilitator, createFacilitatorConfig } from '@coinbase/x402';
 import { useFacilitator } from 'x402/verify';
 import { PaymentPayload, PaymentPayloadSchema, PaymentRequirements } from 'x402/types';
+import { normalizeAddress, tryNormalizeAddress } from './utils/address';
 
 const router = express.Router();
 const db = new Database();
@@ -168,14 +169,15 @@ function buildPaymentRequirement(article: Article, req: Request): PaymentRequire
 }
 
 async function ensureAuthorRecord(address: string): Promise<Author> {
-  const existingAuthor = await db.getAuthor(address);
+  const normalizedAddress = normalizeAddress(address);
+  const existingAuthor = await db.getAuthor(normalizedAddress);
   if (existingAuthor) {
     return existingAuthor;
   }
 
   const now = new Date().toISOString();
   const newAuthor: Author = {
-    address,
+    address: normalizedAddress,
     createdAt: now,
     totalArticles: 0,
     totalEarnings: 0,
@@ -358,7 +360,18 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
 router.get('/authors/:address', readLimiter, async (req: Request, res: Response) => {
   try {
     const { address } = req.params;
-    const author = await ensureAuthorRecord(address);
+    let normalizedAddress: string;
+    try {
+      normalizedAddress = normalizeAddress(address);
+    } catch {
+      const response: ApiResponse<never> = {
+        success: false,
+        error: 'Invalid author address'
+      };
+      return res.status(400).json(response);
+    }
+
+    const author = await ensureAuthorRecord(normalizedAddress);
 
     const response: ApiResponse<Author> = {
       success: true,
@@ -483,7 +496,8 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    if (paymentPayload.payload.authorization.to !== article.authorAddress) {
+    const paymentRecipient = normalizeAddress(paymentPayload.payload.authorization.to);
+    if (paymentRecipient !== article.authorAddress) {
       return res.status(400).json({
         success: false,
         error: 'Payment recipient mismatch'
@@ -491,10 +505,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
 
     const payerAddress =
-      verification.payer ||
-      (typeof paymentPayload.payload.authorization.from === 'string'
-        ? paymentPayload.payload.authorization.from
-        : '');
+      tryNormalizeAddress(verification.payer) ||
+      tryNormalizeAddress(
+        typeof paymentPayload.payload.authorization.from === 'string'
+          ? paymentPayload.payload.authorization.from
+          : ''
+      );
 
     await recordArticlePurchase(articleId);
     await recordPayment(articleId, payerAddress || 'unknown', article.price);
@@ -570,11 +586,21 @@ router.post('/drafts', writeLimiter, validate(createDraftSchema), async (req: Re
 router.get('/drafts/:authorAddress', readLimiter, async (req: Request, res: Response) => {
   try {
     const { authorAddress } = req.params;
+    let normalizedAddress: string;
+    try {
+      normalizedAddress = normalizeAddress(authorAddress);
+    } catch {
+      const response: ApiResponse<never> = {
+        success: false,
+        error: 'Invalid author address'
+      };
+      return res.status(400).json(response);
+    }
     
     // Clean up expired drafts first
     await db.cleanupExpiredDrafts();
     
-    const drafts = await db.getDraftsByAuthor(authorAddress);
+    const drafts = await db.getDraftsByAuthor(normalizedAddress);
 
     const response: ApiResponse<Draft[]> = {
       success: true,
