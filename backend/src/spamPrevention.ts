@@ -13,19 +13,19 @@ import { pgPool } from './supabaseClient';
 
 const SPAM_CONFIG = {
   // Per-wallet rate limiting
-  MAX_ARTICLES_PER_HOUR: 3,
-  MAX_ARTICLES_PER_DAY: 10,
+  MAX_ARTICLES_PER_HOUR: 5,     // Increased from 3 - allow more during testing/active writing
+  MAX_ARTICLES_PER_DAY: 20,     // Increased from 10 - reasonable daily limit for active authors
 
   // Content quality thresholds
   MIN_UNIQUE_WORDS: 50,
-  MAX_REPETITION_RATIO: 0.3, // Max 30% repeated words
+  MAX_REPETITION_RATIO: 0.65,   // Increased from 0.3 to 0.65 - most legitimate content has 40-60% repetition
 
   // Duplicate detection
   SIMILARITY_THRESHOLD: 0.85, // 85% similarity = duplicate
 
   // Pattern detection
   RAPID_SUBMISSION_WINDOW_MS: 60000, // 1 minute
-  MAX_RAPID_SUBMISSIONS: 2,
+  MAX_RAPID_SUBMISSIONS: 3,     // Increased from 2 - allow 3 rapid submissions (e.g., testing variations)
 };
 
 // ============================================
@@ -52,7 +52,7 @@ export async function checkWalletRateLimit(authorAddress: string): Promise<SpamC
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '1 hour'`,
-      [authorAddress.toLowerCase()]
+      [authorAddress]
     );
 
     const hourlyCount = parseInt(hourlyResult.rows[0].count);
@@ -70,7 +70,7 @@ export async function checkWalletRateLimit(authorAddress: string): Promise<SpamC
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '1 day'`,
-      [authorAddress.toLowerCase()]
+      [authorAddress]
     );
 
     const dailyCount = parseInt(dailyResult.rows[0].count);
@@ -104,7 +104,7 @@ export async function checkRapidSubmission(authorAddress: string): Promise<SpamC
       `SELECT COUNT(*) as count FROM articles
        WHERE author_address = $1
        AND created_at > NOW() - INTERVAL '${SPAM_CONFIG.RAPID_SUBMISSION_WINDOW_MS} milliseconds'`,
-      [authorAddress.toLowerCase()]
+      [authorAddress]
     );
 
     const recentCount = parseInt(result.rows[0].count);
@@ -167,7 +167,7 @@ export async function checkDuplicateContent(
        AND created_at > NOW() - INTERVAL '30 days'
        ORDER BY created_at DESC
        LIMIT 20`,
-      [authorAddress.toLowerCase()]
+      [authorAddress]
     );
 
     const existingArticles = result.rows;

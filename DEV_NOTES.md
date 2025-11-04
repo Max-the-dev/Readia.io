@@ -3,6 +3,7 @@
 # FEATURES ROADMAP
 
 ## UI / UX Features:
+  - Darm mode (light, dark, system)
   - Category statistics (total articles, avg popularity for each category)
   - Category-specific trending sections
     - Add trending indicators

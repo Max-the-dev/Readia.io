@@ -9,7 +9,34 @@ import { apiService, Article, Author } from '../services/api';
 
 function Dashboard() {
   const { isConnected, address, balance } = useWallet();
-  
+
+  // Available categories (must match backend validation schema)
+  const availableCategories = [
+    // Tech (5)
+    'Technology',
+    'AI & Machine Learning',
+    'Web Development',
+    'Crypto & Blockchain',
+    'Security',
+    // Business (4)
+    'Business',
+    'Startup',
+    'Finance',
+    'Marketing',
+    // General Topics (11)
+    'Science',
+    'Health',
+    'Education',
+    'Politics',
+    'Sports',
+    'Entertainment',
+    'Gaming',
+    'Art & Design',
+    'Travel',
+    'Food',
+    'Other'
+  ];
+
   // Articles state
   const [articles, setArticles] = useState<Article[]>([]);
   const [author, setAuthor] = useState<Author | null>(null);
@@ -17,7 +44,7 @@ function Dashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; article: Article | null }>({ show: false, article: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string>('');
-  
+
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -313,27 +340,15 @@ function Dashboard() {
 
                 <div className="filter-group">
                   <label>Category:</label>
-                  <select 
-                    value={categoryFilter} 
+                  <select
+                    value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
                     className="filter-select"
                   >
                     <option value="all">All Categories</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Crypto">Crypto</option>
-                    <option value="AI & Machine Learning">AI & Machine Learning</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Blockchain">Blockchain</option>
-                    <option value="Startup">Startup</option>
-                    <option value="Business">Business</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Science">Science</option>
-                    <option value="Programming">Programming</option>
-                    <option value="Design">Design</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Productivity">Productivity</option>
-                    <option value="Security">Security</option>
-                    <option value="Data Science">Data Science</option>
+                    {availableCategories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
                   </select>
                 </div>
                 

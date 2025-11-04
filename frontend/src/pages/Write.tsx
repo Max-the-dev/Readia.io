@@ -9,23 +9,31 @@ import { Editor } from '@tinymce/tinymce-react';
 function Write() {
   const { isConnected, address } = useWallet();
   
-  // Available categories (same as in Explore page)
+  // Available categories (must match backend validation schema exactly)
   const availableCategories = [
+    // Tech (5)
     'Technology',
-    'Crypto', 
     'AI & Machine Learning',
     'Web Development',
-    'Blockchain',
-    'Startup',
-    'Business',
-    'Finance',
-    'Science',
-    'Programming',
-    'Design',
-    'Marketing',
-    'Productivity',
+    'Crypto & Blockchain',
     'Security',
-    'Data Science'
+    // Business (4)
+    'Business',
+    'Startup',
+    'Finance',
+    'Marketing',
+    // General Topics (11)
+    'Science',
+    'Health',
+    'Education',
+    'Politics',
+    'Sports',
+    'Entertainment',
+    'Gaming',
+    'Art & Design',
+    'Travel',
+    'Food',
+    'Other'
   ];
 
   const [title, setTitle] = useState<string>('');
@@ -35,7 +43,6 @@ function Write() {
   const [isDraft, setIsDraft] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string>('');
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidation, setShowValidation] = useState<boolean>(false);
   const [availableDrafts, setAvailableDrafts] = useState<Draft[]>([]);
   const [showDrafts, setShowDrafts] = useState<boolean>(false);
@@ -88,16 +95,6 @@ function Write() {
     });
   };
 
-  // Real-time validation (only update errors, don't show them yet)
-  useEffect(() => {
-    const errors = validateForm();
-    setValidationErrors(errors);
-    // Clear submit error when validation changes and no errors
-    if (submitError && errors.length === 0 && showValidation) {
-      setSubmitError('');
-    }
-  }, [title, content, price, submitError, showValidation]);
-
   // Auto-save functionality
   useEffect(() => {
     if (!address || (!title && !content)) return; // Don't auto-save empty content or when not connected
@@ -142,7 +139,8 @@ function Write() {
     // Check for validation errors
     const errors = validateForm();
     if (errors.length > 0) {
-      setSubmitError('Please fix the validation errors above before publishing');
+      // Inline warnings will show up - scroll to top so user sees them
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -208,6 +206,9 @@ function Write() {
         } else {
           setSubmitError(errorMessage);
         }
+
+        // Scroll to top to show error message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       const err = error as any;
@@ -219,6 +220,9 @@ function Write() {
         setSubmitError(err.message || 'An unexpected error occurred');
       }
       console.error('Error creating article:', error);
+
+      // Scroll to top to show error message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -238,47 +242,51 @@ function Write() {
     return `${minutes} min read`;
   };
 
-  // Validation helper
+  // Field-specific validation helper
+  const getFieldError = (field: 'title' | 'content' | 'price' | 'categories'): string | null => {
+    if (!showValidation) return null;
+
+    switch (field) {
+      case 'title':
+        if (!title.trim()) return 'Title is required';
+        if (title.length > MAX_TITLE_LENGTH) return `Title must be ${MAX_TITLE_LENGTH} characters or less`;
+        return null;
+
+      case 'content':
+        if (!content.trim()) return 'Content is required';
+        const textContent = content.replace(/<[^>]*>/g, '').trim();
+        if (textContent.length < MIN_CONTENT_LENGTH) return `Content must be at least ${MIN_CONTENT_LENGTH} characters`;
+        if (content.length > MAX_CONTENT_LENGTH) return `Content must be ${MAX_CONTENT_LENGTH.toLocaleString()} characters or less`;
+        return null;
+
+      case 'price':
+        if (!price || parseFloat(price) <= 0) return 'Valid price is required';
+        const priceNum = parseFloat(price);
+        if (priceNum < 0.01) return 'Price must be at least $0.01';
+        if (priceNum > 1.00) return 'Price cannot exceed $1.00';
+        return null;
+
+      case 'categories':
+        if (selectedCategories.length > MAX_CATEGORIES) return `Maximum ${MAX_CATEGORIES} categories allowed`;
+        return null;
+
+      default:
+        return null;
+    }
+  };
+
+  // Check if form has any errors
   const validateForm = () => {
     const errors: string[] = [];
+    const titleError = getFieldError('title');
+    const contentError = getFieldError('content');
+    const priceError = getFieldError('price');
+    const categoriesError = getFieldError('categories');
 
-    if (!title.trim()) {
-      errors.push('Article title is required');
-    }
-
-    if (title.length > MAX_TITLE_LENGTH) {
-      errors.push(`Title must be ${MAX_TITLE_LENGTH} characters or less`);
-    }
-
-    if (!content.trim()) {
-      errors.push('Article content is required');
-    }
-
-    const textContent = content.replace(/<[^>]*>/g, '').trim();
-    if (textContent.length < MIN_CONTENT_LENGTH) {
-      errors.push(`Content must be at least ${MIN_CONTENT_LENGTH} characters`);
-    }
-
-    if (content.length > MAX_CONTENT_LENGTH) {
-      errors.push(`Content must be ${MAX_CONTENT_LENGTH.toLocaleString()} characters or less`);
-    }
-
-    if (!price || parseFloat(price) <= 0) {
-      errors.push('Valid price is required');
-    }
-
-    const priceNum = parseFloat(price);
-    if (price && priceNum < 0.01) {
-      errors.push('Article price must be at least $0.01');
-    }
-
-    if (price && priceNum > 1.00) {
-      errors.push('Article price cannot exceed $1.00');
-    }
-
-    if (selectedCategories.length > MAX_CATEGORIES) {
-      errors.push(`Maximum ${MAX_CATEGORIES} categories allowed`);
-    }
+    if (titleError) errors.push(titleError);
+    if (contentError) errors.push(contentError);
+    if (priceError) errors.push(priceError);
+    if (categoriesError) errors.push(categoriesError);
 
     return errors;
   };
@@ -390,7 +398,7 @@ function Write() {
                     <a href="/dashboard" className="action-btn secondary-btn">
                       View in Dashboard
                     </a>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => setSubmitSuccess(false)}
                       className="action-btn draft-btn"
@@ -399,8 +407,8 @@ function Write() {
                     </button>
                   </div>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setSubmitSuccess(false)}
                   className="success-close-btn"
                 >
@@ -408,6 +416,27 @@ function Write() {
                 </button>
               </div>
             )}
+
+            {/* Submit Error Message - Moved to top for visibility */}
+            {submitError && validateForm().length === 0 && (
+              <div className="submit-error">
+                <div className="error-icon">
+                  <X size={24} />
+                </div>
+                <div className="error-content">
+                  <h4>Unable to Publish Article</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{submitError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubmitError('')}
+                  className="error-close-btn"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+
 
             {/* Action Buttons */}
             <div className="article-actions">
@@ -644,6 +673,12 @@ function Write() {
                     {title.length}/{MAX_TITLE_LENGTH} characters
                   </span>
                 </div>
+                {getFieldError('title') && (
+                  <div className="field-warning">
+                    <span className="warning-icon">⚠</span>
+                    <span className="warning-text">{getFieldError('title')}</span>
+                  </div>
+                )}
               </div>
               <div className="price-section">
                 <label htmlFor="price" className="input-label">Price</label>
@@ -661,6 +696,12 @@ function Write() {
                     required
                   />
                 </div>
+                {getFieldError('price') && (
+                  <div className="field-warning">
+                    <span className="warning-icon">⚠</span>
+                    <span className="warning-text">{getFieldError('price')}</span>
+                  </div>
+                )}
               </div>
 
               {/* Categories Section */}
@@ -694,6 +735,12 @@ function Write() {
                       {selectedCategories.length}/{MAX_CATEGORIES} selected:
                     </span>
                     <span className="selected-list">{selectedCategories.join(', ')}</span>
+                  </div>
+                )}
+                {getFieldError('categories') && (
+                  <div className="field-warning">
+                    <span className="warning-icon">⚠</span>
+                    <span className="warning-text">{getFieldError('categories')}</span>
                   </div>
                 )}
               </div>
@@ -790,35 +837,22 @@ function Write() {
                     smart_paste: true
                   }}
                 />
+                {getFieldError('content') && (
+                  <div className="field-warning">
+                    <span className="warning-icon">⚠</span>
+                    <span className="warning-text">{getFieldError('content')}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Validation Status - only show after publish attempt */}
-            {showValidation && (
-              validationErrors.length > 0 ? (
-                <div className="validation-errors">
-                  <h4>Please fix the following issues:</h4>
-                  <ul>
-                    {validationErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="validation-success">
-                  <h4>✅ Ready to publish!</h4>
-                  <p>Your article looks good and is ready to be published.</p>
-                </div>
-              )
-            )}
-
-            {/* Submit Error Message */}
-            {submitError && validationErrors.length === 0 && (
-              <div className="submit-error">
-                {submitError}
+            {/* Validation Success Status - only show when no errors */}
+            {showValidation && validateForm().length === 0 && (
+              <div className="validation-success">
+                <h4>✅ Ready to publish!</h4>
+                <p>Your article looks good and is ready to be published.</p>
               </div>
             )}
-
 
           </form>
         </div>

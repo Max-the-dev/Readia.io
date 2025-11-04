@@ -4,22 +4,18 @@ import Database from './database';
 const testAuthors = [
   {
     address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4',
-    displayName: 'Alex Chen',
     createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days ago
   },
   {
     address: '0x1234567890abcdef1234567890abcdef12345678',
-    displayName: 'Sarah Martinez',
     createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
   },
   {
     address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
-    displayName: 'David Kim',
     createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), // 45 days ago
   },
   {
     address: '0x9876543210fedcba9876543210fedcba98765432',
-    displayName: 'Emma Johnson',
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
   },
 ];
@@ -57,6 +53,10 @@ const generateRealisticUsers = (count: number): string[] => {
 };
 
 const testUsers = generateRealisticUsers(30); // Pool of 30 users for realistic activity
+
+const formatAddress = (address: string): string => {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
 
 // Available categories (must match validation schema)
 const categories = [
@@ -264,7 +264,7 @@ async function populateDatabase() {
         totalViews: 0,
         totalPurchases: 0,
       });
-      console.log(`✅ Created author: ${author.displayName} (${author.address})`);
+      console.log(`✅ Created author: ${formatAddress(author.address)} (${author.address})`);
     }
 
     console.log('\n📝 Creating test articles...\n');
@@ -303,7 +303,7 @@ async function populateDatabase() {
       createdArticles.push({ id: created.id, views, createdAt });
 
       console.log(`✅ Article ${i + 1}/20: "${article.title}"`);
-      console.log(`   Author: ${author.displayName}`);
+      console.log(`   Author: ${formatAddress(author.address)}`);
       console.log(`   Price: $${price.toFixed(2)} | Views: ${views} | Purchases: ${purchases}`);
       console.log(`   Categories: ${articleData.categories.join(', ')}`);
       console.log('');
@@ -347,7 +347,7 @@ async function populateDatabase() {
       await db.recalculateAuthorTotals(author.address);
       const updatedAuthor = await db.getAuthor(author.address);
       if (updatedAuthor) {
-        console.log(`✅ ${updatedAuthor.displayName}:`);
+        console.log(`✅ ${formatAddress(updatedAuthor.address)}:`);
         console.log(`   Total Articles: ${updatedAuthor.totalArticles}`);
         console.log(`   Total Views: ${updatedAuthor.totalViews}`);
         console.log(`   Total Purchases: ${updatedAuthor.totalPurchases}`);

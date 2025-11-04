@@ -483,7 +483,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    if (paymentPayload.payload.authorization.to.toLowerCase() !== article.authorAddress.toLowerCase()) {
+    if (paymentPayload.payload.authorization.to !== article.authorAddress) {
       return res.status(400).json({
         success: false,
         error: 'Payment recipient mismatch'

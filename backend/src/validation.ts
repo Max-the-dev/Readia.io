@@ -15,8 +15,7 @@ import { z } from 'zod';
  * Ethereum address format: 0x followed by 40 hexadecimal characters
  */
 const ethereumAddressSchema = z.string()
-  .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address format')
-  .transform(addr => addr.toLowerCase());
+  .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid Ethereum address format');
 
 // ============================================
 // ARTICLE VALIDATION

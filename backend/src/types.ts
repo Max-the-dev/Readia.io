@@ -21,7 +21,6 @@ export interface Article {
 
 export interface Author {
   address: string;
-  displayName?: string;
   createdAt: string;
   totalEarnings: number;
   totalArticles: number;

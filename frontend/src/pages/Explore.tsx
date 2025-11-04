@@ -14,24 +14,32 @@ function Explore() {
     return doc.body.textContent || "";
   };
 
-  // Predefined categories
+  // Predefined categories (must match backend validation schema)
   const categories = [
     'All Articles',
+    // Tech (5)
     'Technology',
-    'Crypto', 
     'AI & Machine Learning',
     'Web Development',
-    'Blockchain',
-    'Startup',
-    'Business',
-    'Finance',
-    'Science',
-    'Programming',
-    'Design',
-    'Marketing',
-    'Productivity',
+    'Crypto & Blockchain',
     'Security',
-    'Data Science'
+    // Business (4)
+    'Business',
+    'Startup',
+    'Finance',
+    'Marketing',
+    // General Topics (11)
+    'Science',
+    'Health',
+    'Education',
+    'Politics',
+    'Sports',
+    'Entertainment',
+    'Gaming',
+    'Art & Design',
+    'Travel',
+    'Food',
+    'Other'
   ];
 
   const [articles, setArticles] = useState<Article[]>([]);

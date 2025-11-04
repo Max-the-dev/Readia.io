@@ -51,7 +51,6 @@ class Database {
   private parseAuthorFromRow(row: any): Author {
     return {
       address: row.address,
-      displayName: row.display_name,
       createdAt: row.created_at,
       totalEarnings: parseFloat(row.total_earnings) || 0,
       totalArticles: row.total_articles || 0,
@@ -344,7 +343,6 @@ class Database {
       .from('authors')
       .upsert({
         address: author.address,
-        display_name: author.displayName,
         created_at: author.createdAt,
         total_earnings: author.totalEarnings,
         total_articles: author.totalArticles,
@@ -609,7 +607,7 @@ class Database {
   ): Promise<boolean> {
     const { error } = await supabase.from('payments').insert({
       article_id: articleId,
-      user_address: userAddress.toLowerCase(),
+      user_address: userAddress,
       amount,
       transaction_hash: transactionHash,
       payment_verified: true,
@@ -633,7 +631,7 @@ class Database {
       .from('payments')
       .select('id')
       .eq('article_id', articleId)
-      .eq('user_address', userAddress.toLowerCase())
+      .eq('user_address', userAddress)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -657,7 +655,7 @@ class Database {
     const { count, error } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
-      .eq('user_address', userAddress.toLowerCase());
+      .eq('user_address', userAddress);
 
     if (error) throw error;
     return count || 0;

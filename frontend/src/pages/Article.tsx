@@ -71,7 +71,7 @@ function Article() {
   }, [id, address]);
 
   // Check if current user is the author of this article
-  const isAuthor = address && article && address.toLowerCase() === article.authorAddress.toLowerCase();
+  const isAuthor = Boolean(address && article && address === article.authorAddress);
 
   // Increment view count when article loads (only once per session)
   useEffect(() => {

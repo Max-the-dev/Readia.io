@@ -54,7 +54,7 @@ function EditArticle() {
   };
 
   // Check if user is authorized to edit this article
-  const isAuthorized = article && address && article.authorAddress.toLowerCase() === address.toLowerCase();
+  const isAuthorized = Boolean(article && address && article.authorAddress === address);
 
   const handleUpdateArticle = async () => {
     if (!address || !article) return;

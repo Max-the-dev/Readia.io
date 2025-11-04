@@ -13,7 +13,6 @@ CREATE EXTENSION IF NOT EXISTS "pg_cron";
 
 CREATE TABLE IF NOT EXISTS authors (
   address TEXT PRIMARY KEY,
-  display_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   -- Lifetime metrics (NEVER decremented - see CLAUDE.md)
