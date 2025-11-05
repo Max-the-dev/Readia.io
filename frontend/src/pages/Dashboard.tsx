@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Link } from 'react-router-dom';
-import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X, Book, Trash2, Edit } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { DollarSign, Eye, Users, Edit3, LayoutDashboard, Search, Filter, X, Book, Trash2, Edit, FileText, Clock } from 'lucide-react';
 import { isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
-import { apiService, Article, Author } from '../services/api';
+import { apiService, Article, Author, Draft } from '../services/api';
 
 
 function Dashboard() {
   const { isConnected, address, balance } = useWallet();
+  const navigate = useNavigate();
 
   // Available categories (must match backend validation schema)
   const availableCategories = [
@@ -45,6 +46,11 @@ function Dashboard() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [articleError, setArticleError] = useState<string>('');
   const [authorError, setAuthorError] = useState<string>('');
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState('');
+  const [draftDeleteId, setDraftDeleteId] = useState<number | null>(null);
 
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,6 +129,85 @@ function Dashboard() {
       setAuthorError(prev => prev || fallbackMessage);
       console.error('Error fetching author:', err);
     }
+  };
+
+  const loadDraftsForModal = async () => {
+    if (!address) return;
+
+    setDraftsLoading(true);
+    setDraftsError('');
+
+    try {
+      const response = await apiService.getDrafts(address);
+      if (response.success && response.data) {
+        setDrafts(response.data);
+      } else {
+        setDrafts([]);
+        setDraftsError(response.error || 'Failed to load drafts');
+      }
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : 'Failed to load drafts';
+      setDrafts([]);
+      setDraftsError(message);
+      console.error('Error fetching drafts:', err);
+    } finally {
+      setDraftsLoading(false);
+    }
+  };
+
+  const openDraftsModal = async () => {
+    if (!address) return;
+    setShowDraftsModal(true);
+    await loadDraftsForModal();
+  };
+
+  const closeDraftsModal = () => {
+    setShowDraftsModal(false);
+    setDraftsError('');
+    setDraftDeleteId(null);
+  };
+
+  const handleDraftEdit = (draft: Draft) => {
+    setShowDraftsModal(false);
+    navigate(`/write?draftId=${draft.id}`);
+  };
+
+  const handleDraftPublish = (draft: Draft) => {
+    setShowDraftsModal(false);
+    navigate(`/write?draftId=${draft.id}&action=publish`);
+  };
+
+  const handleDraftDelete = async (draft: Draft) => {
+    if (!address) return;
+
+    setDraftDeleteId(draft.id);
+    try {
+      const response = await apiService.deleteDraft(draft.id, address);
+      if (response.success) {
+        setDrafts(prev => {
+          const next = prev.filter(d => d.id !== draft.id);
+          if (next.length === 0) {
+            setDraftsError('');
+          }
+          return next;
+        });
+      } else {
+        setDraftsError(response.error || 'Failed to delete draft');
+      }
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : 'Failed to delete draft';
+      setDraftsError(message);
+      console.error('Error deleting draft:', err);
+    } finally {
+      setDraftDeleteId(null);
+    }
+  };
+
+  const getDraftPreview = (html: string) => {
+    if (!html) return 'No content yet';
+    const text = html.replace(/<[^>]+>/g, '').trim().replace(/\s+/g, ' ');
+    if (!text) return 'No content yet';
+    return text.length > 120 ? `${text.slice(0, 120)}…` : text;
   };
 
   // Delete article handler
@@ -287,10 +372,21 @@ function Dashboard() {
         <div className="articles-section">
           <div className="articles-header">
             <h2><Book size={20} />Your Articles</h2>
-            <a href="/write" className="write-new-btn">
-              <Edit3 size={18} />
-              Write New Article
-            </a>
+            <div className="articles-header-actions">
+              <button
+                type="button"
+                onClick={openDraftsModal}
+                className="view-drafts-btn"
+                disabled={draftsLoading && showDraftsModal}
+              >
+                <FileText size={18} />
+                {draftsLoading && showDraftsModal ? 'Loading Drafts...' : 'View Drafts'}
+              </button>
+              <Link to="/write" className="write-new-btn">
+                <Edit3 size={18} />
+                Write New Article
+              </Link>
+            </div>
           </div>
           
           {/* Search and Filter Controls */}
@@ -472,6 +568,82 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showDraftsModal && (
+        <div className="modal-overlay">
+          <div className="drafts-modal" role="dialog" aria-modal="true" aria-labelledby="drafts-modal-title">
+            <div className="drafts-modal-header">
+              <h3 id="drafts-modal-title">Saved Drafts</h3>
+              <button 
+                type="button"
+                onClick={closeDraftsModal}
+                className="close-btn"
+                aria-label="Close drafts modal"
+              >
+                ×
+              </button>
+            </div>
+            <p className="drafts-modal-subtitle">Access drafts saved from the editor. Drafts automatically expire after 7 days.</p>
+            <div className="drafts-modal-content">
+              {draftsLoading ? (
+                <div className="drafts-modal-loading">Loading drafts...</div>
+              ) : draftsError ? (
+                <div className="drafts-modal-error">❌ {draftsError}</div>
+              ) : drafts.length === 0 ? (
+                <div className="drafts-modal-empty">
+                  <FileText size={36} />
+                  <p>No drafts available</p>
+                  <span>Drafts you save from the editor will appear here.</span>
+                </div>
+              ) : (
+                <div className="drafts-list">
+                  {drafts.map(draft => (
+                    <div key={draft.id} className="drafts-item">
+                      <div className="drafts-item-main">
+                        <h4>{draft.title || 'Untitled Draft'}</h4>
+                        <p className="drafts-item-preview">{getDraftPreview(draft.content)}</p>
+                        <div className="drafts-item-meta">
+                          <span className="drafts-item-meta-entry">
+                            <Clock size={14} />
+                            Updated {getRelativeTimeString(draft.updatedAt)}
+                          </span>
+                          <span className="drafts-item-meta-entry price">
+                            ${draft.price.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="drafts-item-actions">
+                        <button
+                          type="button"
+                          className="drafts-action edit"
+                          onClick={() => handleDraftEdit(draft)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="drafts-action publish"
+                          onClick={() => handleDraftPublish(draft)}
+                        >
+                          Publish
+                        </button>
+                        <button
+                          type="button"
+                          className="drafts-action delete"
+                          onClick={() => handleDraftDelete(draft)}
+                          disabled={draftDeleteId === draft.id}
+                        >
+                          {draftDeleteId === draft.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
         {deleteConfirm.show && deleteConfirm.article && (

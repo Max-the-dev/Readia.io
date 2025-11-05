@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Save, Send, FileText, Clock, Eye, CheckCircle, X, AlertTriangle, Loader2, Check, Dot } from 'lucide-react';
@@ -7,6 +8,7 @@ import { Editor } from '@tinymce/tinymce-react';
 
 function Write() {
   const { isConnected, address } = useWallet();
+  const location = useLocation();
   
   // Available categories (must match backend validation schema exactly)
   const availableCategories = [
@@ -61,6 +63,8 @@ function Write() {
   const typingTimeoutRef = useRef<number | null>(null);
   const autoSaveTimeoutRef = useRef<number | null>(null);
   const suppressSubmitClearRef = useRef<boolean>(false);
+  const autoLoadKeyRef = useRef<string | null>(null);
+  const handleSubmitRef = useRef<(event: FormEvent<HTMLFormElement>) => void | Promise<void>>();
   
   // Typing animation state
   const [displayText, setDisplayText] = useState<string>('');
@@ -241,6 +245,10 @@ function Write() {
     // Show confirmation modal instead of publishing immediately
     setShowPublishConfirm(true);
   };
+
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
 
   const handlePublishConfirm = async () => {
     setIsSubmitting(true);
@@ -463,6 +471,76 @@ function Write() {
       console.error('Error deleting draft:', error);
     }
   };
+
+  useEffect(() => {
+    if (!address) {
+      autoLoadKeyRef.current = null;
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const draftIdParam = params.get('draftId');
+
+    if (!draftIdParam) {
+      autoLoadKeyRef.current = null;
+      return;
+    }
+
+    const draftId = Number(draftIdParam);
+    if (!Number.isFinite(draftId)) {
+      return;
+    }
+
+    const actionParam = params.get('action');
+    const actionKey = actionParam === 'publish' ? 'publish' : '';
+    const desiredKey = `${draftId}:${actionKey}`;
+
+    if (autoLoadKeyRef.current === desiredKey) {
+      return;
+    }
+
+    const fetchDraft = async () => {
+      setLoadingDrafts(true);
+      try {
+        const response = await apiService.getDrafts(address);
+        if (response.success && response.data) {
+          const match = response.data.find(draft => draft.id === draftId);
+          if (match) {
+            setAvailableDrafts(response.data);
+            loadDraft(match);
+            autoLoadKeyRef.current = desiredKey;
+            if (actionKey === 'publish') {
+              window.setTimeout(() => {
+                const fakeEvent = { preventDefault: () => {} } as FormEvent<HTMLFormElement>;
+                handleSubmitRef.current?.(fakeEvent);
+              }, 0);
+            }
+          } else {
+            autoLoadKeyRef.current = null;
+            setSubmitError('Draft not found');
+            setShowValidationSummary(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else {
+          autoLoadKeyRef.current = null;
+          const message = response.error || 'Failed to load draft';
+          setSubmitError(message);
+          setShowValidationSummary(true);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } catch (error) {
+        autoLoadKeyRef.current = null;
+        console.error('Error auto-loading draft:', error);
+        setSubmitError('Failed to load draft');
+        setShowValidationSummary(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } finally {
+        setLoadingDrafts(false);
+      }
+    };
+
+    fetchDraft();
+  }, [address, location.search]);
 
 
   const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
