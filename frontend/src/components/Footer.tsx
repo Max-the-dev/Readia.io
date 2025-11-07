@@ -141,7 +141,9 @@ function Footer() {
                       <span className="donation-symbol">{symbol}</span>
                     </div>
                     <div className="donation-address-row">
-                      <code className="donation-address">{address}</code>
+                      <code className="donation-address">
+                        {address.slice(0, 6)}...{address.slice(-4)}
+                      </code>
                       <button
                         type="button"
                         className="donation-copy-button"

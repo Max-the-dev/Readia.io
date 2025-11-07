@@ -1439,7 +1439,7 @@ main {
 .donation-modal {
   background: #ffffff;
   border-radius: 16px;
-  width: min(90vw, 680px);
+  width: min(90vw, 400px);
   box-shadow: 0 30px 60px -15px rgba(15, 23, 42, 0.35);
   animation: donationModalIn 0.28s ease;
   display: flex;
@@ -1560,49 +1560,51 @@ main {
 .donation-address-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: nowrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 8px 0;
 }
 
 .donation-address {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 0.82rem;
-  color: #0f172a;
-  padding: 6px 12px;
-  background-color: rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
-  white-space: nowrap;
-  flex: 0 0 auto;
-  display: inline-flex;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  color: #555;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
 }
 
 .donation-copy-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
-  background: #1f2937;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-  white-space: nowrap;
-  min-width: 94px;
-  justify-content: center;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #0052FF;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.2s;
 }
 
 .donation-copy-button:hover {
-  background-color: #111827;
   transform: translateY(-1px);
 }
 
-.donation-copy-button:active {
-  transform: translateY(0);
+.donation-copy-button svg {
+  flex-shrink: 0;
 }
+
+.donation-copy-button span {
+  display: inline-block;
+}
+
+
 
 /* Article Page Styles */
 .article-page {
