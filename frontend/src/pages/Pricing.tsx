@@ -112,7 +112,7 @@ function Pricing() {
             <div className="card-footer">
               <p className="fee-note">
                 <Zap size={14} />
-                Only network transaction fees apply (typically $0.001 - $0.01)
+                All network transaction fees are paid by Coinbase
               </p>
             </div>
           </div>
@@ -169,7 +169,6 @@ function Pricing() {
                   <span>Instant payments</span>
                 </div>
                 <div className="fee-item neutral">
-                  <span>Network fees: ~$0.001-$0.01</span>
                 </div>
               </div>
               <div className="total-fee positive-total">
@@ -185,7 +184,7 @@ function Pricing() {
             <h3>Understanding Network Fees</h3>
             <p>
               Network fees (also called "gas fees") are small charges required by blockchain networks 
-              to process transactions. <br></br> These fees don't go to Penny.io - they go to the network validators.
+              to process transactions. <br></br> These fees don't go to Penny.io - they go to the blockchain validators.
             </p>
             
             <div className="network-examples">
@@ -204,7 +203,8 @@ function Pricing() {
             </div>
             
             <p className="network-note">
-              We recommend using Polygon or Base networks for the lowest transaction costs.
+              Penny.io uses the Coinbase native x402 Facilitator.
+              Coinbase pays all netwok fees on Base. 
             </p>
           </div>
         </section>
@@ -223,8 +223,8 @@ function Pricing() {
                 <span className="calc-value free">$0.00</span>
               </div>
               <div className="calc-item">
-                <span className="calc-label">Network fee (Polygon)</span>
-                <span className="calc-value">~$0.002</span>
+                <span className="calc-label">Network fee (Base)</span>
+                <span className="calc-value">~$0.00</span>
               </div>
               <div className="calc-divider"></div>
               <div className="calc-item total">
@@ -233,7 +233,7 @@ function Pricing() {
               </div>
               <div className="calc-item total">
                 <span className="calc-label">Reader pays</span>
-                <span className="calc-value">~$0.102</span>
+                <span className="calc-value">~$0.10</span>
               </div>
             </div>
           </div>

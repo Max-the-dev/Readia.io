@@ -117,7 +117,8 @@ function About() {
           </div>
           <div className="team-content">
             <p>
-              My name is Maxim. An enthusiast who believe in the power of blockchain & decentralized content monetization.
+              My name is Maxim. 
+              An enthusiast who believe in the power of blockchain & decentralized content monetization.
             </p>
 
             
@@ -162,13 +163,13 @@ function About() {
             <p>
               The x402 protocol enables seamless micropayments for web content. Unlike traditional 
               payment systems that require expensive processing fees, x402 makes it economical to 
-              charge small amounts (as low as $0.01) for individual pieces of content.
+              charge small amounts (as low as $0.01) for individual pieces of content. 
             </p>
             
             <h3>Key Features</h3>
             <ul>
               <li><strong>Instant Payments:</strong> Payments are processed immediately upon article unlock</li>
-              <li><strong>Low Fees:</strong> Minimal transaction costs make micropayments viable</li>
+              <li><strong>Zero Fees:</strong> x402 payments are free for end-users</li>
               <li><strong>Multi-Chain Support:</strong> Compatible with Ethereum, Polygon, Base, and more</li>
               <li><strong>Secure:</strong> All transactions are secured by blockchain technology</li>
               <li><strong>Transparent:</strong> All payment flows are auditable and transparent</li>

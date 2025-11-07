@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PenTool, BookOpen } from 'lucide-react';
+import { PenTool, BookOpen, BookType } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 
 // We'll fetch real articles from the backend instead of using mock data
@@ -77,15 +77,23 @@ function Home() {
   return (
     <div className="home">
       <div className="hero">
-        <h1>Micropayments for Quality Content </h1>
-        <p>Pay only for what you read. No subscriptions, no ads. <br></br>Support creators directly with instant payments.</p>
+        <div className="hero-content">
+          <div className="hero-meta">
+            <span className="hero-powered-label">Powered by</span>
+            <span className="hero-powered-brand">Coinbase x402</span>
+          </div>
+          <h1>Content Monetization Reimagined</h1>
+          <p className="hero-subtitle">
+            Pay only for what you read—no subscriptions, no ads. Support creators directly with instant payments.
+          </p>
+        </div>
       </div>
       
       <div className="typing-cta-section">
         <div className="typing-cta-wrapper">
           <div className="typing-cta-container">
             <div className="logo-section">
-              <span className="typing-prefix">LOGO</span>
+              <span className="typing-prefix"><BookType size={18}></BookType></span>
             </div>
             <div className="typing-text-box">
               <span className="typing-text">

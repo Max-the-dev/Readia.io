@@ -137,17 +137,24 @@ main {
 /* Hero Section */
 .hero {
   text-align: center;
-  padding: 80px 0 1px;
+  padding: 80px 0 24px;
   max-width: 680px;
   margin: 0 auto;
   width: 100%;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
 .hero h1 {
   font-size: 3.5rem;
   font-weight: 800;
   line-height: 1.1;
-  margin-bottom: 24px;
+  margin: 0;
   letter-spacing: -1px;
   background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
   -webkit-background-clip: text;
@@ -155,11 +162,37 @@ main {
   background-clip: text;
 }
 
-.hero p {
+.hero-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #e1e8ed;
+  background-color: #ffffff;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.08);
+}
+
+.hero-powered-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.hero-powered-brand {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.hero-subtitle {
   font-size: 1.25rem;
   color: #536471;
-  margin-bottom: 40px;
+  margin: 0;
   line-height: 1.5;
+  max-width: 540px;
 }
 
 /* Typing CTA Section */
@@ -193,7 +226,7 @@ main {
   border-right: 1px solid #cbd5e1;
   display: flex;
   align-items: center;
-  min-width: 80px;
+  min-width: 50px;
 }
 
 .typing-prefix {

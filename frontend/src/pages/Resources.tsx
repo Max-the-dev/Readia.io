@@ -319,7 +319,7 @@ function Resources() {
           <div className="community-links">
             <div className="community-item">
               <div className="community-text">
-                <h3>Discord Community</h3>
+                <h3>X Community</h3>
                 <p>Join our X community to connect with other users, get help, and share feedback.</p>
               </div>
               <a href="#" className="community-link">
@@ -333,7 +333,7 @@ function Resources() {
                 <h3>GitHub Repository</h3>
                 <p>Contribute to the project, report bugs, and view our open-source code.</p>
               </div>
-              <a href="#" className="community-link">
+              <a href="https://github.com/mbeliogl/Penny.io" className="community-link" target='_blank' rel='noopener noreferrer'>
                 <ExternalLink size={16} />
                 View on GitHub
               </a>
