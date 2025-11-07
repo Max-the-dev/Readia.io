@@ -198,7 +198,7 @@ function Resources() {
               <h3>x402 Protocol Integration</h3>
               <p>Learn how Penny.io implements the x402 micropayment protocol for seamless content monetization.</p>
               <div className="doc-tags">
-                <span className="doc-tag">Protocol</span>
+                <span className="doc-tag">Documentation</span>
                 <span className="doc-tag">Technical</span>
               </div>
               <div className="doc-cta">

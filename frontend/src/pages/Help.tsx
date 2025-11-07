@@ -44,15 +44,15 @@ function Help() {
               <div className="faq-questions">
                 <details className="faq-question">
                   <summary>What wallets are supported?</summary>
-                  <p>We support MetaMask, Coinbase Wallet, WalletConnect, and most Ethereum-compatible wallets. Make sure your wallet is connected to a supported network.</p>
+                  <p>We support MetaMask, Coinbase Wallet, WalletConnect, Phantom, and most Ethereum-compatible wallets. Make sure your wallet is connected to a supported network.</p>
                 </details>
                 <details className="faq-question">
                   <summary>What are the transaction fees?</summary>
-                  <p>Network fees range from $0.001 on Polygon to $0.02 on Base. Penny.io charges no platform fees - you keep 100% of your earnings.</p>
+                  <p>Network fees range from $0.05 on Solana to $0.01 on Base. Penny.io charges no platform fees - you keep 100% of your earnings.</p>
                 </details>
                 <details className="faq-question">
                   <summary>Which networks are supported?</summary>
-                  <p>We support Ethereum, Polygon, Base, Optimism, and Arbitrum. We recommend using Polygon or Base for lower transaction fees.</p>
+                  <p>We support Base USDC, Sepolia Base (TestNet), and Solana USDC (coming soon). We recommend using Base USDC.</p>
                 </details>
               </div>
             </div>
@@ -104,7 +104,7 @@ function Help() {
                 <h3>Community</h3>
                 <p>Join our community for help from other users and updates.</p>
               </div>
-              <a href="#" className="contact-link">Join Community</a>
+              <a href="https://x.com/i/communities/1986841883000156422" className="contact-link" target='_blank' rel='noopener noreferrer'>Join Community</a>
             </div>
             
             <div className="contact-item">
@@ -115,7 +115,7 @@ function Help() {
                 <h3>Email Support</h3>
                 <p>Contact our support team for personalized assistance.</p>
               </div>
-              <a href="mailto:support@penny.io" className="contact-link">support@penny.io</a>
+              <a href="/Contact" className="contact-link">Send Message</a>
             </div>
           </div>
         </section>

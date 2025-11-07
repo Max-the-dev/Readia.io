@@ -5761,7 +5761,8 @@ main {
   font-size: 1.25rem;
   color: #666;
   line-height: 1.6;
-  margin: 0;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .resources-section {
@@ -6518,7 +6519,8 @@ main {
   font-size: 1.25rem;
   color: #666;
   line-height: 1.6;
-  margin: 0;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .help-section {
