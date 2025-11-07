@@ -2080,6 +2080,27 @@ main {
   animation: tipModalSlideIn 0.3s ease-out;
 }
 
+.tip-modal-content .donation-result {
+  margin-top: 20px;
+}
+
+.donation-tx-hash {
+  font-size: 0.85rem;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+.donation-tx-hash code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  display: inline-block;
+}
+
+
+
 @keyframes tipModalSlideIn {
   from {
     transform: scale(0.9) translateY(20px);

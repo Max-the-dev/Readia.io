@@ -30,8 +30,6 @@
 
 ## x402/payment system
 - Complete x402 payments production setup for mainnet
-- Donate full operational
-- tip system backend integration
 
 ## Styling/cleanup
 - logo/branding

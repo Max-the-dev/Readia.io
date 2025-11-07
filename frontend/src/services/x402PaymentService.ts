@@ -289,6 +289,84 @@ class X402PaymentService {
     }
   }
 
+    /**
+ * Tip article author using x402 payment */
+  async tip(
+    articleId: number,
+    amount: number,
+    walletClient: WalletClient,
+    networkOverride?: SupportedNetwork
+  ): Promise<PaymentResponse> {
+    try {
+      // First request without payment to get requirements from backend
+      const response1 = await fetch(this.buildRequestUrl(`/articles/${articleId}/tip`, networkOverride), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount })
+      });
+
+      if (response1.status === 402) {
+        const paymentData = await response1.json();
+        const paymentSpec = paymentData.accepts?.[0];
+        
+        if (!paymentSpec) {
+          throw new Error('No payment requirements returned');
+        }
+
+        const paymentRequirement: PaymentRequirement = {
+          price: paymentData.price,
+          network: paymentSpec.network,
+          facilitator: this.getFacilitatorUrl(),
+          to: paymentSpec.payTo,
+          accept: paymentSpec,
+          raw: paymentData
+        };
+
+        // Use backend requirements to create payment header
+        const encodedHeader = await this.createPaymentHeaderFromRequirements(
+          paymentRequirement,
+          walletClient
+        );
+
+        // Send payment
+        const response2 = await fetch(this.buildRequestUrl(`/articles/${articleId}/tip`, networkOverride), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-PAYMENT': encodedHeader
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        const result = await response2.json();
+
+        if (response2.ok && result.success) {
+          return {
+            success: true,
+            receipt: result.data?.receipt || 'Tip processed',
+            encodedHeader,
+            rawResponse: result
+          };
+        }
+
+        return {
+          success: false,
+          error: result?.error || 'Tip failed',
+          rawResponse: result
+        };
+      }
+
+      throw new Error(`Unexpected response: ${response1.status}`);
+
+    } catch (error) {
+      console.error('❌ Tip failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Tip failed',
+      };
+    }
+  }
+
   /**
    * Record article view (NO payment required - views are free)
    */

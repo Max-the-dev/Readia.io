@@ -28,6 +28,10 @@ function Article() {
   const [tipAmount, setTipAmount] = useState(0.05);
   const [isProcessingTip, setIsProcessingTip] = useState(false);
   const [hasTipped, setHasTipped] = useState(false);
+  const [selectedTipAmount, setSelectedTipAmount] = useState<number | null>(null);
+  const [customTipAmount, setCustomTipAmount] = useState('');
+  const [tipResult, setTipResult] = useState<{ success: boolean; message: string; txHash?: string } | null>(null);
+
 
   // Handle like count changes
   const handleLikeChange = (articleId: number, newLikeCount: number) => {
@@ -155,14 +159,48 @@ function Article() {
     }
   };
 
+  // x402 tip 
   const handleTip = async () => {
+  const amount = selectedTipAmount || parseFloat(customTipAmount);
+  
+    if (!isConnected || !walletClient) {
+      setTipResult({ success: false, message: 'Please connect your wallet to tip' });
+      return;
+    }
+
+    if (!amount || amount < 0.01 || amount > 100) {
+      setTipResult({ success: false, message: 'Please enter a valid tip amount ($0.01-$100.00)' });
+      return;
+    }
+
     setIsProcessingTip(true);
-    // Simulate tip processing
-    setTimeout(() => {
-      setHasTipped(true);
+    setTipResult(null);
+
+    try {
+      const result = await x402PaymentService.tip(article.id, amount, walletClient);
+
+      if (result.success) {
+        setHasTipped(true);
+        setTipResult({
+          success: true,
+          message: `Thank you for tipping $${amount.toFixed(2)}!`,
+          txHash: result.rawResponse?.data?.transactionHash
+        });
+      } else {
+        setTipResult({
+          success: false,
+          message: result.error || 'Tip failed. Please try again.'
+        });
+      }
+    } catch (error: any) {
+      console.error('Tip error:', error);
+      setTipResult({
+        success: false,
+        message: error.message || 'Failed to process tip'
+      });
+    } finally {
       setIsProcessingTip(false);
-      // Don't close modal automatically - let user see success message and close manually
-    }, 1500);
+    }
   };
 
   // Set default tip options
@@ -352,7 +390,10 @@ function Article() {
                       <button
                         key={amount}
                         className={`tip-option ${tipAmount === amount ? 'selected' : ''}`}
-                        onClick={() => setTipAmount(amount)}
+                        onClick={() => {
+                          setSelectedTipAmount(amount);
+                          setCustomTipAmount(''); // Clear custom input when preset is clicked
+                        }}
                       >
                         ${amount.toFixed(2)}
                       </button>
@@ -364,11 +405,14 @@ function Article() {
                   <label>Or enter custom amount:</label>
                   <input
                     type="number"
-                    min="0.01"
-                    max="1.00"
-                    step="0.01"
-                    value={tipAmount}
-                    onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0.01)}
+                    min="0.1"
+                    max="100"
+                    step="0.1"
+                    value={customTipAmount}
+                    onChange={(e) => {
+                      setCustomTipAmount(e.target.value);
+                      setSelectedTipAmount(null); // Clear preset selection when typing
+                    }}
                     className="tip-amount-input"
                   />
                 </div>
@@ -377,15 +421,20 @@ function Article() {
                   <button
                     className="tip-submit-button"
                     onClick={handleTip}
-                    disabled={isProcessingTip || tipAmount < 0.01 || tipAmount > 1.00}
+                    disabled={isProcessingTip || !isConnected || (!selectedTipAmount && !customTipAmount)}
                   >
-                    {isProcessingTip ? 'Processing...' : `Send Tip $${tipAmount.toFixed(2)}`}
+                    {isProcessingTip ? 'Processing...' : `Send Tip $${(selectedTipAmount || parseFloat(customTipAmount) || 0).toFixed(2)}`}
                   </button>
                 </div>
                 
-                {hasTipped && (
-                  <div className="tip-success">
-                    <p>✨ Tip sent successfully! Thank you for supporting the author.</p>
+                {tipResult && (
+                  <div className={`donation-result ${tipResult.success ? 'success' : 'error'}`}>
+                    <p>{tipResult.message}</p>
+                    {tipResult.txHash && (
+                      <p className="donation-tx-hash">
+                        Transaction: <code>{tipResult.txHash.slice(0, 10)}...{tipResult.txHash.slice(-8)}</code>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

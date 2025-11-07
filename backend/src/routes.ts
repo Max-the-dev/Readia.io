@@ -779,6 +779,173 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/articles/:id/tip - Tip article author with x402 payment
+router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Response) => {
+  try {
+    const articleId = parseInt(req.params.id);
+    const { amount } = req.body;
+    const paymentHeader = req.headers['x-payment'];
+
+    // Validate tip amount
+    if (!amount || typeof amount !== 'number' || amount < 0.01 || amount > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid tip amount. Must be between $0.01 and $100.00.'
+      });
+    }
+
+    // Get article to find author
+    const article = await db.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({
+        success: false,
+        error: 'Article not found'
+      });
+    }
+
+    const authorAddress = article.authorAddress;
+    const amountInMicroUSDC = Math.floor(amount * 1_000_000);
+    const network = process.env.X402_NETWORK || 'base-sepolia';
+    const usdcAddress = network === 'base-sepolia'
+      ? process.env.X402_TESTNET_USDC_ADDRESS
+      : process.env.X402_MAINNET_USDC_ADDRESS;
+
+    if (!usdcAddress) {
+      return res.status(500).json({
+        success: false,
+        error: 'Payment configuration error'
+      });
+    }
+
+    const paymentRequirement: PaymentRequirements = {
+      scheme: 'exact',
+      network,
+      maxAmountRequired: amountInMicroUSDC.toString(),
+      resource: `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${network}`,
+      description: `Tip for article: ${article.title}`,
+      mimeType: 'application/json',
+      payTo: authorAddress,
+      maxTimeoutSeconds: 300,
+      asset: usdcAddress,
+      outputSchema: {
+        input: {
+          type: 'http',
+          method: 'POST',
+          discoverable: true
+        }
+      },
+      extra: {
+        name: 'USDC',
+        version: '2',
+        title: `Tip $${amount} to author`,
+        category: 'tip',
+        tags: ['tip', 'author-support', 'article'],
+        serviceName: 'Penny.io Article Tip',
+        serviceDescription: `Tip the author of "${article.title}" with $${amount}`,
+        pricing: {
+          currency: 'USD',
+          amount: amount.toString(),
+          display: `$${amount.toFixed(2)}`
+        }
+      }
+    };
+
+    // If no payment header, return 402 with requirements
+    if (!paymentHeader) {
+      return res.status(402).json({
+        x402Version: 1,
+        error: 'Payment required',
+        price: `$${amount.toFixed(2)}`,
+        accepts: [paymentRequirement]
+      });
+    }
+
+    // Payment header provided - verify it
+    console.log(`💰 Processing $${amount} tip for article ${articleId} to ${authorAddress}`);
+
+    let paymentPayload: PaymentPayload;
+    try {
+      const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = PaymentPayloadSchema.parse(JSON.parse(decoded));
+    } catch (error) {
+      console.error('Invalid x402 payment header:', error);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid x402 payment header'
+      });
+    }
+
+    console.log('🔍 Verifying tip payment with CDP facilitator...');
+    const verification = await verifyWithFacilitator(paymentPayload, paymentRequirement);
+    
+    if (!verification.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment verification failed',
+        details: verification.invalidReason
+      });
+    }
+
+    const paymentRecipient = normalizeAddress(paymentPayload.payload.authorization.to);
+    if (paymentRecipient !== authorAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment recipient mismatch'
+      });
+    }
+
+    const payerAddress =
+      tryNormalizeAddress(verification.payer) ||
+      tryNormalizeAddress(
+        typeof paymentPayload.payload.authorization.from === 'string'
+          ? paymentPayload.payload.authorization.from
+          : ''
+      );
+
+    console.log('🔧 Settling tip via CDP facilitator...');
+    const settlement = await settleAuthorization(paymentPayload, paymentRequirement);
+
+    if ('error' in settlement) {
+      console.error('❌ Tip settlement failed:', settlement.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Tip settlement failed. Please try again.',
+        details: settlement.error
+      });
+    }
+
+    const txHash = settlement.txHash;
+
+    console.log(`✅ Tip successful: $${amount} from ${payerAddress || 'unknown'} to ${authorAddress}`);
+    if (txHash) {
+      console.log(`   Transaction: ${txHash}`);
+    }
+
+    // TODO: Optional - record tip in database for analytics
+    // await recordTip(articleId, authorAddress, amount, payerAddress, txHash);
+
+    return res.json({
+      success: true,
+      data: {
+        message: 'Thank you for tipping the author!',
+        receipt: `tip-${articleId}-${Date.now()}`,
+        amount,
+        transactionHash: txHash
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Tip processing error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process tip'
+    });
+  }
+});
+
+
+
+
 
 // Draft Routes
 
