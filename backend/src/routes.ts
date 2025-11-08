@@ -28,7 +28,7 @@ const db = new Database();
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Use CDP facilitator - auto-detects CDP_API_KEY_ID and CDP_API_KEY_SECRET from env
-const { verify: verifyWithFacilitator } = useFacilitator(facilitator);
+const { verify: verifyWithFacilitator, settle: settleWithFacilitator } = useFacilitator(facilitator);
 
 type SupportedX402Network = 'base' | 'base-sepolia';
 const DEFAULT_X402_NETWORK: SupportedX402Network =
@@ -162,12 +162,12 @@ function buildPaymentRequirement(article: Article, req: Request, network: Suppor
     description: `Purchase access to: ${article.title}`,
     mimeType: 'application/json',
     payTo: article.authorAddress,
-    maxTimeoutSeconds: 10,  // 15min to match x402 client default
+    maxTimeoutSeconds: 900,  // 15min to match x402 client default
     asset,
     //outputSchema: { data: "string" },
 
     extra: {
-      name: network === 'base' ? 'USDC Coin' : 'USDC',  // Different for mainnet,
+      name: network === 'base' ? 'USD Coin' : 'USDC',  // Different for mainnet,
       version: '2',
       title: `Purchase: ${article.title}`,
       category: article.categories?.[0] || 'content',
@@ -595,6 +595,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     // Settle authorization using CDP settle()
     const settlement = await settleAuthorization(paymentPayload, paymentRequirement);
+   
 
     // Type guard: check if it's an error response
     if ('error' in settlement) {
@@ -677,7 +678,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         }
       },
       extra: {
-        name: 'USDC',
+        name: network === 'base' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Donate $${amount} to Penny.io`,
         category: 'donation',
@@ -838,7 +839,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         }
       },
       extra: {
-        name: 'USDC',
+        name: network === 'base' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Tip $${amount} to author`,
         category: 'tip',

@@ -10,6 +10,9 @@
 import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import { constrainedMemory } from 'process';
 import { PaymentPayload, PaymentRequirements } from 'x402/types';
+import { facilitator } from "@coinbase/x402"
+
+
 
 interface SettleResponse {
   success: boolean;
@@ -38,20 +41,19 @@ export async function settleAuthorization(
     console.log('Value (micro USDC):', paymentPayload.payload.authorization.value);
     console.log('Nonce:', paymentPayload.payload.authorization.nonce);
     
-
     console.log('\n--- TIME WINDOW ---');
-    const validAfter = parseInt(paymentPayload.payload.authorization.validAfter);
-    const validBefore = parseInt(paymentPayload.payload.authorization.validBefore);
-    const now = Math.floor(Date.now() / 1000);
+    const validAfter = parseInt(paymentPayload.payload.authorization.validAfter, 10);
+    const validBefore = parseInt(paymentPayload.payload.authorization.validBefore, 10);
     const windowSeconds = validBefore - validAfter;
     const maxTimeout = paymentRequirements.maxTimeoutSeconds || 0;
-    
+    const sdkPaddingSeconds = 600; // x402 client backdates validAfter by 10 minutes
+    const allowedWindow = maxTimeout + sdkPaddingSeconds;
+
     console.log('ValidAfter:', validAfter, new Date(validAfter * 1000).toISOString());
     console.log('ValidBefore:', validBefore, new Date(validBefore * 1000).toISOString());
     console.log('Window Duration:', windowSeconds, 'seconds');
-    console.log('Max Timeout Allowed:', maxTimeout, 'seconds');
-    console.log('❌ VALIDATION:', windowSeconds <= maxTimeout ? '✅ PASS' : '❌ FAIL - Window too long!');
-    
+    console.log('Allowed Duration (incl. SDK padding):', allowedWindow, 'seconds');
+    console.log('❌ VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
     console.log('\n--- SIGNATURE ---');
     console.log('Signature:', paymentPayload.payload.signature);
     
@@ -60,14 +62,14 @@ export async function settleAuthorization(
     console.log('Asset (USDC):', paymentRequirements.asset);
     console.log('PayTo:', paymentRequirements.payTo);
     console.log('Resource:', paymentRequirements.resource);
-    
+    /*
     console.log('\n--- FULL PAYLOAD (for manual testing) ---');
     console.log(JSON.stringify({
       x402Version: 1,
       paymentPayload,
       paymentRequirements
     }, null, 2));
-    
+    */
     console.log('\n========== CALLING CDP SETTLE ==========\n');
     
     const requestPath = '/platform/v2/x402/settle';
