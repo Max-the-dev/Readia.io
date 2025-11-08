@@ -188,7 +188,8 @@ function Article() {
     setTipResult(null);
 
     try {
-      const result = await x402PaymentService.tip(article.id, amount, walletClient);
+      const network = getNetworkFromChain(chain?.id)
+      const result = await x402PaymentService.tip(article.id, amount, walletClient, network);
 
       if (result.success) {
         setHasTipped(true);

@@ -15,6 +15,7 @@ function Footer() {
   const [donationResult, setDonationResult] = useState<{ success: boolean; message: string; txHash?: string } | null>(null);
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
+
   // Platform donation address
   const platformAddress = '0x6945890b1c074414b813c7643ae10117dec1c8e7';
   const solanaAddress = 'AYL9ipxu2fEbNqWHujynNhdBzSVaeXmfimkWkVqEwPEv'; // Placeholder
@@ -40,6 +41,15 @@ function Footer() {
     setSelectedNetwork('usdc');
   };
 
+  // Dynamic chain detection to build correct payload
+  const { chain } = useAccount();
+
+  const getNetworkFromChain = (chainId?: number): 'base' | 'base-sepolia' => {
+  if (chainId === 8453) return 'base';          // Base mainnet
+  if (chainId === 84532) return 'base-sepolia'; // Base Sepolia
+  return 'base-sepolia'; // Default to testnet for safety
+  };
+
   // Donation using existing x402paymentservice functions
   const handleDonate = async () => {
     if (!isConnected || !walletClient) {
@@ -57,7 +67,8 @@ function Footer() {
     setDonationResult(null);
 
     try {
-      const result = await x402PaymentService.donate(amount, walletClient);
+      const network = getNetworkFromChain(chain?.id);
+      const result = await x402PaymentService.donate(amount, walletClient, network);
 
       if (result.success) {
         setDonationResult({

@@ -27,11 +27,11 @@ export async function settleAuthorization(
   paymentRequirements: PaymentRequirements
 ): Promise<{ txHash: string } | { error: string }> {
   try {
-    console.log('🔧 Settling payment via CDP API...');
-     console.log('🔧 SETTLEMENT DEBUG:');
+    //console.log('🔧 Settling payment via CDP API...');
+    console.log('🔧 SETTLEMENT DEBUG:');
     //console.log('📦 Full paymentPayload:', JSON.stringify(paymentPayload, null, 2));
     //console.log('📋 Full paymentRequirements:', JSON.stringify(paymentRequirements, null, 2));
-       console.log('\n========== CDP SETTLEMENT REQUEST ==========');
+    console.log('\n========== CDP SETTLEMENT REQUEST ==========');
     console.log('🔧 Network:', paymentPayload.network);
     console.log('📋 Scheme:', paymentPayload.scheme);
     
@@ -53,7 +53,8 @@ export async function settleAuthorization(
     console.log('ValidBefore:', validBefore, new Date(validBefore * 1000).toISOString());
     console.log('Window Duration:', windowSeconds, 'seconds');
     console.log('Allowed Duration (incl. SDK padding):', allowedWindow, 'seconds');
-    console.log('❌ VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
+    console.log('VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
+    
     console.log('\n--- SIGNATURE ---');
     console.log('Signature:', paymentPayload.payload.signature);
     
@@ -68,7 +69,6 @@ export async function settleAuthorization(
     const requestPath = '/platform/v2/x402/settle';
     const requestHost = 'api.cdp.coinbase.com';
 
-    
     // Generate JWT using CDP SDK
     const token = await generateJwt({
       apiKeyId: process.env.CDP_API_KEY_ID!,
@@ -79,7 +79,6 @@ export async function settleAuthorization(
       expiresIn: 120
     });
     
-    console.log(`Bearer ${token}`);
     // Call CDP settle endpoint directly
     const response = await fetch(`https://${requestHost}${requestPath}`, {
       method: 'POST',
@@ -97,7 +96,7 @@ export async function settleAuthorization(
     const result = await response.json() as SettleResponse;
     
     if (response.ok && result.success) {
-      console.log('✅ Settlement successful:', result.transaction);
+      console.log('✅ Settlement successful');
       return { txHash: result.transaction };
     }
     

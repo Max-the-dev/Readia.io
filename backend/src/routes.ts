@@ -613,6 +613,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     await recordArticlePurchase(articleId);
     await recordPayment(articleId, payerAddress || 'unknown', article.price, txHash);
 
+    console.log(`✅ Purchase successful: "${article.title}" (ID: ${article.id})`);
+    console.log(`   💰 Amount: $${article.price.toFixed(2)} | 🧾 From: ${payerAddress || 'unknown'} | ✉️ To: ${article.authorAddress}`);
+    if (txHash) {
+      console.log(`   🔗 Transaction: ${txHash}`);
+    }
+
     return res.json({
       success: true,
       data: {
@@ -648,8 +654,8 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const platformAddress = normalizeAddress('0x6945890B1c074414b813C7643aE10117dec1C8e7');
     const amountInMicroUSDC = Math.floor(amount * 1_000_000);
-    const network = process.env.X402_NETWORK || 'base-sepolia';
-    const usdcAddress = network === 'base-sepolia'
+    const networkPreference = resolveNetworkPreference(req);
+    const usdcAddress = networkPreference === 'base-sepolia'
       ? process.env.X402_TESTNET_USDC_ADDRESS
       : process.env.X402_MAINNET_USDC_ADDRESS;
 
@@ -662,9 +668,9 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
-      network,
+      network: networkPreference,
       maxAmountRequired: amountInMicroUSDC.toString(),
-      resource: `${req.protocol}://${req.get('host')}/api/donate?network=${network}`,
+      resource: `${req.protocol}://${req.get('host')}/api/donate?network=${networkPreference}`,
       description: `Donation to Penny.io platform - $${amount}`,
       mimeType: 'application/json',
       payTo: platformAddress,
@@ -678,7 +684,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         }
       },
       extra: {
-        name: network === 'base' ? 'USD Coin' : 'USDC',
+        name: networkPreference === 'base' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Donate $${amount} to Penny.io`,
         category: 'donation',
@@ -759,9 +765,9 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const txHash = settlement.txHash;
 
-    console.log(`✅ Donation successful: $${amount} from ${payerAddress || 'unknown'}`);
+    console.log(`✅ Donation successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${platformAddress}`);
     if (txHash) {
-      console.log(`   Transaction: ${txHash}`);
+      console.log(`   🔗 Transaction: ${txHash}`);
     }
 
     return res.json({
@@ -809,8 +815,8 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const authorAddress = article.authorAddress;
     const amountInMicroUSDC = Math.floor(amount * 1_000_000);
-    const network = process.env.X402_NETWORK || 'base-sepolia';
-    const usdcAddress = network === 'base-sepolia'
+    const networkPreference = resolveNetworkPreference(req);
+    const usdcAddress = networkPreference === 'base-sepolia'
       ? process.env.X402_TESTNET_USDC_ADDRESS
       : process.env.X402_MAINNET_USDC_ADDRESS;
 
@@ -823,9 +829,9 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
-      network,
+      network: networkPreference,
       maxAmountRequired: amountInMicroUSDC.toString(),
-      resource: `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${network}`,
+      resource: `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${networkPreference}`,
       description: `Tip for article: ${article.title}`,
       mimeType: 'application/json',
       payTo: authorAddress,
@@ -839,7 +845,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         }
       },
       extra: {
-        name: network === 'base' ? 'USD Coin' : 'USDC',
+        name: networkPreference === 'base' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Tip $${amount} to author`,
         category: 'tip',
@@ -920,9 +926,9 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const txHash = settlement.txHash;
 
-    console.log(`✅ Tip successful: $${amount} from ${payerAddress || 'unknown'} to ${authorAddress}`);
+    console.log(`✅ Tip successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${authorAddress}`);
     if (txHash) {
-      console.log(`   Transaction: ${txHash}`);
+      console.log(`   🔗 Transaction: ${txHash}`);
     }
 
     // TODO: Optional - record tip in database for analytics
