@@ -62,14 +62,7 @@ export async function settleAuthorization(
     console.log('Asset (USDC):', paymentRequirements.asset);
     console.log('PayTo:', paymentRequirements.payTo);
     console.log('Resource:', paymentRequirements.resource);
-    /*
-    console.log('\n--- FULL PAYLOAD (for manual testing) ---');
-    console.log(JSON.stringify({
-      x402Version: 1,
-      paymentPayload,
-      paymentRequirements
-    }, null, 2));
-    */
+   
     console.log('\n========== CALLING CDP SETTLE ==========\n');
     
     const requestPath = '/platform/v2/x402/settle';
