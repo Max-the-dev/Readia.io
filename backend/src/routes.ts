@@ -194,6 +194,7 @@ async function ensureAuthorRecord(address: string): Promise<Author> {
   const now = new Date().toISOString();
   const newAuthor: Author = {
     address: normalizedAddress,
+    primaryPayoutNetwork: 'base',
     createdAt: now,
     totalArticles: 0,
     totalEarnings: 0,
@@ -380,6 +381,9 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
       preview,
       price,
       authorAddress,
+      authorPrimaryNetwork: author.primaryPayoutNetwork,
+      authorSecondaryNetwork: author.secondaryPayoutNetwork,
+      authorSecondaryAddress: author.secondaryPayoutAddress,
       publishDate: now.split('T')[0], // YYYY-MM-DD format
       createdAt: now,
       updatedAt: now,

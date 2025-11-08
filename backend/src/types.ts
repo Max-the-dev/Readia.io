@@ -7,6 +7,9 @@ export interface Article {
   preview: string;
   price: number;
   authorAddress: string;
+  authorPrimaryNetwork?: string;
+  authorSecondaryNetwork?: string | null;
+  authorSecondaryAddress?: string | null;
   publishDate: string;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +24,9 @@ export interface Article {
 
 export interface Author {
   address: string;
+  primaryPayoutNetwork: 'base' | 'base-sepolia' | 'solana' | 'solana-devnet';
+  secondaryPayoutNetwork?: 'base' | 'base-sepolia' | 'solana' | 'solana-devnet';
+  secondaryPayoutAddress?: string;
   createdAt: string;
   totalEarnings: number;
   totalArticles: number;

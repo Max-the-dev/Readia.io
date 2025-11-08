@@ -4,18 +4,22 @@ import Database from './database';
 const testAuthors = [
   {
     address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb4',
+    primaryPayoutNetwork: 'base',
     createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days ago
   },
   {
     address: '0x1234567890abcdef1234567890abcdef12345678',
+    primaryPayoutNetwork: 'base',
     createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
   },
   {
     address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+    primaryPayoutNetwork: 'base',
     createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), // 45 days ago
   },
   {
     address: '0x9876543210fedcba9876543210fedcba98765432',
+    primaryPayoutNetwork: 'base',
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
   },
 ];

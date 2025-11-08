@@ -33,6 +33,9 @@ class Database {
       preview: row.preview,
       price: parseFloat(row.price),
       authorAddress: row.author_address,
+      authorPrimaryNetwork: row.author_primary_network || undefined,
+      authorSecondaryNetwork: row.author_secondary_network || undefined,
+      authorSecondaryAddress: row.author_secondary_address || undefined,
       publishDate: row.publish_date,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -52,6 +55,9 @@ class Database {
   private parseAuthorFromRow(row: any): Author {
     return {
       address: row.address,
+      primaryPayoutNetwork: row.primary_payout_network || 'base',
+      secondaryPayoutNetwork: row.secondary_payout_network || undefined,
+      secondaryPayoutAddress: row.secondary_payout_address || undefined,
       createdAt: row.created_at,
       totalEarnings: parseFloat(row.total_earnings) || 0,
       totalArticles: row.total_articles || 0,
@@ -138,6 +144,7 @@ class Database {
 
   async createArticle(article: Omit<Article, 'id'>): Promise<Article> {
     const normalizedAuthorAddress = normalizeAddress(article.authorAddress);
+    const primaryNetwork = article.authorPrimaryNetwork || 'base';
 
     const { data, error } = await supabase
       .from('articles')
@@ -147,6 +154,9 @@ class Database {
         preview: article.preview,
         price: article.price,
         author_address: normalizedAuthorAddress,
+        author_primary_network: primaryNetwork,
+        author_secondary_network: article.authorSecondaryNetwork || null,
+        author_secondary_address: article.authorSecondaryAddress || null,
         publish_date: article.publishDate,
         created_at: article.createdAt,
         updated_at: article.updatedAt,
@@ -345,11 +355,15 @@ class Database {
 
   async createOrUpdateAuthor(author: Author): Promise<Author> {
     const normalizedAddress = normalizeAddress(author.address);
+    const primaryNetwork = author.primaryPayoutNetwork || 'base';
 
     const { data, error } = await supabase
       .from('authors')
       .upsert({
         address: normalizedAddress,
+        primary_payout_network: primaryNetwork,
+        secondary_payout_network: author.secondaryPayoutNetwork || null,
+        secondary_payout_address: author.secondaryPayoutAddress || null,
         created_at: author.createdAt,
         total_earnings: author.totalEarnings,
         total_articles: author.totalArticles,
