@@ -9,17 +9,22 @@ import { Connection, PublicKey } from '@solana/web3.js';
 
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 // Circle devnet USDC mint (as of Nov 2025)
-const DEFAULT_USDC_MINT = '7XSz9ELXEfC9FqFMFZHTEPMJbFsV5poJnzC4bqukctsz';
+const DEFAULT_USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+// Hardcode your frequently used devnet wallet here (or via env var)
+const DEFAULT_DEVNET_WALLET = 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51';
 
 async function main() {
   const [addressArg, mintArg] = process.argv.slice(2);
-  if (!addressArg) {
+  const walletCandidate = addressArg || DEFAULT_DEVNET_WALLET;
+
+  if (!walletCandidate) {
     console.error('Usage: ts-node scripts/checkSolanaUsdcDevnet.ts <WALLET_ADDRESS> [MINT]');
+    console.error('       (or set SOLANA_DEVNET_WALLET env / edit DEFAULT_DEVNET_WALLET)');
     process.exit(1);
   }
 
   try {
-    const owner = new PublicKey(addressArg);
+    const owner = new PublicKey(walletCandidate);
     const mint = new PublicKey(mintArg || DEFAULT_USDC_MINT);
     const connection = new Connection(DEVNET_RPC, 'confirmed');
 
