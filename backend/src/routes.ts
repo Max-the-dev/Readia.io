@@ -1005,6 +1005,19 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     const asset = resolveAsset(networkPreference);
+    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
+    let feePayer: string | undefined;
+    if (networkGroup === 'solana') {
+      const rawFeePayer = await getFacilitatorFeePayer(networkPreference);
+      if (!rawFeePayer) {
+        console.error('[x402] Facilitator fee payer unavailable for donations on', networkPreference);
+        return res.status(503).json({
+          success: false,
+          error: 'Facilitator fee payer unavailable. Please try again shortly.'
+        });
+      }
+      feePayer = normalizeSolanaAddress(rawFeePayer);
+    }
 
     console.log(`[x402] Donation request on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
 
@@ -1033,9 +1046,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         tags: ['donation', 'platform-support'],
         serviceName: 'Penny.io Platform Donation',
         serviceDescription: `Support Penny.io platform with a $${amount} donation`,
-        ...(getNetworkGroup(networkPreference as SupportedX402Network) === 'solana'
-          ? { feePayer: payTo }
-          : {}),
+        ...(feePayer ? { feePayer } : {}),
         pricing: {
           currency: 'USD',
           amount: amount.toString(),
@@ -1080,10 +1091,15 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const paymentRecipient = normalizeRecipientForNetwork(
-      paymentPayload.payload.authorization.to as string,
-      networkPreference
-    );
+    let paymentRecipient: string;
+    if (networkGroup === 'solana') {
+      paymentRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
+    } else {
+      paymentRecipient = normalizeRecipientForNetwork(
+        paymentPayload.payload.authorization.to as string,
+        networkPreference
+      );
+    }
     const expectedPlatformRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
     if (paymentRecipient !== expectedPlatformRecipient) {
       return res.status(400).json({
@@ -1177,6 +1193,19 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     const asset = resolveAsset(networkPreference);
+    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
+    let feePayer: string | undefined;
+    if (networkGroup === 'solana') {
+      const rawFeePayer = await getFacilitatorFeePayer(networkPreference);
+      if (!rawFeePayer) {
+        console.error('[x402] Facilitator fee payer unavailable for tips on', networkPreference);
+        return res.status(503).json({
+          success: false,
+          error: 'Facilitator fee payer unavailable. Please try again shortly.'
+        });
+      }
+      feePayer = normalizeSolanaAddress(rawFeePayer);
+    }
 
     console.log(`[x402] Tip request for article ${articleId} on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
 
@@ -1205,9 +1234,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         tags: ['tip', 'author-support', 'article'],
         serviceName: 'Penny.io Article Tip',
         serviceDescription: `Tip the author of "${article.title}" with $${amount}`,
-        ...(getNetworkGroup(networkPreference as SupportedX402Network) === 'solana'
-          ? { feePayer: payTo }
-          : {}),
+        ...(feePayer ? { feePayer } : {}),
         pricing: {
           currency: 'USD',
           amount: amount.toString(),
@@ -1252,10 +1279,15 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
-    const paymentRecipient = normalizeRecipientForNetwork(
-      paymentPayload.payload.authorization.to as string,
-      networkPreference
-    );
+    let paymentRecipient: string;
+    if (networkGroup === 'solana') {
+      paymentRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
+    } else {
+      paymentRecipient = normalizeRecipientForNetwork(
+        paymentPayload.payload.authorization.to as string,
+        networkPreference
+      );
+    }
     const expectedTipRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
     if (paymentRecipient !== expectedTipRecipient) {
       return res.status(400).json({
