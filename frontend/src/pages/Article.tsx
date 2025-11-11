@@ -10,6 +10,10 @@ import LikeButton from '../components/LikeButton';
 import { sanitizeHTML } from '../utils/sanitize';
 import AppKitConnectButton from '../components/AppKitConnectButton';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
+import { useAppKitNetwork } from '@reown/appkit/react';
+
+
+
 
 
 // Article page now uses real API data instead of mock data
@@ -44,6 +48,16 @@ function Article() {
 
   // Dynamic chain detection to build correct payload
   const { chain } = useAccount();
+  const {caipNetworkId} = useAppKitNetwork();
+  const detectSolanaNetwork = (caip?: string): SupportedNetwork => {
+  if (!caip) return 'solana-devnet';
+  if (caip.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana';
+  if (caip.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
+  return 'solana-devnet';
+};
+  const resolvedSolanaNetwork = detectSolanaNetwork(caipNetworkId);
+  
+
 
   // Handle like count changes
   const handleLikeChange = (articleId: number, newLikeCount: number) => {
@@ -51,8 +65,6 @@ function Article() {
       setArticle(prev => prev ? { ...prev, likes: newLikeCount } : null);
     }
   };
-
-  const SOLANA_NETWORK = (import.meta.env.VITE_SOLANA_NETWORK as SupportedNetwork) || 'solana-devnet';
 
   const getNetworkFamily = (network?: SupportedAuthorNetwork | SupportedNetwork): 'base' | 'solana' => {
     if (!network) return 'base';
@@ -105,13 +117,21 @@ function Article() {
             );
           }
 
-          // Check if user has already paid for this article
-          if (address) {
+          // Check if user has already paid for this article (Base or Solana address)
+          const potentialPayers = [
+            address,
+            solanaSigner?.address
+          ].filter((value): value is string => Boolean(value));
+
+          for (const payer of potentialPayers) {
             const hasPaidBefore = await x402PaymentService.checkPaymentStatus(
               response.data.id,
-              address
+              payer
             );
-            setHasPaid(hasPaidBefore);
+            if (hasPaidBefore) {
+              setHasPaid(true);
+              break;
+            }
           }
         } else {
           setLoadError(response.error || 'Article not found');
@@ -125,7 +145,7 @@ function Article() {
     };
 
     fetchArticle();
-  }, [id, address]);
+  }, [id, address, solanaSigner?.address]);
 
   // Check if current user is the author of this article
   const isAuthor = Boolean(address && article && address === article.authorAddress);
@@ -185,7 +205,7 @@ function Article() {
     }
 
     const isSolanaSelected = selectedNetworkFamily === 'solana';
-    const selectedNetwork: SupportedNetwork = isSolanaSelected ? SOLANA_NETWORK : getNetworkFromChain(chain?.id);
+    const selectedNetwork: SupportedNetwork = isSolanaSelected ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
     setIsProcessingPayment(true);
     setPaymentError('');
@@ -240,7 +260,7 @@ function Article() {
     }
 
     const isSolanaSelected = selectedNetworkFamily === 'solana';
-    const selectedNetwork: SupportedNetwork = isSolanaSelected ? SOLANA_NETWORK : getNetworkFromChain(chain?.id);
+    const selectedNetwork: SupportedNetwork = isSolanaSelected ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
     if (isSolanaSelected && !solanaSigner) {
       setTipResult({ success: false, message: 'Please connect a Solana wallet to tip' });

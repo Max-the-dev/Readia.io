@@ -277,13 +277,11 @@ async function buildPaymentRequirement(
   const payTo = resolvePayTo(payoutProfile, network);
   const asset = resolveAsset(network);
   let feePayer: string | undefined;
-  console.log(`[x402] Building requirement for article ${article.id} on ${network} → payTo ${payTo}, asset ${asset}`);
 
   // use cached CDP feePayer for solana tx
   if (getNetworkGroup(network) === 'solana') {
     const rawFeePayer = await getFacilitatorFeePayer(network);
     feePayer = rawFeePayer ? normalizeSolanaAddress(rawFeePayer) : undefined;
-    console.log(`Fee Payer Set To: ${feePayer}`);
     if (!feePayer) {
       throw new Error('FACILITATOR_FEE_PAYER_UNAVAILABLE');
     }
@@ -911,13 +909,23 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    const payerAddress =
+    let payerAddress =
       tryNormalizeFlexibleAddress(verification.payer) ||
       tryNormalizeFlexibleAddress(
         typeof paymentPayload.payload.authorization.from === 'string'
           ? paymentPayload.payload.authorization.from
           : ''
     );
+
+    if (
+      payerAddress &&
+      getNetworkGroup(paymentRequirement.network as SupportedX402Network) === 'solana'
+    ) {
+      const ataOwner = await resolveSolanaAtaOwner(payerAddress, paymentRequirement.network as SupportedX402Network);
+      if (ataOwner) {
+        payerAddress = ataOwner;
+      }
+    }
 
     // Early check to query db if already paid for article BEFORE settlement goes out 
     if (payerAddress) {
@@ -1911,6 +1919,53 @@ async function checkPaymentStatus(articleId: number, userAddress: string): Promi
 
 async function recordPayment(articleId: number, userAddress: string, amount: number, transactionHash?: string): Promise<void> {
   await db.recordPayment(articleId, userAddress, amount, transactionHash);
+}
+
+async function resolveSolanaAtaOwner(ataAddress: string, network: SupportedX402Network): Promise<string | null> {
+  const rpcUrl =
+    network === 'solana'
+      ? process.env.SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com'
+      : process.env.SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+
+  try {
+    const response = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getAccountInfo',
+        params: [
+          ataAddress,
+          {
+            encoding: 'jsonParsed'
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      console.warn(`[solana] Failed to fetch ATA owner (status ${response.status})`);
+      return null;
+    }
+
+    const payload = await response.json() as {
+      result?: {
+        value?: {
+          data?: {
+            parsed?: {
+              info?: { owner?: string }
+            }
+          }
+        }
+      }
+    };
+    const owner = payload.result?.value?.data?.parsed?.info?.owner;
+    return owner ? normalizeSolanaAddress(owner) : null;
+  } catch (error) {
+    console.warn('[solana] Unable to resolve ATA owner', error);
+    return null;
+  }
 }
 
 export default router;

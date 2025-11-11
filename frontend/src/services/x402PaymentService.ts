@@ -1,8 +1,11 @@
 // x402 Payment Service for handling micropayments
 import { apiService } from './api';
 import { createPaymentHeader as createEncodedPaymentHeader } from 'x402/client';
+import type { X402Config } from 'x402/types/config';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
+import type { X402Config } from 'x402/types/config';
+
 
 export interface PaymentRequirement {
   price: string;
@@ -49,6 +52,16 @@ class X402PaymentService {
   private network: SupportedNetwork = (import.meta.env.VITE_X402_NETWORK === 'base' ? 'base' : 'base-sepolia');
   private readonly X402_VERSION = 1;
   private readonly apiBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+
+  private getSolanaRpcUrl(network: SupportedNetwork): string | undefined {
+    if (network === 'solana') {
+      return import.meta.env.VITE_SOLANA_MAINNET_RPC_URL;
+    }
+    if (network === 'solana-devnet') {
+      return import.meta.env.VITE_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
+    }
+    return undefined;
+  }
 
   private buildRequestUrl(endpoint: string, networkOverride?: SupportedNetwork): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -141,10 +154,15 @@ class X402PaymentService {
       if (!context.solanaSigner) {
         throw new Error('Please connect a Solana wallet to continue');
       }
+      const rpcUrl = this.getSolanaRpcUrl(requirementNetwork);
+      const x402Config: X402Config | undefined = rpcUrl ? { svmConfig: { rpcUrl } } : undefined;
+      console.log('[x402] Solana RPC URL:', rpcUrl, 'network:', requirementNetwork);
+
       const encodedHeader = await createEncodedPaymentHeader(
         context.solanaSigner,
         this.X402_VERSION,
-        requirement.accept
+        requirement.accept,
+        x402Config
       );
       console.log('🔐 Encoded x402 payment header (Solana):', encodedHeader);
       return encodedHeader;

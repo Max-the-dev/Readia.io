@@ -20,7 +20,6 @@ const AppKitConnectButton = () => {
   const { walletProvider: evmProvider } = useAppKitProvider('eip155');
   const { walletProvider: solanaProvider } = useAppKitProvider('solana');
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchBalance = async () => {
@@ -29,26 +28,23 @@ const AppKitConnectButton = () => {
         return;
       }
 
-      // Don't reset balance to null on re-fetch, prevents flickering
-      setIsLoading(true);
-
-      console.log('Fetching balance for:', {
-        address,
-        chainId,
-        caipNetworkId,
-        hasEvmProvider: !!evmProvider,
-        hasSolanaProvider: !!solanaProvider
-      });
+      // console.log('Fetching balance for:', {
+      //   address,
+      //   chainId,
+      //   caipNetworkId,
+      //   hasEvmProvider: !!evmProvider,
+      //   hasSolanaProvider: !!solanaProvider
+      // });
 
       try {
         // Check if it's a Solana network
         if (caipNetworkId && caipNetworkId.startsWith('solana:')) {
-          console.log('Detected Solana network:', caipNetworkId);
+          // console.log('Detected Solana network:', caipNetworkId);
           const usdcMint = USDC_ADDRESSES_SOLANA[caipNetworkId as keyof typeof USDC_ADDRESSES_SOLANA];
-          console.log('USDC Mint address:', usdcMint);
+          // console.log('USDC Mint address:', usdcMint);
 
           if (!usdcMint) {
-            console.log('Missing usdcMint for network:', caipNetworkId);
+            // console.log('Missing usdcMint for network:', caipNetworkId);
             setUsdcBalance(null);
             return;
           }
@@ -56,19 +52,15 @@ const AppKitConnectButton = () => {
           // Use Solana web3.js Connection to fetch balance (same approach as working script)
           const isMainnet = caipNetworkId.includes('5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
 
-          // Skip mainnet balance fetching to avoid rate limits (can be enabled with custom RPC)
-          if (isMainnet) {
-            console.log('Skipping Solana mainnet balance fetch (use custom RPC for mainnet)');
-            setUsdcBalance('0.00');
-            return;
-          }
+          const rpcUrl = isMainnet
+            ? 'https://mainnet.helius-rpc.com/?api-key=df097add-2a0e-43c5-a06d-468c8641b459'
+            : 'https://api.devnet.solana.com';
 
-          const rpcUrl = 'https://api.devnet.solana.com';
-          console.log('Connecting to Solana RPC:', rpcUrl);
+          // console.log('Connecting to Solana RPC:', rpcUrl);
           const connection = new Connection(rpcUrl, 'confirmed');
 
-          console.log('Fetching token accounts for address:', address);
-          console.log('USDC mint:', usdcMint);
+          // console.log('Fetching token accounts for address:', address);
+          // console.log('USDC mint:', usdcMint);
 
           const owner = new PublicKey(address);
           const mint = new PublicKey(usdcMint);
@@ -76,10 +68,10 @@ const AppKitConnectButton = () => {
           // Step 1: Get token accounts (same as working script)
           const accounts = await connection.getTokenAccountsByOwner(owner, { mint });
 
-          console.log('Token accounts found:', accounts.value.length);
+          // console.log('Token accounts found:', accounts.value.length);
 
           if (!accounts.value.length) {
-            console.log('No token account found, setting balance to 0.00');
+            // console.log('No token account found, setting balance to 0.00');
             setUsdcBalance('0.00');
             return;
           }
@@ -88,13 +80,13 @@ const AppKitConnectButton = () => {
           const balance = await connection.getTokenAccountBalance(accounts.value[0].pubkey);
           const uiAmount = balance.value.uiAmountString ?? '0';
 
-          console.log('Solana USDC balance:', uiAmount);
+          // console.log('Solana USDC balance:', uiAmount);
           setUsdcBalance(parseFloat(uiAmount).toFixed(2));
         } else {
           // EVM network (Base, Base Sepolia)
           const usdcAddress = USDC_ADDRESSES_EVM[chainId as keyof typeof USDC_ADDRESSES_EVM];
           if (!usdcAddress || !evmProvider) {
-            console.log('Missing USDC address or provider for EVM network');
+            // console.log('Missing USDC address or provider for EVM network');
             setUsdcBalance('0.00');
             return;
           }
@@ -114,20 +106,18 @@ const AppKitConnectButton = () => {
           // Convert hex to decimal and format (USDC has 6 decimals)
           const balance = BigInt(data as string);
           const formatted = (Number(balance) / 1_000_000).toFixed(2);
-          console.log('EVM USDC balance:', formatted);
+          // console.log('EVM USDC balance:', formatted);
           setUsdcBalance(formatted);
         }
       } catch (error) {
         console.error('Failed to fetch USDC balance:', error);
         // On error, default to 0.00 instead of null
         setUsdcBalance('0.00');
-      } finally {
-        setIsLoading(false);
       }
     };
 
     fetchBalance();
-    const interval = setInterval(fetchBalance, 10000); // Refresh every 10 seconds
+    const interval = setInterval(fetchBalance, 300000); // Refresh every 5 minutes
 
     return () => clearInterval(interval);
   }, [isConnected, address, chainId, caipNetworkId, evmProvider, solanaProvider]);

@@ -6,6 +6,7 @@ import { useAppKitProvider } from '@reown/appkit/react';
 import AppKitConnectButton from './AppKitConnectButton';
 import { x402PaymentService, type SupportedNetwork } from '../services/x402PaymentService';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
+import { useAppKitNetwork } from '@reown/appkit/react';
 
 
 function Footer() {
@@ -24,9 +25,18 @@ function Footer() {
     [solanaWalletProvider]
   );
 
-  const solanaAddress = 'AYL9ipxu2fEbNqWHujynNhdBzSVaeXmfimkWkVqEwPEv'; // Placeholder
+  // Dynamic network selection
+  const {caipNetworkId} = useAppKitNetwork();
+    const detectSolanaNetwork = (caip?: string): SupportedNetwork => {
+    if (!caip) return 'solana-devnet';
+    if (caip.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana';
+    if (caip.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
+    return 'solana-devnet';
+  };
+  const resolvedSolanaNetwork = detectSolanaNetwork(caipNetworkId);
+
+  const solanaAddress = 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51';
   const predefinedAmounts = [1, 5, 25, 50];
-  const SOLANA_NETWORK = (import.meta.env.VITE_SOLANA_NETWORK as SupportedNetwork) || 'solana-devnet';
   const isSolanaSelected = selectedNetworkFamily === 'solana';
   const isNetworkReady = isSolanaSelected
     ? Boolean(solanaSigner)
@@ -90,7 +100,9 @@ function Footer() {
     setIsProcessing(true);
     setDonationResult(null);
 
-    const network = isSolanaSelected ? SOLANA_NETWORK : getNetworkFromChain(chain?.id);
+    const network: SupportedNetwork = isSolanaSelected
+      ? resolvedSolanaNetwork
+      : getNetworkFromChain(chain?.id);
 
     try {
       const result = await x402PaymentService.donate(

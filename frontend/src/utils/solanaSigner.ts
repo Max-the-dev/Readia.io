@@ -27,11 +27,11 @@ export function createSolanaTransactionSigner(
   provider?: SolanaWalletProvider | null
 ): TransactionSigner | undefined {
   if (!provider) {
-    console.warn('[SolanaSigner] No provider received');
+    // console.warn('[SolanaSigner] No provider received');
     return undefined;
   }
 
-  console.log('[SolanaSigner] Provider keys:', Object.keys(provider));
+  // console.log('[SolanaSigner] Provider keys:', Object.keys(provider));
 
   if (typeof (provider as TransactionSigner).signTransactions === 'function') {
     return provider as TransactionSigner;
