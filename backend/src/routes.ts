@@ -815,6 +815,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
 
     // Basic guard to ensure amounts align before calling facilitator
+    console.log(`[x402] Purchase request for article ${articleId} on ${paymentRequirement.network} → payTo ${paymentRequirement.payTo}, asset ${paymentRequirement.asset}`);
     console.log('[x402] Received payment payload:', JSON.stringify(paymentPayload, null, 2));
     const requiredAmount = BigInt(paymentRequirement.maxAmountRequired);
     const authorization = paymentPayload.payload.authorization;
@@ -1019,8 +1020,6 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       feePayer = normalizeSolanaAddress(rawFeePayer);
     }
 
-    console.log(`[x402] Donation request on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
       network: networkPreference,
@@ -1066,6 +1065,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     // Payment header provided - verify it
+    console.log(`[x402] Donation request on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
     console.log(`💰 Processing donation of $${amount} to platform`);
 
     let paymentPayload: PaymentPayload;
@@ -1207,8 +1207,6 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       feePayer = normalizeSolanaAddress(rawFeePayer);
     }
 
-    console.log(`[x402] Tip request for article ${articleId} on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
       network: networkPreference,
@@ -1254,6 +1252,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     // Payment header provided - verify it
+    console.log(`[x402] Tip request for article ${articleId} on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
     console.log(`💰 Processing $${amount} tip for article ${articleId} to ${payTo}`);
 
     let paymentPayload: PaymentPayload;
