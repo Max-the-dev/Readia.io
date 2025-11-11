@@ -22,7 +22,9 @@ const wagmiAdapter = new WagmiAdapter({
   ssr: false,
 });
 
-const solanaAdapter = new SolanaAdapter();
+const solanaAdapter = new SolanaAdapter({
+  // No configuration - use defaults without auto-connect
+});
 
 
 
@@ -38,6 +40,12 @@ createAppKit({
     email: false,
     socials: [],
   },
+  enableWalletConnect: true,
+  enableInjected: true,
+  enableCoinbase: true,
+  enableEIP6963: true,
+  allowUnsupportedChain: false,
+  allWallets: 'SHOW',
 });
 
 export { wagmiAdapter };

@@ -36,6 +36,7 @@ function Footer() {
   const resolvedSolanaNetwork = detectSolanaNetwork(caipNetworkId);
 
   const solanaAddress = 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51';
+  const baseAddress = '0x6945890b1c074414b813c7643ae10117dec1c8e7';
   const predefinedAmounts = [1, 5, 25, 50];
   const isSolanaSelected = selectedNetworkFamily === 'solana';
   const isNetworkReady = isSolanaSelected
@@ -285,8 +286,12 @@ function Footer() {
               {/* Wallet Connection Check */}
               {!isNetworkReady && (
                 <div className="donation-warning">
-                  <p>Connect a {isSolanaSelected ? 'Solana' : 'Base'} wallet to donate.</p>
-                  <AppKitConnectButton />
+                  <p>
+                    {isSolanaSelected
+                      ? 'Connect a Solana wallet to donate in Solana USDC.'
+                      : 'Connect an EVM wallet to donate in Base USDC.'}
+                  </p>
+                  
                 </div>
               )}
               {/* Donate Button */}
@@ -296,7 +301,7 @@ function Footer() {
                 onClick={handleDonate}
                 disabled={isProcessing || !isNetworkReady || (!selectedAmount && !customAmount)}
               >
-                {isProcessing ? 'Processing...' : `Donate with ${isSolanaSelected ? 'Solana' : 'Base'} USDC`}
+                {isProcessing ? 'Processing...' : 'Send Donation'}
               </button>
               {/* Donation Result */}
               {donationResult && (
@@ -312,7 +317,7 @@ function Footer() {
               {isSolanaSelected && (
                 <div className="donation-manual-transfer">
                   <p className="donation-coming-soon-message">
-                    Prefer a manual Solana transfer? Send USDC to:
+                    Prefer a traditional transfer? Send SOL / USDC to:
                   </p>
                   <div className="donation-address-row">
                     <code className="donation-address-truncated">
@@ -338,6 +343,38 @@ function Footer() {
                   </div>
                   <p className="donation-full-address">
                     <small>Full address: <code>{solanaAddress}</code></small>
+                  </p>
+                </div>
+              )}
+              {!isSolanaSelected && (
+                <div className="donation-manual-transfer">
+                  <p className="donation-coming-soon-message">
+                    Prefer a traditional transfer? Send Base to:
+                  </p>
+                  <div className="donation-address-row">
+                    <code className="donation-address-truncated">
+                      {baseAddress.slice(0, 6)}...{baseAddress.slice(-4)}
+                    </code>
+                    <button
+                      type="button"
+                      className="donation-copy-button"
+                      onClick={() => handleCopyAddress(baseAddress)}
+                    >
+                      {copiedAddress === baseAddress ? (
+                        <>
+                          <Check size={14} />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="donation-full-address">
+                    <small>Full address: <code>{baseAddress}</code></small>
                   </p>
                 </div>
               )}

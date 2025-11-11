@@ -126,15 +126,7 @@ const AppKitConnectButton = () => {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <div style={{
-        display: 'inline-block',
-        minWidth: 'fit-content',
-        backgroundColor: '#1a1a1a',
-        borderRadius: '6px',
-        padding: '1px'
-      }}>
-        <appkit-button balance="hide" style={{ width: '100%' }} />
-      </div>
+      <appkit-button balance="hide" />
       {showUsdcBalance && (
         <div
           style={{
