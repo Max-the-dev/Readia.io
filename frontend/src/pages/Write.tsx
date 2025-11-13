@@ -319,6 +319,10 @@ function Write() {
         setIsTyping(false);
         await loadDrafts();
         console.log('[write] submitSuccess set to true');
+
+        // Scroll to top to show success message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
         window.setTimeout(() => {
           console.log('[write] Releasing submit success suppression flag');
           suppressSubmitClearRef.current = false;
@@ -676,55 +680,6 @@ function Write() {
             )}
 
 
-            {/* Action Buttons */}
-            <div className="article-actions">
-              <div className="article-actions-left">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showDrafts) {
-                      setShowDrafts(false);
-                    } else {
-                      loadDrafts();
-                      setShowDrafts(true);
-                    }
-                  }}
-                  className="action-btn draft-btn"
-                  disabled={loadingDrafts}
-                >
-                  <FileText size={18} />
-                  {loadingDrafts ? 'Loading...' : 'Load Draft'}
-                </button>
-                <button
-                  type="button"
-                  onClick={saveDraft}
-                  className="action-btn save-btn"
-                  disabled={isDraft}
-                >
-                  <Save size={18} />
-                  {isDraft ? 'Saved!' : 'Save Draft'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowPreview(true)}
-                  className="action-btn preview-btn"
-                  disabled={!title.trim() || !content.trim()}
-                >
-                  <Eye size={18} />
-                  Preview
-                </button>
-              </div>
-              <div className="article-actions-spacer" />
-              <button
-                type="submit"
-                className="action-btn publish-btn"
-                disabled={isSubmitting}
-              >
-                <Send size={18} />
-                {isSubmitting ? 'Publishing...' : 'Publish Article'}
-              </button>
-            </div>
-
             {/* Draft Selection Modal */}
             {showDrafts && (
               <div className="draft-modal">
@@ -988,26 +943,6 @@ function Write() {
                 </div>
               </div>
                 <div className="tinymce-wrapper">
-                <div className="editor-status">
-                  <div className="status-chip">
-                    {isTyping || isAutoSaving ? (
-                      <>
-                        <Loader2 className="status-icon spin saving" size={14} />
-                        <span>Saving…</span>
-                      </>
-                    ) : lastAutoSaveAt ? (
-                      <>
-                        <Check className="status-icon saved" size={14} />
-                        <span>Saved {lastAutoSaveAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Dot className="status-icon idle" size={14} />
-                        <span>Idle</span>
-                      </>
-                    )}
-                  </div>
-                </div>
                 <Editor
                   apiKey="7ahasmo84ufchymcd8xokq6qz4l1lh2zdf1wnucvaaeuaxci"
                   value={content}
@@ -1017,7 +952,7 @@ function Write() {
                     clearSubmitError();
                   }}
                   init={{
-                    height: 700,
+                    height: 800,
                     menubar: false,
                     resize: false,
                     statusbar: false,
@@ -1090,6 +1025,85 @@ function Write() {
                     smart_paste: true
                   }}
                 />
+              </div>
+            </div>
+
+            {/* Sticky Action Bar */}
+            <div className="write-actions-bar">
+              <div className="actions-bar-left">
+                <div className="actions-bar-status">
+                  {isTyping || isAutoSaving ? (
+                    <>
+                      <Loader2 className="status-icon spin saving" size={14} />
+                      <span>Saving changes...</span>
+                    </>
+                  ) : lastAutoSaveAt ? (
+                    <>
+                      <Check className="status-icon saved" size={14} />
+                      <span>Last saved at {lastAutoSaveAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Dot className="status-icon idle" size={14} />
+                      <span>No changes</span>
+                    </>
+                  )}
+                </div>
+                <div className="actions-bar-wordcount">
+                  <span>{wordCount} words</span>
+                  <div className="actions-bar-divider" />
+                  <span className={charCount > MAX_CONTENT_LENGTH * 0.9 ? 'char-warning' : ''}>
+                    {charCount.toLocaleString()}/{MAX_CONTENT_LENGTH.toLocaleString()} chars
+                  </span>
+                </div>
+              </div>
+              <div className="actions-bar-right">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (showDrafts) {
+                      setShowDrafts(false);
+                    } else {
+                      loadDrafts();
+                      setShowDrafts(true);
+                      // Scroll to top after state updates (next frame)
+                      setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }, 0);
+                    }
+                  }}
+                  className="action-btn draft-btn"
+                  disabled={loadingDrafts}
+                >
+                  <FileText size={18} />
+                  {loadingDrafts ? 'Loading...' : 'Drafts'}
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDraft}
+                  className="action-btn save-btn"
+                  disabled={isDraft}
+                >
+                  <Save size={18} />
+                  {isDraft ? 'Saved!' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(true)}
+                  className="action-btn preview-btn"
+                  disabled={!title.trim() || !content.trim()}
+                >
+                  <Eye size={18} />
+                  Preview
+                </button>
+                <button
+                  type="submit"
+                  className="action-btn publish-btn"
+                  disabled={isSubmitting}
+                >
+                  <Send size={18} />
+                  {isSubmitting ? 'Publishing...' : 'Publish'}
+                </button>
               </div>
             </div>
 

@@ -1,4 +1,7 @@
-/* Remove all global AppKit overrides - they were causing modal styling issues */
+/* AppKit Modal Overrides - Clean up gray backgrounds */
+wui-card[role="alertdialog"] {
+  background: white !important;
+}
 
 /* App Component Styles */
 .App {
@@ -3120,7 +3123,7 @@ main {
 .paywall-accepts-line {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -3130,31 +3133,16 @@ main {
   letter-spacing: 0.01em;
 }
 
-.network-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid #e4e7ec;
-  background-color: #ffffff;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #5c5f66;
-  white-space: nowrap;
-}
-
-.network-badge img {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-}
-
-.paywall-accepts__badges {
+.paywall-accepts__icons {
   display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+
+.network-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
 }
 
 .paywall-divider {
@@ -3275,27 +3263,73 @@ main {
 }
 
 .pay-button {
-  background-color: #1a1a1a;
-  color: white;
+  width: clamp(260px, 80%, 360px);
+  min-height: 56px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgb(15, 15, 15);
   border: none;
-  padding: 16px 32px;
-  border-radius: 8px;
-  font-size: 1.125rem;
+  color: #ffffff;
   font-weight: 600;
+  gap: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-bottom: 4px;
+  box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+  transition: color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease;
+  border-radius: 8px;
+  margin: 8px auto 4px;
+}
+
+.pay-button::before {
+  width: calc(100% + 40px);
+  aspect-ratio: 1 / 1;
+  position: absolute;
+  content: "";
+  background-color: #ffffff;
+  border-radius: 50%;
+  left: -20px;
+  top: 50%;
+  transform: translate(-150%, -50%);
+  transition-duration: 0.35s;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.pay-button:hover:not(:disabled)::before {
+  transform: translate(0, -50%);
 }
 
 .pay-button:hover:not(:disabled) {
-  background-color: #2a2a2a;
-  transform: translateY(-2px);
+  color: #0f0f0f;
+}
+
+.pay-button:active:not(:disabled) {
+  transform: translateY(4px);
+  transition-duration: 0.3s;
 }
 
 .pay-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.pay-button__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  color: inherit;
+}
+
+.pay-button__label {
+  position: relative;
+  z-index: 1;
+  color: inherit;
 }
 
 .paywall-footnote {
@@ -3961,7 +3995,7 @@ main {
   font-weight: 500;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   min-width: 120px;
   justify-content: center;
@@ -5106,7 +5140,7 @@ main {
 .article-inputs {
   display: flex;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   align-items: flex-start;
 }
 
@@ -5137,7 +5171,8 @@ main {
   padding: 12px 16px;
   border: 1px solid #e1e8ed;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
   outline: none;
   transition: border-color 0.2s ease;
   font-family: inherit;
@@ -5195,25 +5230,124 @@ main {
   margin-bottom: 24px;
 }
 
+/* Sticky Action Bar */
+.write-actions-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e1e8ed;
+  padding: 16px 24px;
+  margin: 0 -24px -24px -24px; /* Extend to form edges */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+  backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.actions-bar-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.actions-bar-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.actions-bar-wordcount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.actions-bar-divider {
+  width: 1px;
+  height: 16px;
+  background-color: #e1e8ed;
+}
+
+.actions-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Compact action buttons in sticky bar */
+.actions-bar-right .action-btn {
+  min-width: 100px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+}
+
+.actions-bar-right .publish-btn {
+  min-width: 140px;
+}
+
 /* Mobile responsiveness for action buttons */
 @media (max-width: 768px) {
+  .write-actions-bar {
+    padding: 12px 16px;
+    margin: 0 -24px -24px -24px;
+  }
+
+  .actions-bar-left {
+    display: none; /* Hide status on mobile to save space */
+  }
+
+  .actions-bar-right {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .actions-bar-right .action-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    gap: 4px;
+  }
+
+  .actions-bar-right .action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .actions-bar-right .publish-btn {
+    flex: 1.5; /* Slightly larger */
+    min-width: 80px;
+  }
+
   .article-actions {
     flex-direction: column;
     gap: 12px;
     align-items: stretch;
   }
-  
+
   .article-actions-left {
     order: 2;
     flex-direction: column;
     gap: 8px;
     width: 100%;
   }
-  
+
   .article-actions-spacer {
     display: none;
   }
-  
+
   .action-btn {
     justify-content: center;
     width: 100%;
@@ -9011,6 +9145,12 @@ main {
   text-align: center;
 }
 
+.category-tag:hover:not(.disabled):not(.selected) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
 
 .category-tag.selected {
   background-color: #00ba7c;

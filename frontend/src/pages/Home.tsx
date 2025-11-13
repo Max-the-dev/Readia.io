@@ -14,7 +14,9 @@ function Home() {
     "Pay only for what you read",
     "No subscriptions",
     "No ads",
-    "Empower AI agents with knowledge"
+    "No middlement",
+    "100% Free",
+    "Sign up, publish, get paid"
   ];
 
   // Utility function to strip HTML tags from preview text

@@ -39,12 +39,12 @@ const modal = createAppKit({
     '--apkt-accent': '#1a1a1a',                 // Black accent for buttons/interactions
     '--apkt-color-mix': '#1a1a1a',
     '--apkt-color-mix-strength': 0,             // Minimal color mixing - keep it clean B&W
-    '--apkt-border-radius-master': '0px',       // Completely square - no rounded corners
-    '--apkt-border-radius-xl': '0px',
-    '--apkt-border-radius-l': '0px',
-    '--apkt-border-radius-m': '0px',
-    '--apkt-border-radius-s': '0px',
-    '--apkt-border-radius-xs': '0px',
+    '--apkt-border-radius-master': '8px',       // Subtle rounded corners (match wallet button)
+    '--apkt-border-radius-xl': '8px',
+    '--apkt-border-radius-l': '8px',
+    '--apkt-border-radius-m': '6px',
+    '--apkt-border-radius-s': '4px',
+    '--apkt-border-radius-xs': '4px',
     '--apkt-z-index': 1000,
     '--apkt-gray-glass-001': 'rgba(255, 255, 255, 1)',  // Clean white backgrounds
     '--apkt-gray-glass-002': 'rgba(248, 249, 250, 1)',  // Match nav hover (#f8f9fa)

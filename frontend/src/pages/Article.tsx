@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
-import { Clock, User, Lock, HeartHandshake, Tag } from 'lucide-react';
+import { Clock, User, Lock, HeartHandshake, Tag, Coins } from 'lucide-react';
 import { apiService, Article as ArticleType, type AuthorWallet, type SupportedAuthorNetwork } from '../services/api';
 import { x402PaymentService, type SupportedNetwork } from '../services/x402PaymentService';
 import { useAccount, useWalletClient } from 'wagmi';
@@ -554,9 +554,16 @@ function Article() {
                         onClick={handlePayment}
                         disabled={isProcessingPayment}
                       >
-                        {isProcessingPayment
-                          ? 'Processing...'
-                          : `Pay $${article.price.toFixed(2)}`}
+                        <span className="pay-button__label">
+                          {isProcessingPayment
+                            ? 'Processing...'
+                            : `Pay $${article.price.toFixed(2)}`}
+                        </span>
+                        <Coins
+                          size={18}
+                          aria-hidden="true"
+                          className="pay-button__icon"
+                        />
                       </button>
 
                       {paymentError && (
@@ -574,17 +581,12 @@ function Article() {
                     <div className="paywall-footer__row">
                       <div className="paywall-accepts-line">
                         <span className="network-label">Author accepts:</span>
-                        <div className="paywall-accepts__badges">
+                        <div className="paywall-accepts__icons">
                           {availableNetworkFamilies.includes('base') && (
-                            <span className="network-badge" key="base">
-                              <img src="/icons/base.png" alt="Base icon" />
-                            </span>
+                            <img src="/icons/base.png" alt="Base icon" className="network-icon" />
                           )}
                           {availableNetworkFamilies.includes('solana') && (
-                            <span className="network-badge" key="solana">
-                              <img src="/icons/solana.png" alt="Solana icon" />
-              
-                            </span>
+                            <img src="/icons/solana.png" alt="Solana icon" className="network-icon" />
                           )}
                         </div>
                       </div>
