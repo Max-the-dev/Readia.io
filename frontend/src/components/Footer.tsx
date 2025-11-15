@@ -6,6 +6,8 @@ import { useAppKitProvider } from '@reown/appkit/react';
 import { x402PaymentService, type SupportedNetwork } from '../services/x402PaymentService';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
 import { useAppKitNetwork } from '@reown/appkit/react';
+import { useNetworkIconByCaipId } from '../hooks/useNetworkAssets';
+import { NETWORK_FALLBACK_ICONS, NETWORK_FAMILY_DEFAULTS } from '../constants/networks';
 
 
 function Footer() {
@@ -56,15 +58,25 @@ function Footer() {
   const baseAddress = '0xEc115640B09416a59fE77e4e7b852fE700Fa6bF1';
   const predefinedAmounts = [1, 5, 25, 50];
   const DONATION_STORAGE_KEY = 'penny:lastDonation';
-  const DONATION_NETWORK_META: Record<'base' | 'solana', { title: string; icon: string }> = {
+  const DONATION_NETWORK_META: Record<'base' | 'solana', { title: string; caipNetworkId: string }> = {
     base: {
       title: 'Base USDC',
-      icon: '/icons/base.png',
+      caipNetworkId: NETWORK_FAMILY_DEFAULTS.base,
     },
     solana: {
       title: 'Solana USDC',
-      icon: '/icons/solana.png',
+      caipNetworkId: NETWORK_FAMILY_DEFAULTS.solana,
     },
+  };
+  const donationNetworkIcons = {
+    base: useNetworkIconByCaipId(
+      DONATION_NETWORK_META.base.caipNetworkId,
+      NETWORK_FALLBACK_ICONS[DONATION_NETWORK_META.base.caipNetworkId]
+    ),
+    solana: useNetworkIconByCaipId(
+      DONATION_NETWORK_META.solana.caipNetworkId,
+      NETWORK_FALLBACK_ICONS[DONATION_NETWORK_META.solana.caipNetworkId]
+    ),
   };
   const isSolanaSelected = selectedNetworkFamily === 'solana';
   const isSelectedNetworkReady = isSolanaSelected
@@ -96,12 +108,12 @@ function Footer() {
       return {
         family,
         title: meta.title,
-        helperText: meta.helperText,
-        icon: meta.icon,
+        helperText: '',
+        icon: donationNetworkIcons[family] || NETWORK_FALLBACK_ICONS[meta.caipNetworkId],
         ...status,
       };
     });
-  }, [isConnected, walletClient, solanaSigner]);
+  }, [isConnected, walletClient, solanaSigner, donationNetworkIcons.base, donationNetworkIcons.solana]);
   const handleCopyAddress = async (address: string) => {
     try {
       if (navigator?.clipboard?.writeText) {
@@ -599,9 +611,11 @@ function Footer() {
                                 persistDonationPreferences({ networkFamily: option.family });
                               }}
                             >
-                              <span className="method-card__icon" aria-hidden="true">
-                                <img src={option.icon} alt="" />
-                              </span>
+                          {option.icon && (
+                            <span className="method-card__icon" aria-hidden="true">
+                              <img src={option.icon} alt="" />
+                            </span>
+                          )}
                               <span className="method-card__body">
                                 <span className="method-card__title">{option.title}</span>
                                 <span className="method-card__helper">{option.helperText}</span>

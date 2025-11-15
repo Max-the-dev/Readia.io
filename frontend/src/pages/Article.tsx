@@ -11,19 +11,21 @@ import { sanitizeHTML } from '../utils/sanitize';
 import AppKitConnectButton from '../components/AppKitConnectButton';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
 import { useAppKitNetwork } from '@reown/appkit/react';
+import { useNetworkIconByCaipId } from '../hooks/useNetworkAssets';
+import { NETWORK_FALLBACK_ICONS, NETWORK_FAMILY_DEFAULTS } from '../constants/networks';
 
 type NetworkFamily = 'base' | 'solana';
 
-const NETWORK_META: Record<NetworkFamily, { title: string; helperText: string; icon: string }> = {
+const NETWORK_META: Record<NetworkFamily, { title: string; helperText: string; caipNetworkId: string }> = {
   base: {
     title: 'Base USDC',
     helperText: '',
-    icon: '/icons/base.png',
+    caipNetworkId: NETWORK_FAMILY_DEFAULTS.base,
   },
   solana: {
     title: 'Solana USDC',
     helperText: '',
-    icon: '/icons/solana.png',
+    caipNetworkId: NETWORK_FAMILY_DEFAULTS.solana,
   },
 };
 
@@ -38,6 +40,18 @@ function Article() {
   const { isConnected, address } = useWallet();
   const { data: walletClient } = useWalletClient();
   const { walletProvider: solanaWalletProvider } = useAppKitProvider('solana');
+  const networkIcons = {
+    base: useNetworkIconByCaipId(
+      NETWORK_META.base.caipNetworkId,
+      NETWORK_FALLBACK_ICONS[NETWORK_META.base.caipNetworkId]
+    ),
+    solana: useNetworkIconByCaipId(
+      NETWORK_META.solana.caipNetworkId,
+      NETWORK_FALLBACK_ICONS[NETWORK_META.solana.caipNetworkId]
+    ),
+  };
+  const baseIconSrc = networkIcons.base ?? NETWORK_FALLBACK_ICONS[NETWORK_META.base.caipNetworkId];
+  const solanaIconSrc = networkIcons.solana ?? NETWORK_FALLBACK_ICONS[NETWORK_META.solana.caipNetworkId];
   const solanaSigner = useMemo(
     () => createSolanaTransactionSigner(solanaWalletProvider),
     [solanaWalletProvider]
@@ -102,10 +116,10 @@ function Article() {
         family,
         title: meta.title,
         helperText: meta.helperText,
-        icon: meta.icon,
+        icon: networkIcons[family] ?? NETWORK_FALLBACK_ICONS[meta.caipNetworkId],
       };
     });
-  }, [availableNetworkFamilies]);
+  }, [availableNetworkFamilies, baseIconSrc, solanaIconSrc]);
 
   const tipMethodOptions = useMemo( () =>
     paymentMethodOptions.filter(option => 
@@ -538,9 +552,11 @@ function Article() {
                                 className={`method-card${isActive ? ' is-active' : ''}`}
                                 onClick={() => setSelectedNetworkFamily(option.family)}
                               >
-                                <span className="method-card__icon" aria-hidden="true">
-                                  <img src={option.icon} alt="" />
-                                </span>
+                                {option.icon && (
+                                  <span className="method-card__icon" aria-hidden="true">
+                                    <img src={option.icon} alt="" />
+                                  </span>
+                                )}
                                 <span className="method-card__body">
                                   <span className="method-card__title">{option.title}</span>
                                   <span className="method-card__helper">{option.helperText}</span>
@@ -598,11 +614,11 @@ function Article() {
                       <div className="paywall-accepts-line">
                         <span className="network-label">Author accepts:</span>
                         <div className="paywall-accepts__icons">
-                          {availableNetworkFamilies.includes('base') && (
-                            <img src="/icons/base.png" alt="Base icon" className="network-icon" />
+                          {availableNetworkFamilies.includes('base') && baseIconSrc && (
+                            <img src={baseIconSrc} alt="Base icon" className="network-icon" />
                           )}
-                          {availableNetworkFamilies.includes('solana') && (
-                            <img src="/icons/solana.png" alt="Solana icon" className="network-icon" />
+                          {availableNetworkFamilies.includes('solana') && solanaIconSrc && (
+                            <img src={solanaIconSrc} alt="Solana icon" className="network-icon" />
                           )}
                         </div>
                       </div>
@@ -776,9 +792,11 @@ function Article() {
                               className={`method-card${isActive ? ' is-active' : ''}`}
                               onClick={() => setSelectedTipNetworkFamily(option.family)}
                             >
-                              <span className="method-card__icon" aria-hidden="true">
-                                <img src={option.icon} alt="" />
-                              </span>
+                              {option.icon && (
+                                <span className="method-card__icon" aria-hidden="true">
+                                  <img src={option.icon} alt="" />
+                                </span>
+                              )}
                               <span className="method-card__body">
                                 <span className="method-card__title">{option.title}</span>
                                 <span className="method-card__helper">{option.helperText}</span>

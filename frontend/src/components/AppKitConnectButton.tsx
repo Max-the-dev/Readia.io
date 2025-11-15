@@ -3,6 +3,8 @@ import { useAppKitAccount, useAppKitNetwork, useAppKitProvider } from '@reown/ap
 import { useAppKit, useWalletInfo } from '@reown/appkit/react';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { WalletMinimal } from 'lucide-react';
+import { useNetworkIcon } from '../hooks/useNetworkAssets';
+import { NETWORK_FALLBACK_ICONS } from '../constants/networks';
 
 // USDC contract addresses for EVM chains
 const USDC_ADDRESSES_EVM = {
@@ -18,7 +20,7 @@ const USDC_ADDRESSES_SOLANA = {
 
 const AppKitConnectButton = () => {
   const { address, isConnected } = useAppKitAccount();
-  const { chainId, caipNetworkId } = useAppKitNetwork();
+  const { chainId, caipNetworkId, caipNetwork } = useAppKitNetwork();
   const { walletProvider: evmProvider } = useAppKitProvider('eip155');
   const { walletProvider: solanaProvider } = useAppKitProvider('solana');
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
@@ -133,24 +135,10 @@ const AppKitConnectButton = () => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  // Get network icon URL
-  const getNetworkIcon = () => {
-    if (!caipNetworkId) return null;
-
-    // Solana networks
-    if (caipNetworkId.startsWith('solana:')) {
-      return 'https://avatars.githubusercontent.com/u/35608259?s=200&v=4'; // Solana logo
-    }
-
-    // Base networks
-    if (chainId === 8453 || chainId === 84532) {
-      return 'https://avatars.githubusercontent.com/u/108554348?s=200&v=4'; // Base logo
-    }
-
-    return null;
-  };
-
-  const networkIcon = getNetworkIcon();
+  const connectedNetworkIcon = useNetworkIcon(
+    caipNetwork,
+    caipNetworkId ? NETWORK_FALLBACK_ICONS[caipNetworkId] : undefined
+  );
 
   const isWalletConnected = isConnected && Boolean(address);
 
@@ -174,9 +162,9 @@ const AppKitConnectButton = () => {
                 className="wallet-icon"
               />
             )}
-            {networkIcon && (
+            {connectedNetworkIcon && (
               <img
-                src={networkIcon}
+                src={connectedNetworkIcon}
                 alt="Network"
                 className="network-icon"
               />

@@ -38,6 +38,8 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import { isAddress as isEvmAddress } from 'viem';
 import { getEnsName } from 'viem/actions';
+import { useNetworkIconByCaipId } from '../hooks/useNetworkAssets';
+import { NETWORK_FAMILY_DEFAULTS, NETWORK_FALLBACK_ICONS } from '../constants/networks';
 
 
 type NetworkFamily = 'base' | 'solana';
@@ -50,11 +52,6 @@ const truncateAddress = (value?: string | null) => {
 const networkSwatches: Record<NetworkFamily, { label: string; color: string }> = {
   base: { label: 'Base', color: '#2563eb' },
   solana: { label: 'Solana', color: '#16a34a' },
-};
-
-const networkIconMap: Record<NetworkFamily, string> = {
-  base: 'https://avatars.githubusercontent.com/u/108554348?s=200&v=4',
-  solana: 'https://avatars.githubusercontent.com/u/35608259?s=200&v=4',
 };
 
 const getNetworkFamily = (network?: SupportedAuthorNetwork | null): NetworkFamily => {
@@ -448,8 +445,16 @@ function Dashboard() {
   const secondaryDisplayFamily: NetworkFamily = secondaryWalletExists
     ? getNetworkFamily(author?.secondaryPayoutNetwork)
     : complementaryNetworkFamily;
-  const primaryNetworkIcon = networkIconMap[primaryNetworkFamily];
-  const secondaryNetworkIcon = networkIconMap[secondaryDisplayFamily];
+  const primaryNetworkCaipId = NETWORK_FAMILY_DEFAULTS[primaryNetworkFamily];
+  const secondaryNetworkCaipId = NETWORK_FAMILY_DEFAULTS[secondaryDisplayFamily];
+  const primaryNetworkIcon = useNetworkIconByCaipId(
+    primaryNetworkCaipId,
+    NETWORK_FALLBACK_ICONS[primaryNetworkCaipId]
+  );
+  const secondaryNetworkIcon = useNetworkIconByCaipId(
+    secondaryNetworkCaipId,
+    NETWORK_FALLBACK_ICONS[secondaryNetworkCaipId]
+  );
 
   const validateSecondaryAddress = (value: string) => {
     const trimmed = value.trim();
@@ -633,7 +638,7 @@ function Dashboard() {
     }
   };
 
-  const reconcileWalletSession = (nextAuthor: Autthor) => {
+  const reconcileWalletSession = (nextAuthor: Author) => {
     const connected = normalizeWalletForComparison(address);
     const primary = normalizeWalletForComparison(nextAuthor.address);
     const secondary = normalizeWalletForComparison(nextAuthor.secondaryPayoutAddress);

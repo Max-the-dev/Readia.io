@@ -1230,6 +1230,19 @@ main {
   color: #94a3b8;
 }
 
+.network-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.network-info .network-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
 .wallet-summary-trigger-wrapper {
   display: flex;
   align-items: center;
@@ -1472,6 +1485,8 @@ main {
   .wallet-summary-trigger-wrapper {
     width: 100%;
     justify-content: flex-start;
+    margin-right: 0;
+    margin-bottom: 8px;
   }
 
   .wallet-info-row {

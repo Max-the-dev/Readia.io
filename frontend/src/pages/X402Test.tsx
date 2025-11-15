@@ -5,17 +5,23 @@ import { useAppKitNetwork, useAppKitProvider, useWalletInfo } from '@reown/appki
 import { x402PaymentService, type PaymentRequirement, type PaymentExecutionContext, type SupportedNetwork } from '../services/x402PaymentService';
 import { useWallet } from '../contexts/WalletContext';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
+import { useNetworkIcon } from '../hooks/useNetworkAssets';
+import { NETWORK_FALLBACK_ICONS } from '../constants/networks';
 
 const X402Test: React.FC = () => {
   const { address, isConnected } = useWallet();
   const chainId = useChainId();
   const { data: walletClient } = useWalletClient();
-  const { caipNetworkId, chainId: appKitChainId } = useAppKitNetwork();
+  const { caipNetworkId, chainId: appKitChainId, caipNetwork } = useAppKitNetwork();
   const { walletProvider: solanaWalletProvider } = useAppKitProvider('solana');
   const { walletInfo } = useWalletInfo();
   const solanaSigner = useMemo(
     () => createSolanaTransactionSigner(solanaWalletProvider),
     [solanaWalletProvider]
+  );
+  const currentNetworkIcon = useNetworkIcon(
+    caipNetwork,
+    caipNetwork?.caipNetworkId ? NETWORK_FALLBACK_ICONS[caipNetwork.caipNetworkId] : undefined
   );
 
   const [currentPaymentReq, setCurrentPaymentReq] = useState<PaymentRequirement | null>(null);
@@ -382,13 +388,18 @@ Encoded Header:
             <div className="info-grid">
               <div className="info-row">
                 <span className="info-label">Network</span>
-                <span className="info-value">{currentNetworkName}</span>
+                <span className="info-value network-info">
+                  {currentNetworkIcon && (
+                    <img src={currentNetworkIcon} alt={`${currentNetworkName} icon`} className="network-icon" />
+                  )}
+                  {currentNetworkName}
+                </span>
               </div>
-              <div className="info-row">
+              <div className="info-row info-row-type">
                 <span className="info-label">Type</span>
                 <span className="info-value">{isSolanaNetwork ? 'SVM' : isEvmNetwork ? 'EVM' : 'Unknown'}</span>
               </div>
-              <div className="info-row">
+              <div className="info-row info-row-identifier">
                 <span className="info-label">Identifier</span>
                 <span className="info-value mono-text small">
                   {isSolanaNetwork ? normalizedCaipId || '—' : chainId ?? '—'}
@@ -658,7 +669,7 @@ Encoded Header:
 
         .info-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.6fr) minmax(280px, 1.8fr);
           gap: 20px;
           margin-bottom: 16px;
           padding-bottom: 16px;
@@ -669,6 +680,14 @@ Encoded Header:
           display: flex;
           flex-direction: column;
           gap: 8px;
+        }
+
+        .info-row-type {
+          max-width: 200px;
+        }
+
+        .info-row-identifier {
+          min-width: 260px;
         }
 
         .info-row.status-row {
@@ -886,6 +905,12 @@ Encoded Header:
 
           .info-grid {
             grid-template-columns: 1fr;
+          }
+
+          .info-row-type,
+          .info-row-identifier {
+            max-width: none;
+            min-width: 0;
           }
 
           .info-row-horizontal {
