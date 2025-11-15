@@ -669,29 +669,19 @@ Encoded Header:
 
         .info-grid {
           display: grid;
-          grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.6fr) minmax(280px, 1.8fr);
-          gap: 20px;
+          grid-template-columns: minmax(260px, 0.35fr) minmax(150px, 0.3fr) minmax(320px, 0.35fr);
+          column-gap: clamp(32px, 4vw, 72px);
+          row-gap: 16px;
           margin-bottom: 16px;
           padding-bottom: 16px;
           border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+          width: 100%;
         }
 
         .info-row {
           display: flex;
           flex-direction: column;
           gap: 8px;
-        }
-
-        .info-row-type {
-          max-width: 200px;
-        }
-
-        .info-row-identifier {
-          min-width: 260px;
-        }
-
-        .info-row.status-row {
-          margin-top: 8px;
         }
 
         .info-row-horizontal {
@@ -706,6 +696,28 @@ Encoded Header:
           flex-direction: column;
           gap: 8px;
           flex: 1;
+        }
+
+        .info-row-type {
+          align-items: center;
+          justify-self: center;
+          text-align: center;
+        }
+
+        .info-row-type .info-value {
+          font-size: 14px;
+        }
+
+        .info-row-identifier {
+          min-width: 320px;
+        }
+
+        .info-row-identifier .info-value {
+          white-space: nowrap;
+        }
+
+        .info-row.status-row {
+          margin-top: 8px;
         }
 
         .info-label {
@@ -909,8 +921,13 @@ Encoded Header:
 
           .info-row-type,
           .info-row-identifier {
-            max-width: none;
             min-width: 0;
+            justify-self: flex-start;
+          }
+
+          .info-row-type {
+            align-items: flex-start;
+            text-align: left;
           }
 
           .info-row-horizontal {
