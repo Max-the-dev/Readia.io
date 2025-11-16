@@ -83,8 +83,8 @@ Dev-Notes/
 Dev_Notes/
 x402_Documentation
 
-# Docs 
-User_Facing_Content
+# Public Docs
+whitepaper.md
 
 # OS generated files
 .DS_Store

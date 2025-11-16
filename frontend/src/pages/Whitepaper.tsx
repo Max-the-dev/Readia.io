@@ -6,7 +6,7 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function Whitepaper() {
   const heroStats = [
@@ -48,33 +48,127 @@ function Whitepaper() {
     },
   ];
 
+  const heroFlow = useMemo(
+    () => [
+      {
+        title: 'Authorize',
+        detail: 'Reader signs the typed data payload in their wallet.',
+        duration: '~2s',
+      },
+      {
+        title: 'Verify',
+        detail: 'Penny validates x402 requirement & signature off-chain.',
+        duration: '<1s',
+      },
+      {
+        title: 'Settle',
+        detail: 'USDC routes to the author wallet across Base or Solana.',
+        duration: 'Immediate',
+      },
+      {
+        title: 'Unlock',
+        detail: 'Reader keeps permanent access, no subscription needed.',
+        duration: 'Forever',
+      },
+    ],
+    [],
+  );
+
+  const narrativeImpact = [
+    { label: 'Unlock speed', value: '~3 seconds' },
+    { label: 'Revenue share', value: '100% to the writer' },
+    { label: 'Account creation', value: '0 required logins' },
+  ];
+
   const [activeNarrative, setActiveNarrative] = useState(0);
+  const [activeFlow, setActiveFlow] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveFlow((prev) => (prev + 1) % heroFlow.length);
+    }, 3600);
+
+    return () => clearInterval(interval);
+  }, [heroFlow.length]);
 
   return (
     <div className="whitepaper-page">
       <div className="container">
         {/* Hero Section */}
         <div className="whitepaper-hero">
-          <div className="whitepaper-hero-grid">
-            <div className="whitepaper-hero-content">
-              <p className="eyebrow">Wallet-native publishing</p>
-              <h1>
-                Penny.io Whitepaper
-                <span>Pay-per-article access for the real web.</span>
-              </h1>
-              <p className="hero-subtitle">
-                Pay for exactly what you read, route USDC directly to the author, and unlock content
-                in one signature. Penny turns HTTP 402 into a live payment rail that feels instant
-                for readers and dependable for writers.
-              </p>
-              <div className="whitepaper-meta">
-                <span>Version 1.0</span>
-                <span aria-hidden="true">•</span>
-                <span>March 2025</span>
+          <div className="hero-background-grid" aria-hidden="true" />
+          <div className="hero-canvas">
+            {heroStats.map((stat, index) => (
+              <div className={`hero-orbit hero-orbit--${index}`} key={stat.label}>
+                <div className="hero-stat-card">
+                  <div className="hero-stat-icon">{stat.icon}</div>
+                  <div>
+                    <p className="hero-stat-label">{stat.label}</p>
+                    <p className="hero-stat-value">{stat.value}</p>
+                  </div>
+                </div>
               </div>
-              <div className="hero-stat-grid">
+            ))}
+            <div className="hero-core">
+              <div className="hero-core-text whitepaper-hero-content">
+                <p className="eyebrow hero-pill">Wallet-native publishing</p>
+                <h1>
+                  Penny.io Whitepaper
+                  <span>Pay-per-article access for the real web.</span>
+                </h1>
+                <p className="hero-subtitle">
+                  Pay for exactly what you read, route USDC directly to the author, and unlock
+                  content in one signature. Penny turns HTTP 402 into a live payment rail that feels
+                  instant for readers and dependable for writers.
+                </p>
+                <div className="whitepaper-meta">
+                  <span>Version 1.0</span>
+                  <span aria-hidden="true">•</span>
+                  <span>March 2025</span>
+                </div>
+              </div>
+              <div className="hero-core-body">
+                <div className="hero-flow-ribbon" role="list" aria-label="Instant payment process">
+                  {heroFlow.map((step, index) => (
+                    <button
+                      type="button"
+                      className={`hero-flow-step ${activeFlow === index ? 'active' : ''}`}
+                      key={step.title}
+                      onMouseEnter={() => setActiveFlow(index)}
+                      onFocus={() => setActiveFlow(index)}
+                      aria-pressed={activeFlow === index}
+                    >
+                      <div>
+                        <span className="hero-flow-index" aria-hidden="true">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="hero-flow-title">{step.title}</p>
+                          <span>{step.detail}</span>
+                        </div>
+                      </div>
+                      <span className="hero-flow-time">{step.duration}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="whitepaper-video-card hero-video-shell hero-core-video" role="group" aria-label="Video walkthrough slot">
+                  <div className="video-card-glow" aria-hidden="true" />
+                  <p>Founder walkthrough</p>
+                  <h3>Drop the Penny intro video here</h3>
+                  <div className="video-card-actions">
+                    <button type="button" className="video-card-button" disabled aria-disabled="true">
+                      <PlayCircle aria-hidden="true" />
+                      <span>Preview coming soon</span>
+                    </button>
+                    <span className="video-card-note">
+                      Reserve this slot for your marketing video. Supports embeds from any provider.
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="hero-mobile-stats" aria-label="Wallet-native callouts">
                 {heroStats.map((stat) => (
-                  <div className="hero-stat-card" key={stat.label}>
+                  <div className="hero-stat-card" key={`mobile-${stat.label}`}>
                     <div className="hero-stat-icon">{stat.icon}</div>
                     <div>
                       <p className="hero-stat-label">{stat.label}</p>
@@ -83,27 +177,13 @@ function Whitepaper() {
                   </div>
                 ))}
               </div>
-              <div className="trust-badges" aria-label="Supported networks and standards">
+              <div className="hero-trust-rainbow" aria-label="Supported networks and standards">
                 <span>Base</span>
                 <span>Solana</span>
                 <span>USDC</span>
                 <span>x402</span>
                 <span>AppKit</span>
                 <span>Phantom</span>
-              </div>
-            </div>
-            <div className="whitepaper-video-card" role="group" aria-label="Video walkthrough slot">
-              <div className="video-card-glow" aria-hidden="true" />
-              <p>Founder walkthrough</p>
-              <h3>Drop the Penny intro video here</h3>
-              <div className="video-card-actions">
-                <button type="button" className="video-card-button" disabled aria-disabled="true">
-                  <PlayCircle aria-hidden="true" />
-                  <span>Preview coming soon</span>
-                </button>
-                <span className="video-card-note">
-                  Reserve this slot for your marketing video. Supports embeds from any provider.
-                </span>
               </div>
             </div>
           </div>
@@ -114,7 +194,7 @@ function Whitepaper() {
 
         {/* Storyline Section */}
         <section className="whitepaper-section narrative-section" aria-labelledby="narrative-title">
-          <div className="whitepaper-content narrative-grid">
+          <div className="whitepaper-content narrative-stack">
             <div className="narrative-intro">
               <p className="eyebrow">Why this matters</p>
               <h2 id="narrative-title">Legacy paywalls break trust. Penny rebuilds it.</h2>
@@ -128,24 +208,54 @@ function Whitepaper() {
                 <li>Writers get per-article pricing with instant payouts to Base or Solana.</li>
                 <li>Platforms deliver better UX without touching user funds.</li>
               </ul>
-            </div>
-            <div className="narrative-cards">
-              {narrativeCards.map((card, index) => (
-                <button
-                  type="button"
-                  className={`narrative-card ${activeNarrative === index ? 'active' : ''}`}
-                  key={card.title}
-                  onMouseEnter={() => setActiveNarrative(index)}
-                  onFocus={() => setActiveNarrative(index)}
-                >
-                  <span className="narrative-index">{`0${index + 1}`}</span>
-                  <div>
-                    <h3>{card.title}</h3>
-                    <p>{card.description}</p>
-                    <span className="narrative-stat">{card.stat}</span>
+              <div className="narrative-impact" aria-label="Proof points">
+                {narrativeImpact.map((item) => (
+                  <div className="narrative-impact-card" key={item.label}>
+                    <p>{item.label}</p>
+                    <strong>{item.value}</strong>
                   </div>
-                </button>
-              ))}
+                ))}
+              </div>
+            </div>
+            <div className="narrative-marquee" aria-label="Storyline cards">
+              <div className="narrative-marquee-track">
+                {narrativeCards.map((card, index) => (
+                  <button
+                    type="button"
+                    className={`narrative-card ${activeNarrative === index ? 'active' : ''}`}
+                    key={card.title}
+                    onMouseEnter={() => setActiveNarrative(index)}
+                    onFocus={() => setActiveNarrative(index)}
+                  >
+                    <span className="narrative-index">{`0${index + 1}`}</span>
+                    <div>
+                      <h3>{card.title}</h3>
+                      <p>{card.description}</p>
+                      <span className="narrative-stat">{card.stat}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="narrative-diagram narrative-diagram--full">
+              <div className="narrative-diagram-node">
+                <p>Reader</p>
+                <span>Wallet signature</span>
+              </div>
+              <div className="narrative-diagram-connector" />
+              <div className="narrative-diagram-node">
+                <p>Penny</p>
+                <span>x402 verification</span>
+              </div>
+              <div className="narrative-diagram-connector" />
+              <div className="narrative-diagram-node">
+                <p>Author</p>
+                <span>Instant payout</span>
+              </div>
+              <div className="narrative-diagram-note">
+                <p>{narrativeCards[activeNarrative].title}</p>
+                <span>{narrativeCards[activeNarrative].stat}</span>
+              </div>
             </div>
           </div>
         </section>
