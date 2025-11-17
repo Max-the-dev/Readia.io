@@ -1,4 +1,5 @@
 import {
+  ArrowDown,
   ArrowRightCircle,
   FileText,
   MousePointerClick,
@@ -18,11 +19,40 @@ import type { CSSProperties } from 'react';
 // Data used to drive the “typing” animation in the faux editor header
 const INTRO_LINES = [
   { type: 'title', text: 'Penny.io Whitepaper' },
-  { type: 'subtitle', text: 'Wallet-native micropayments on Base + Solana' },
-  { type: 'meta', text: 'Auto-save enabled • March 2025 build' },
+  { type: 'subtitle', text: 'A new way to monetize written content' },
+  { type: 'meta', text: 'Last edited • November 17, 2025' },
 ] as const;
 
 // Each section defines its heading, copy, and the “Paste” button label
+const FLOW_LANES = [
+  {
+    key: 'legacy',
+    title: 'Legacy Paywalls',
+    emoji: '🧱',
+    tagline: 'Friction stacked at every step',
+    steps: [
+      { icon: '🔁', label: 'Redirect', detail: 'Paywall hijacks the reading surface to a subscription portal.' },
+      { icon: '📝', label: 'Form Fill', detail: 'Name, email, password, and card info collected all at once.' },
+      { icon: '⏳', label: 'Processor Wait', detail: 'Card network and fraud checks add 15–60s of dead air.' },
+      { icon: '🏦', label: 'Platform Hold', detail: 'Publisher pays platform fees & waits weeks for a payout.' },
+      { icon: '🚫', label: 'Access Lost', detail: 'Miss a renewal and the article re-locks instantly.' },
+    ],
+  },
+  {
+    key: 'penny',
+    title: 'Penny + x402',
+    emoji: '⚡️',
+    tagline: 'Secure and fast',
+    steps: [
+      { icon: '🖱️', label: 'Stay In Place', detail: 'Reader taps "Pay" and never leaves the article view.' },
+      { icon: '✍️', label: 'Sign Once', detail: 'Wallet shows one signature request — no accounts, no cards.' },
+      { icon: '🛰️', label: 'Instant Verify', detail: 'x402 facilitator validates payload in ~3 seconds.' },
+      { icon: '💸', label: 'Direct Payout', detail: 'USDC settles straight to the author’s wallet on Base/Solana.' },
+      { icon: '📚', label: 'Own Forever', detail: 'Access is recorded on-chain, so access never expires.' },
+    ],
+  },
+] as const;
+
 const SECTION_DEFINITIONS = [
   {
     key: 'problem',
@@ -37,8 +67,8 @@ const SECTION_DEFINITIONS = [
           despite providing limited value.
         </p>
         <p>
-          The result is abandoned tabs, unsupported authors, and a pervasive belief that quality
-          knowledge has to hide behind yet another checkout form.
+          The result is abandoned tabs, struggling authors, and a pervasive belief that quality
+          content has to hide behind yet another checkout form.
         </p>
       </>
     ),
@@ -46,21 +76,19 @@ const SECTION_DEFINITIONS = [
   {
     key: 'thesis',
     insertLabel: 'Next block: 2. Our Thesis',
-    title: '2. Our Thesis',
+    title: '2. The Thesis',
     body: (
       <>
         <p>
-          Content should feel as fluid as sending a message. Pay for exactly what you read, own your
-          access forever, and route funds directly to the author in seconds. Penny.io puts wallets
-          (not walled gardens) at the center of publishing so economics stay transparent and creators
-          stay in control.
+          In 2025, publishing and accessing content should feel as fluid as sending a message. We believe you should only pay 
+          for what you read, own your access forever, and reward the creator directly. Penny.io puts creators 
+          at the center, and economics stay transparent because the user is always in control.
         </p>
         <ul>
           <li>No custodial accounts, no dark pools of revenue-share math.</li>
-          <li>Wallet-native unlocks mean authors can see, audit, and move their earnings instantly.</li>
+          <li>Blockchain-based economy means writers can audit, access, and move their earnings instantly.</li>
           <li>
-            Readers only sign once; everything else is x402 automation stitched into HTTP&apos;s
-            long-reserved “Payment Required”.
+            Readers choose what they pay for. Click buy; everything else is x402 magic.  
           </li>
         </ul>
       </>
@@ -76,16 +104,14 @@ const SECTION_DEFINITIONS = [
           <strong>Per-article pricing:</strong> writers choose a price between $0.01 and $1.00.
         </li>
         <li>
-          <strong>Wallet-native unlocks:</strong> readers sign once via Phantom, MetaMask, or AppKit
+          <strong>Wallet-based purchase:</strong> readers sign the tx via wallet of choice
           and gain permanent access.
         </li>
         <li>
-          <strong>Dual-network payouts:</strong> Base + Solana wallets receive funds immediately—no
-          custodial account required.
+          <strong>Dual chain support:</strong> Base and Solana USDC wallets fully supported. 
         </li>
         <li>
-          <strong>x402 protocol:</strong> authorization off-chain, settlement on-chain so speed stays
-          high while fees stay negligible.
+          <strong>x402 protocol:</strong> Secure, free, and fast transactions. 
         </li>
       </ul>
     ),
@@ -94,55 +120,13 @@ const SECTION_DEFINITIONS = [
     key: 'flow',
     insertLabel: 'Next block: Payment Flow Comparison',
     title: '4. Payment Flow Comparison',
-    body: (
-      <div className="editor-flow">
-        <div className="editor-flow-column">
-          <h4>Legacy Paywalls</h4>
-          <ol>
-            <li>Redirect to sign-up or subscription page.</li>
-            <li>Enter card + personal info while the article disappears.</li>
-            <li>Wait for processor approval (15–60s) and hope it succeeds.</li>
-            <li>Platform settles with author weeks later.</li>
-            <li>Reader loses access if the subscription lapses.</li>
-          </ol>
-        </div>
-        <div className="editor-flow-column">
-          <h4>Penny + x402</h4>
-          <ol>
-            <li>Click “Unlock Article”.</li>
-            <li>Sign one authorization in your wallet.</li>
-            <li>Backend verifies instantly (~3s) and logs the payment.</li>
-            <li>Payout routes directly to the author wallet.</li>
-            <li>Access stays tied to the wallet forever.</li>
-          </ol>
-        </div>
-      </div>
-    ),
+    body: <FlowComparisonDiagram />,
   },
   {
     key: 'value',
     insertLabel: 'Next block: 5. Why It Matters',
     title: '5. Why It Matters',
-    body: (
-      <div className="value-grid">
-        <article className="value-card">
-          <h4>Readers</h4>
-          <p>No subscriptions, no invasive signups, and one wallet popup.</p>
-          <p>Pay only for what you consume and keep it forever.</p>
-        </article>
-        <article className="value-card">
-          <h4>Writers</h4>
-          <p>
-            Instant, transparent earnings with a professional editor, analytics dashboard, tipping,
-            and full wallet control.
-          </p>
-        </article>
-        <article className="value-card">
-          <h4>Platforms</h4>
-          <p>A new monetization primitive that doesn’t compromise UX or security—open and composable.</p>
-        </article>
-      </div>
-    ),
+    body: <ValueSpotlight />,
   },
   {
     key: 'features',
@@ -151,24 +135,24 @@ const SECTION_DEFINITIONS = [
     body: (
       <ol>
         <li>
-          <strong>Modern publishing stack:</strong> TinyMCE editor with autosave drafts, image hosting,
-          and paywall preview.
+          <strong>Modern publishing stack:</strong> rich text editor with autosave drafts, image uploads,
+          and code formatting. 
         </li>
         <li>
           <strong>Realtime dashboard:</strong> lifetime earnings, conversion rates, weekly stats, and
-          wallet health in one view.
+          wallet management in one view.
         </li>
         <li>
           <strong>Discovery engine:</strong> category filters, popularity scores, likes, and trending
-          signals to surface emerging authors.
+          signals to surface emerging writers.
         </li>
         <li>
           <strong>Wallet management:</strong> link a complementary network wallet, replace it safely,
           and stay synced across chains.
         </li>
         <li>
-          <strong>Tip & donate modals:</strong> optimized flows for supporters to send extra USDC on
-          Base or Solana.
+          <strong>Tipping:</strong> optimized flows for supporters to send extra USDC on
+          Base and Solana.
         </li>
         <li>
           <strong>Security-by-design:</strong> DOMPurify-protected content, Solana ATA verification,
@@ -187,16 +171,16 @@ const SECTION_DEFINITIONS = [
           <strong>x402</strong> for payments.
         </li>
         <li>
-          <strong>USDC</strong> on Base + Solana for stability.
+          <strong>USDC</strong> on Base and Solana supported.
         </li>
         <li>
-          <strong>Coinbase CDP</strong> for optional gasless settlement.
+          <strong>Coinbase CDP</strong> for gasless settlement.
         </li>
         <li>
-          <strong>Supabase</strong> for transparent data storage.
+          <strong>Supabase</strong> for data storage.
         </li>
         <li>
-          <strong>WalletConnect / AppKit</strong> so users never hand us their keys.
+          <strong>WalletConnect / AppKit</strong> so users feel safe.
         </li>
       </ul>
     ),
@@ -209,9 +193,10 @@ const SECTION_DEFINITIONS = [
       <ul>
         <li>Author profiles, newsletters, and topic subscriptions.</li>
         <li>AI-assisted drafting, proofreading, and formatting suggestions.</li>
-        <li>API marketplace where knowledge can be licensed via the same rails.</li>
+        <li>API marketplace where knowledge can be licensed via existing rails.</li>
         <li>Deeper analytics for authors (funnel analysis, category performance).</li>
         <li>Dark mode, accessibility upgrades, and public roadmap voting.</li>
+        <li>Q&A marketplace to get answers from verified SMEs enabled by the same payment model.</li>
       </ul>
     ),
   },
@@ -222,15 +207,21 @@ type SectionKey = (typeof SECTION_DEFINITIONS)[number]['key'];
 const ABSTRACT_CONTENT = (
   <>
     <p>
-      Penny.io reimagines publishing around wallets, not walled gardens. Writers set a price between
-      $0.01 and $1.00, readers unlock individual articles in a single wallet popup, and payouts settle
-      in seconds across Base and Solana. Under the hood we rely on the x402 protocol—HTTP’s
-      long-reserved “Payment Required” status—so authorization happens off-chain while settlement
-      remains verifiable on-chain.
+      Penny.io reimagines how we monetize written content online. Enabled by the latest advancements in crypto, 
+      we created a payment flow that deletes all middlemen from the equations. It's writers, readers, and 
+      nothing in between.
+      
+      Creators set a price between $0.01 and $1.00, readers unlock individual articles in a single click, and payouts settle
+      in seconds on-chain. This means no subscriptions, no ads, no account setup, and no payment information required. 
+      To start earning on Penny, all you need is a wallet, a cup of coffee, and a keyboard. 
+      
+      Under the hood we rely on the x402 protocol—HTTP’s long-reserved “Payment Required” status which has been developed 
+      into a full-fledged payment system. Due to the absence of fees, microtransactions become viable for the first time ever. 
+      Zero-cost transactions allow the consumer to send $0.01 and be sure the writer receives exactly one cent.  
+
     </p>
     <p>
-      The result is a content economy without subscriptions, ads, or delayed payouts. Scroll (or
-      click) through the draft to watch the whitepaper assemble in real time.
+      The result is a fair and open-source content economy without subscriptions, ads, middlemen, or delayed payouts. 
     </p>
   </>
 );
@@ -366,10 +357,85 @@ function RevealGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
+function FlowComparisonDiagram() {
+  return (
+    <div className="flow-map">
+      {FLOW_LANES.map((lane) => (
+        <div className={`flow-map-lane flow-map-lane--${lane.key}`} key={lane.key}>
+          <div className="flow-map-lane-header">
+            <span className="flow-map-emoji" aria-hidden="true">
+              {lane.emoji}
+            </span>
+            <div>
+              <p className="flow-map-title">{lane.title}</p>
+              <p className="flow-map-tagline">{lane.tagline}</p>
+            </div>
+          </div>
+          <div className="flow-map-track">
+            {lane.steps.map((step, index) => (
+              <div className="flow-map-node" key={step.label}>
+                <div className="flow-map-node-top">
+                  <div className="flow-map-node-marker" aria-hidden="true">
+                    {step.icon}
+                  </div>
+                  {index < lane.steps.length - 1 && (
+                    <div className="flow-map-arrow" aria-hidden="true">
+                      →
+                    </div>
+                  )}
+                </div>
+                <div className="flow-map-node-body">
+                  <p className="flow-map-node-label">{step.label}</p>
+                  <p className="flow-map-node-detail">{step.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ValueSpotlight() {
+  const highlights = [
+    {
+      emoji: '📖',
+      title: 'Readers',
+      detail: 'No subscriptions or hidden fees. Pay the exact amount for the exact article and keep it forever.',
+    },
+    {
+      emoji: '✍️',
+      title: 'Writers',
+      detail: 'Instant, transparent earnings with a modern editor, metrics, and a professional monetization layer.',
+    },
+    {
+      emoji: '🌐',
+      title: 'Platforms',
+      detail: 'Introduce a new monetization primitive without wrecking the user experience or custodying user funds.',
+    },
+  ];
+
+  return (
+    <div className="value-spotlight">
+      {highlights.map((item) => (
+        <article className="value-spotlight-card" key={item.title}>
+          <div className="value-spotlight-emoji" aria-hidden="true">
+            {item.emoji}
+          </div>
+          <h4>{item.title}</h4>
+          <p>{item.detail}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function Whitepaper() {
   const lineNumbers = useMemo(() => Array.from({ length: 120 }, (_, index) => index + 1), []);
   const sectionRefs = useRef<Record<SectionKey, HTMLElement | null>>({} as Record<SectionKey, HTMLElement | null>);
   const revealTimeouts = useRef<Record<SectionKey, number>>({} as Record<SectionKey, number>);
+  const [autoRevealEnabled, setAutoRevealEnabled] = useState(false);
   // Tracks which sections have been “pasted” into the faux editor
   const [revealedSections, setRevealedSections] = useState<Record<SectionKey | 'abstract', boolean>>(() => {
     const initial: Record<SectionKey | 'abstract', boolean> = { abstract: true };
@@ -381,6 +447,10 @@ function Whitepaper() {
 
   // Auto-insert blocks once they scroll into view
   useEffect(() => {
+    if (!autoRevealEnabled) {
+      return;
+    }
+
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') {
       setRevealedSections((prev) => {
         const next = { ...prev };
@@ -406,6 +476,8 @@ function Whitepaper() {
                 delete revealTimeouts.current[key];
               }, 350);
             }
+          } else {
+            const key = entry.target.getAttribute('data-section-key') as SectionKey | null;
           }
         });
       },
@@ -424,10 +496,14 @@ function Whitepaper() {
       Object.values(revealTimeouts.current).forEach((timeoutId) => window.clearTimeout(timeoutId));
       revealTimeouts.current = {} as Record<SectionKey, number>;
     };
-  }, [revealedSections]);
+  }, [autoRevealEnabled, revealedSections]);
 
   const registerSectionRef = (key: SectionKey) => (node: HTMLElement | null) => {
     sectionRefs.current[key] = node;
+  };
+
+  const handleKeepReading = () => {
+    setAutoRevealEnabled(true);
   };
 
   return (
@@ -448,15 +524,26 @@ function Whitepaper() {
             <div className="editor-status">Auto-save on · Wallet connected</div>
           </header>
 
-          <div className="editor-toolbar" role="presentation">
+          <div className="editor-toolbar" role="toolbar">
             <div className="editor-toolbar-left">
-              <span>H1</span>
-              <span>H2</span>
-              <span>Quote</span>
-              <span>List</span>
-              <span>Insert</span>
+              <button type="button">File</button>
+              <button type="button">Edit</button>
+              <button type="button">View</button>
+              <button type="button">Insert</button>
             </div>
-            <div className="editor-toolbar-right">Cmd ⌘ + ↵ to run x402 check</div>
+            <div className="editor-toolbar-center">
+              <button type="button" className="is-active">
+                H1
+              </button>
+              <button type="button">H2</button>
+              <button type="button">B</button>
+              <button type="button">I</button>
+              <button type="button">• List</button>
+              <button type="button"># List</button>
+            </div>
+            <div className="editor-toolbar-right">
+              <span className="editor-toolbar-shortcut">0xEc11...6bF1</span>
+            </div>
           </div>
 
           <div className="editor-body">
@@ -472,7 +559,7 @@ function Whitepaper() {
               <div className="editor-hint">
                 <MousePointerClick size={16} aria-hidden="true" />
                 <p>
-                  Scroll to keep writing—each section will auto-paste when its cursor enters view.
+                  Tap <strong>Keep Reading</strong> to continue.
                 </p>
               </div>
 
@@ -480,6 +567,15 @@ function Whitepaper() {
                 <p className="editor-section-label">Abstract</p>
                 <RevealGroup>{ABSTRACT_CONTENT}</RevealGroup>
               </section>
+
+              {!autoRevealEnabled && (
+                <div className="keep-reading-wrapper">
+                  <button type="button" className="keep-reading-button" onClick={handleKeepReading}>
+                    <span>Keep reading</span>
+                    <ArrowDown size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
 
               {/* Render each section either as a “Paste block” button or the card content */}
               {SECTION_DEFINITIONS.map((section) => {
@@ -508,11 +604,11 @@ function Whitepaper() {
               })}
 
               <section className="editor-block revealed">
-                <p className="editor-section-label">9. Join the Network</p>
+                <p className="editor-section-label">9. We'd love to have you</p>
                 <RevealGroup>
                   <p>
-                    Penny.io is the home for people who believe knowledge should travel at the speed of a signature. If
-                    you’re a writer frustrated with legacy platforms or a reader tired of hundred-dollar paywalls, we
+                    Penny.io is the home for people who believe knowledge should travel at the speed of a light. If
+                    you’re a writer frustrated with legacy platforms or a reader tired of expensive & intrusive paywalls, we
                     built this for you.
                   </p>
                   <ul>
@@ -521,19 +617,24 @@ function Whitepaper() {
                     <li>Fork the repo or open an issue—everything is open source.</li>
                   </ul>
                 </RevealGroup>
-                <button type="button" className="editor-cta-button">
-                  <ArrowRightCircle size={18} aria-hidden="true" />
-                  Pay for brilliance
-                </button>
               </section>
             </div>
           </div>
         </div>
 
-        {/* Scroll cue floating under the editor surface */}
-        <div className="editor-scroll-cue">
-          <span />
-          <p>Scroll to continue drafting</p>
+        {/* Call to Action */}
+        <div className="whitepaper-cta-region">
+          <section className="about-cta">
+            <h2>Join the Revolution</h2>
+            <p>
+              Whether you're a creator looking to monetize your content or a reader seeking 
+              quality content without subscription commitments, Penny.io is built for you.
+            </p>
+            <div className="cta-buttons">
+              <a href="/explore" className="cta-button primary">Browse Articles</a>
+              <a href="/write" className="cta-button secondary">Start Writing</a>
+            </div>
+          </section>
         </div>
       </div>
     </div>
