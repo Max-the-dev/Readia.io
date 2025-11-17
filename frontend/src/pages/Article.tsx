@@ -175,7 +175,7 @@ function Article() {
           setHasPaid(false);
           setIsPaymentStatusLoaded(false);
 
-          const authorInfo = await apiService.getAuthor(response.data.authorAddress);
+          const authorInfo = await apiService.getPublicAuthor(response.data.authorAddress);
           if (authorInfo.success && authorInfo.data) {
             if (authorInfo.data.supportedNetworks?.length) {
               setAuthorNetworks(

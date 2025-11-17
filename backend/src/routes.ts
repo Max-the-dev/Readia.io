@@ -32,6 +32,7 @@ import { settleAuthorization } from './settlementService';
 import { getFacilitatorFeePayer } from './facilitatorSupport';
 import { getCACertificates } from 'tls';
 import { success } from 'zod';
+import { requireAuth, requireOwnership, AuthenticatedRequest } from './auth';
 
 const router = express.Router();
 const db = new Database();
@@ -534,7 +535,13 @@ router.get('/articles/:id', readLimiter, async (req: Request, res: Response) => 
  * runs the spam/quality checks without writing anything. 
  * lets the frontend “preflight” an article (so the editor can warn about spam rules, etc.) 
  */
-router.post('/articles/validate', writeLimiter, validate(createArticleSchema), async (req: Request, res: Response) => {
+router.post(
+  '/articles/validate',
+  writeLimiter,
+  requireAuth,
+  requireOwnership('authorAddress'),
+  validate(createArticleSchema),
+  async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { title, content, authorAddress }: CreateArticleRequest = req.body;
 
@@ -569,9 +576,10 @@ router.post('/articles/validate', writeLimiter, validate(createArticleSchema), a
  * repeats the validation
  * writes the article, updates author stats, and so on.
  */
-router.post('/articles', writeLimiter, validate(createArticleSchema), async (req: Request, res: Response) => {
+router.post('/articles', writeLimiter, requireAuth, requireOwnership('authorAddress'), validate(createArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { title, content, price, authorAddress, categories, draftId }: CreateArticleRequest = req.body;
+    const { title, content, price, categories, draftId }: CreateArticleRequest = req.body;
+    const authorAddress = req.auth!.address;
 
     // Validation
     if (!title || !content || !price || !authorAddress) {
@@ -663,31 +671,46 @@ router.post('/articles', writeLimiter, validate(createArticleSchema), async (req
 });
 
 // GET /api/authors/:address - Get author info
-router.get('/authors/:address', readLimiter, async (req: Request, res: Response) => {
+router.get('/authors/:address', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { address: identifier } = req.params;
-    const networkHint = req.query.network as SupportedPayoutNetwork | undefined;
     let author: Author | null = null;
 
+    if (req.auth?.authorUuid) {
+      author = await db.getAuthorByUuid(req.auth.authorUuid);
+    }
+    if (!author) {
+      author = await ensureAuthorRecord(req.auth!.address);
+    }
+
+    if (!author) {
+      return res.status(404).json({
+        success: false,
+        error: 'Author profile not found',
+      } satisfies ApiResponse<never>);
+    }
+
+    let isAuthorized = false;
     if (isUuid(identifier)) {
-      author = await db.getAuthorByUuid(identifier);
-      if (!author) {
-        return res.status(404).json({
-          success: false,
-          error: 'Author not found'
-        } satisfies ApiResponse<never>);
-      }
+      isAuthorized = identifier === author.authorUuid;
     } else {
-      // Basic validation: ensure the address looks like the expected network type
       try {
-        normalizeFlexibleAddress(identifier);
+        const normalizedParam = normalizeFlexibleAddress(identifier);
+        const normalizedAuth = normalizeFlexibleAddress(req.auth!.address);
+        isAuthorized = normalizedParam === normalizedAuth;
       } catch {
         return res.status(400).json({
           success: false,
           error: 'Invalid author address'
         } satisfies ApiResponse<never>);
       }
-      author = await ensureAuthorRecord(identifier, networkHint);
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized to view this author profile',
+      } satisfies ApiResponse<never>);
     }
 
     const supportedNetworks =
@@ -714,14 +737,72 @@ router.get('/authors/:address', readLimiter, async (req: Request, res: Response)
   }
 });
 
+// Public author lookup (limited data, no stats) for wallet ownership checks
+router.get('/public/authors/:identifier', readLimiter, async (req: Request, res: Response) => {
+  try {
+    const { identifier } = req.params;
+    let author: Author | null = null;
+
+    if (isUuid(identifier)) {
+      author = await db.getAuthorByUuid(identifier);
+    } else {
+      const normalized = tryNormalizeFlexibleAddress(identifier);
+      if (!normalized) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid author address'
+        } satisfies ApiResponse<never>);
+      }
+      author = await db.getAuthorByWallet(normalized);
+    }
+
+    if (!author) {
+      return res.status(404).json({
+        success: false,
+        error: 'Author not found'
+      } satisfies ApiResponse<never>);
+    }
+
+    const minimalWallets = (author.wallets || []).map(wallet => ({
+      address: wallet.address,
+      network: wallet.network,
+      isPrimary: wallet.isPrimary,
+    }));
+
+    const publicProfile = {
+      authorUuid: author.authorUuid,
+      address: author.address,
+      primaryPayoutNetwork: author.primaryPayoutNetwork,
+      primaryPayoutAddress: author.primaryPayoutAddress || author.address,
+      secondaryPayoutNetwork: author.secondaryPayoutNetwork,
+      secondaryPayoutAddress: author.secondaryPayoutAddress,
+      supportedNetworks: author.supportedNetworks || [],
+      wallets: minimalWallets,
+    };
+
+    const response: ApiResponse<typeof publicProfile> = {
+      success: true,
+      data: publicProfile,
+    };
+
+    return res.json(response);
+  } catch (error) {
+    console.error('Error in public author lookup:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to fetch author info'
+    } satisfies ApiResponse<never>);
+  }
+});
+
 const SUPPORTED_PAYOUT_NETWORKS = ['base', 'base-sepolia', 'solana', 'solana-devnet'] as const;
 type SupportedPayoutNetwork = (typeof SUPPORTED_PAYOUT_NETWORKS)[number];
 const SOLANA_NETWORKS: SupportedPayoutNetwork[] = ['solana', 'solana-devnet'];
 
 // POST /api/authors/:address/payout-methods - Add or update secondary payout method
-router.post('/authors/:address/payout-methods', writeLimiter, async (req: Request, res: Response) => {
+router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { address: identifier } = req.params;
+    const identifierParam = req.params.address;
     const { network, payoutAddress } = req.body || {};
 
     if (!network || !SUPPORTED_PAYOUT_NETWORKS.includes(network)) {
@@ -753,24 +834,19 @@ router.post('/authors/:address/payout-methods', writeLimiter, async (req: Reques
     }
 
     let author: Author | null = null;
-    if (isUuid(identifier)) {
-      author = await db.getAuthorByUuid(identifier);
-      if (!author) {
-        return res.status(404).json({
-          success: false,
-          error: 'Author not found'
-        } satisfies ApiResponse<never>);
-      }
-    } else {
-      try {
-        normalizeFlexibleAddress(identifier);
-      } catch {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid author address'
-        } satisfies ApiResponse<never>);
-      }
-      author = await ensureAuthorRecord(identifier);
+    if (req.auth?.authorUuid) {
+      author = await db.getAuthorByUuid(req.auth.authorUuid);
+    }
+    if (!author) {
+      author = await ensureAuthorRecord(req.auth!.address);
+    }
+
+    // Ensure the path parameter refers to the authenticated author
+    if (isUuid(identifierParam) && author?.authorUuid && identifierParam !== author.authorUuid) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized to manage payout methods for this author'
+      } satisfies ApiResponse<never>);
     }
 
     const authorUuid = author.authorUuid;
@@ -815,7 +891,7 @@ router.post('/authors/:address/payout-methods', writeLimiter, async (req: Reques
 });
 
 // DELETE /api/authors/:identifier/payout-methods - Remove secondary payout method
-router.delete('/authors/:identifier/payout-methods', writeLimiter, async (req: Request, res: Response) => {
+router.delete('/authors/:identifier/payout-methods', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { identifier } = req.params;
     const { network } = req.body || {};
@@ -827,15 +903,27 @@ router.delete('/authors/:identifier/payout-methods', writeLimiter, async (req: R
       } satisfies ApiResponse<never>);
     }
 
-    const canonical = await resolveCanonicalAuthorAddress(identifier).catch(() => null);
-    if (!canonical?.author || !canonical.author.authorUuid) {
+    let author: Author | null = null;
+    if (req.auth?.authorUuid) {
+      author = await db.getAuthorByUuid(req.auth.authorUuid);
+    }
+    if (!author) {
+      author = await ensureAuthorRecord(req.auth!.address);
+    }
+
+    if (!author?.authorUuid) {
       return res.status(404).json({
         success: false,
-        error: 'Author not found',
+        error: 'Author record not found',
       } satisfies ApiResponse<never>);
     }
 
-    const author = canonical.author;
+    if (isUuid(identifier) && identifier !== author.authorUuid) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized to manage payout methods for this author',
+      } satisfies ApiResponse<never>);
+    }
     const authorUuid = author.authorUuid;
     if (!authorUuid) {
       return res.status(500).json({
@@ -926,18 +1014,38 @@ router.put('/articles/:id/view', readLimiter, async (req: Request, res: Response
 });
 
 // GET /api/authors/:ifentifier/stats - 7d purchase stat
-router.get('/authors/:identifier/stats', readLimiter, async (req: Request, res: Response) => {
+router.get('/authors/:identifier/stats', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { identifier } = req.params;
-    
-    // 1) Resolve identified (wallet or UUID) -> canonical author record
-    const canonical = await resolveCanonicalAuthorAddress(identifier).catch(() => null);
-    if (!canonical?.author) {
-      return res.status(404).json({success: false, error: 'Author not found'});
+    let author: Author | null = null;
+
+    if (req.auth?.authorUuid) {
+      author = await db.getAuthorByUuid(req.auth.authorUuid);
+    }
+    if (!author) {
+      author = await ensureAuthorRecord(req.auth!.address);
     }
 
-    // 2) Pull lifetime stats from the author row (both wallets included)
-    const lifetimeAuthor = canonical.author;
+    if (!author) {
+      return res.status(404).json({ success: false, error: 'Author not found' });
+    }
+
+    let isAuthorized = false;
+    if (isUuid(identifier)) {
+      isAuthorized = identifier === author.authorUuid;
+    } else {
+      try {
+        const normalizedParam = normalizeFlexibleAddress(identifier);
+        const normalizedAuth = normalizeFlexibleAddress(req.auth!.address);
+        isAuthorized = normalizedParam === normalizedAuth;
+      } catch {
+        return res.status(400).json({ success: false, error: 'Invalid author address' });
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, error: 'Unauthorized to view stats' });
+    }
 
     // 3) TODO: query payments/tips for last-7-day metrics (we’ll fill this in next step)
     const { rows: recentPayments } = await pgPool.query(
@@ -950,7 +1058,7 @@ router.get('/authors/:identifier/stats', readLimiter, async (req: Request, res: 
         WHERE a.author_address = $1
           AND p.created_at >= NOW() - INTERVAL '7 days'
       `,
-      [canonical.author.address]
+      [author.address]
     );
 
     const purchases7d = parseInt(recentPayments[0]?.purchase_count || '0', 10);
@@ -1569,9 +1677,10 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 // Draft Routes
 
 // POST /api/drafts - Create or update draft
-router.post('/drafts', writeLimiter, validate(createDraftSchema), async (req: Request, res: Response) => {
+router.post('/drafts', writeLimiter, requireAuth, requireOwnership('authorAddress'), validate(createDraftSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { title, content, price, authorAddress, isAutoSave }: CreateDraftRequest & { isAutoSave?: boolean } = req.body;
+    const { title, content, price, isAutoSave }: CreateDraftRequest & { isAutoSave?: boolean } = req.body;
+    const authorAddress = req.auth!.address;
 
     // Validation
     if (!authorAddress) {
@@ -1629,30 +1738,57 @@ router.post('/drafts', writeLimiter, validate(createDraftSchema), async (req: Re
 });
 
 // GET /api/drafts/:authorAddress - Get drafts for author
-router.get('/drafts/:authorAddress', readLimiter, async (req: Request, res: Response) => {
+router.get('/drafts/:authorAddress', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { authorAddress } = req.params;
-    try {
-      const { canonicalAddress } = await resolveCanonicalAuthorAddress(authorAddress);
-      
-      // Clean up expired drafts first
-      await db.cleanupExpiredDrafts();
-      
-      const drafts = await db.getDraftsByAuthor(canonicalAddress);
+    let author: Author | null = null;
 
-      const response: ApiResponse<Draft[]> = {
-        success: true,
-        data: drafts
-      };
-
-      res.json(response);
-    } catch {
-      const response: ApiResponse<never> = {
-        success: false,
-        error: 'Invalid author address'
-      };
-      return res.status(400).json(response);
+    if (req.auth?.authorUuid) {
+      author = await db.getAuthorByUuid(req.auth.authorUuid);
     }
+    if (!author) {
+      author = await ensureAuthorRecord(req.auth!.address);
+    }
+
+    if (!author) {
+      return res.status(404).json({
+        success: false,
+        error: 'Author not found'
+      } satisfies ApiResponse<never>);
+    }
+
+    let isAuthorized = false;
+    if (isUuid(authorAddress)) {
+      isAuthorized = author.authorUuid === authorAddress;
+    } else {
+      try {
+        const normalizedParam = normalizeFlexibleAddress(authorAddress);
+        const normalizedAuth = normalizeFlexibleAddress(req.auth!.address);
+        isAuthorized = normalizedParam === normalizedAuth;
+      } catch {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid author address'
+        } satisfies ApiResponse<never>);
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized to view drafts'
+      } satisfies ApiResponse<never>);
+    }
+
+    await db.cleanupExpiredDrafts();
+    const drafts = await db.getDraftsByAuthor(author.address);
+
+    const response: ApiResponse<Draft[]> = {
+      success: true,
+      data: drafts
+    };
+
+    res.json(response);
   } catch (error) {
     console.error('Error fetching drafts:', error);
     const response: ApiResponse<never> = {
@@ -1664,10 +1800,10 @@ router.get('/drafts/:authorAddress', readLimiter, async (req: Request, res: Resp
 });
 
 // DELETE /api/drafts/:id - Delete draft
-router.delete('/drafts/:id', writeLimiter, validate(deleteRequestSchema), async (req: Request, res: Response) => {
+router.delete('/drafts/:id', writeLimiter, requireAuth, requireOwnership('authorAddress'), validate(deleteRequestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const draftId = parseInt(req.params.id);
-    const { authorAddress } = req.body;
+    const authorAddress = req.auth!.address;
 
     if (!authorAddress) {
       const response: ApiResponse<never> = {
@@ -1714,10 +1850,11 @@ router.delete('/drafts/:id', writeLimiter, validate(deleteRequestSchema), async 
 });
 
 // PUT /api/articles/:id - Update existing article
-router.put('/articles/:id', writeLimiter, validate(updateArticleSchema), async (req: Request, res: Response) => {
+router.put('/articles/:id', writeLimiter, requireAuth, requireOwnership('authorAddress'), validate(updateArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const articleId = parseInt(req.params.id);
-    const { title, content, price, authorAddress, categories }: CreateArticleRequest = req.body;
+    const { title, content, price, categories }: CreateArticleRequest = req.body;
+    const authorAddress = req.auth!.address;
 
     // Validation
     if (!title || !content || !price || !authorAddress) {
@@ -1811,10 +1948,10 @@ router.put('/articles/:id', writeLimiter, validate(updateArticleSchema), async (
 });
 
 // DELETE /api/articles/:id - Delete article
-router.delete('/articles/:id', writeLimiter, validate(deleteRequestSchema), async (req: Request, res: Response) => {
+router.delete('/articles/:id', writeLimiter, requireAuth, requireOwnership('authorAddress'), validate(deleteRequestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const articleId = parseInt(req.params.id);
-    const { authorAddress } = req.body;
+    const authorAddress = req.auth!.address;
 
     if (!authorAddress) {
       const response: ApiResponse<never> = {
@@ -1884,7 +2021,7 @@ router.delete('/articles/:id', writeLimiter, validate(deleteRequestSchema), asyn
 });
 
 // POST /api/upload - Upload image files for TinyMCE (Supabase Storage)
-router.post('/upload', uploadLimiter, upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload', uploadLimiter, requireAuth, upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -1935,7 +2072,7 @@ router.post('/upload', uploadLimiter, upload.single('file'), async (req: Request
 });
 
 // POST /api/articles/recalculate-popularity - Manually recalculate all popularity scores
-router.post('/articles/recalculate-popularity', criticalLimiter, async (req: Request, res: Response) => {
+router.post('/articles/recalculate-popularity', criticalLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('🔄 Starting manual popularity score recalculation...');
     const result = await db.recalculateAllPopularityScores();
@@ -1986,10 +2123,10 @@ router.get('/payment-status/:articleId/:userAddress', readLimiter, async (req: R
 // Like/Unlike Routes
 
 // POST /api/articles/:id/like - Like an article
-router.post('/articles/:id/like', writeLimiter, validate(likeRequestSchema), async (req: Request, res: Response) => {
+router.post('/articles/:id/like', writeLimiter, requireAuth, requireOwnership('userAddress'), validate(likeRequestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const articleId = parseInt(req.params.id);
-    const { userAddress } = req.body;
+    const userAddress = req.auth!.address;
 
     if (!userAddress) {
       const response: ApiResponse<never> = {
@@ -2051,10 +2188,10 @@ router.post('/articles/:id/like', writeLimiter, validate(likeRequestSchema), asy
 });
 
 // DELETE /api/articles/:id/like - Unlike an article
-router.delete('/articles/:id/like', writeLimiter, validate(likeRequestSchema), async (req: Request, res: Response) => {
+router.delete('/articles/:id/like', writeLimiter, requireAuth, requireOwnership('userAddress'), validate(likeRequestSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const articleId = parseInt(req.params.id);
-    const { userAddress } = req.body;
+    const userAddress = req.auth!.address;
 
     if (!userAddress) {
       const response: ApiResponse<never> = {

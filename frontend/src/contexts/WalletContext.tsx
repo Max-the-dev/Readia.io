@@ -32,7 +32,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     const registerAuthor = async () => {
       if (address && isConnected) {
         try {
-          await apiService.getAuthor(address);
+          await apiService.getPublicAuthor(address);
         } catch (error) {
           console.error('Failed to register author:', error);
           // Non-critical error - user can still browse

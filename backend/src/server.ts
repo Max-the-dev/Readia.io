@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
 import routes from './routes';
+import authRouter from './auth';
 
 // feePayer helper function
 import { ensureFacilitatorSupportLoaded } from './facilitatorSupport';
@@ -124,6 +125,9 @@ ensureFacilitatorSupportLoaded()
   .catch(error => {
     console.error('⚠️ Failed to warm facilitator cache:', error);
   });
+
+// Authentication routes must load before protected API routes
+app.use('/api/auth', authRouter);
 
 // API routes
 app.use('/api', routes);

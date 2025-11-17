@@ -192,6 +192,10 @@ class ApiService {
     return this.request<Author>(`/authors/${address}`);
   }
 
+  async getPublicAuthor(identifier: string): Promise<ApiResponse<Author>> {
+    return this.request<Author>(`/public/authors/${identifier}`);
+  }
+
   async getAuthorPurchaseStats(address: string): Promise<ApiResponse<AuthorPurchaseStatsResponse>> {
     return this.request<AuthorPurchaseStatsResponse>(`/authors/${address}/stats`);
   }
