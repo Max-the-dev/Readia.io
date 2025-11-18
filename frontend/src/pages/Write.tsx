@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, FormEvent, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
+import { useAuth } from '../contexts/AuthContext';
 import ConnectPromptHero, { writeHighlights } from '../components/ConnectPromptHero';
 import {
   Save,
@@ -22,6 +23,7 @@ import {
   Copy,
   Edit,
   Trash2,
+  WalletMinimal,
 } from 'lucide-react';
 import { apiService, Draft, CreateArticleRequest } from '../services/api';
 import { Editor } from '@tinymce/tinymce-react';
@@ -29,6 +31,7 @@ import { extractPlainText } from '../utils/htmlUtils';
 
 function Write() {
   const { isConnected, isConnecting, address } = useWallet();
+  const { login, isAuthenticated, isAuthenticating, error: authError, handleAuthError } = useAuth();
   const location = useLocation();
 
   // Category emojis for visual enhancement
@@ -265,6 +268,13 @@ function Write() {
       return;
     }
 
+    if (!isAuthenticated) {
+      setIsTyping(false);
+      clearAutoSaveTimers();
+      setIsAutoSaving(false);
+      return;
+    }
+
     clearAutoSaveTimers();
     setIsTyping(true);
 
@@ -314,14 +324,16 @@ function Write() {
     return () => {
       clearAutoSaveTimers();
     };
-  }, [title, content, price, address, isAutoSaving, isSubmitting, clearAutoSaveTimers]);
+  }, [title, content, price, address, isAutoSaving, isSubmitting, clearAutoSaveTimers, isAuthenticated]);
 
   // Load available drafts when connected
   useEffect(() => {
-    if (address) {
+    if (address && isAuthenticated) {
       loadDrafts();
+    } else if (!isAuthenticated) {
+      setAvailableDrafts([]);
     }
-  }, [address]);
+  }, [address, isAuthenticated]);
 
   // Close category dropdown when clicking outside
   useEffect(() => {
@@ -346,6 +358,13 @@ function Write() {
     
     if (!address) {
       setSubmitError('Please connect your wallet first');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setSubmitError('Authenticate your wallet to publish.');
+      setShowValidationSummary(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -392,10 +411,15 @@ function Write() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-    } catch (error) {
-      console.error('Article validation request failed:', error);
-      const message = error instanceof Error ? error.message : 'Unable to validate article';
-      setSubmitError(message);
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate again.');
+      } else {
+        console.error('Article validation request failed:', error);
+        const message = error instanceof Error ? error.message : 'Unable to validate article';
+        setSubmitError(message);
+      }
       setShowValidationSummary(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -417,6 +441,13 @@ function Write() {
     setSubmitSuccess(false);
     setShowPublishConfirm(false);
     const draftIdToClear = activeDraftId;
+
+    if (!isAuthenticated) {
+      setSubmitError('Authenticate your wallet to publish.');
+      setShowValidationSummary(true);
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const priceValue = parseFloat(price);
@@ -487,20 +518,23 @@ function Write() {
         // Scroll to top to show error message
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    } catch (error) {
-      const err = error as any;
-      // Check if error has validation details
-      if (err.details && Array.isArray(err.details)) {
-        const detailedErrors = err.details.map((d: any) => `${d.field}: ${d.message}`).join('; ');
-        setSubmitError(`Validation failed: ${detailedErrors}`);
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate again.');
       } else {
-        setSubmitError(err.message || 'An unexpected error occurred');
+        const err = error as any;
+        if (err.details && Array.isArray(err.details)) {
+          const detailedErrors = err.details.map((d: any) => `${d.field}: ${d.message}`).join('; ');
+          setSubmitError(`Validation failed: ${detailedErrors}`);
+        } else {
+          setSubmitError(err.message || 'An unexpected error occurred');
+        }
+        console.error('Error creating article:', error);
       }
-      console.error('Error creating article:', error);
 
       setShowValidationSummary(true);
 
-      // Scroll to top to show error message
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -561,6 +595,10 @@ function Write() {
 
   const saveDraft = async () => {
     if (!address) return;
+    if (!isAuthenticated) {
+      setSubmitError('Authenticate your wallet to save drafts.');
+      return;
+    }
 
     try {
       setIsDraft(true);
@@ -581,15 +619,20 @@ function Write() {
         setIsDraft(false);
         setSubmitError('Failed to save draft');
       }
-    } catch (error) {
+    } catch (error: any) {
       setIsDraft(false);
-      setSubmitError('Failed to save draft');
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate to save drafts.');
+      } else {
+        setSubmitError('Failed to save draft');
+      }
       console.error('Error saving draft:', error);
     }
   };
 
   const loadDrafts = async () => {
-    if (!address) return;
+    if (!address || !isAuthenticated) return;
 
     try {
       setLoadingDrafts(true);
@@ -600,8 +643,13 @@ function Write() {
       } else {
         setAvailableDrafts([]);
       }
-    } catch (error) {
-      console.error('Error loading drafts:', error);
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setDraftsError('❌ Session not found');
+      } else {
+        console.error('Error loading drafts:', error);
+      }
       setAvailableDrafts([]);
     } finally {
       setLoadingDrafts(false);
@@ -619,7 +667,7 @@ function Write() {
   };
 
   const deleteDraft = async (draftId: number) => {
-    if (!address) return;
+    if (!address || !isAuthenticated) return;
 
     try {
       const response = await apiService.deleteDraft(draftId, address);
@@ -629,14 +677,23 @@ function Write() {
           setActiveDraftId(null);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate again.');
+      }
       console.error('Error deleting draft:', error);
     }
   };
 
   useEffect(() => {
-    if (!address) {
+    if (!address || !isAuthenticated) {
       autoLoadKeyRef.current = null;
+      if (!isAuthenticated && (new URLSearchParams(location.search)).get('draftId')) {
+        setSubmitError('Authenticate your wallet to load drafts.');
+        setShowValidationSummary(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       return;
     }
 
@@ -690,10 +747,15 @@ function Write() {
           setShowValidationSummary(true);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-      } catch (error) {
+      } catch (error: any) {
         autoLoadKeyRef.current = null;
-        console.error('Error auto-loading draft:', error);
-        setSubmitError('Failed to load draft');
+        if (error?.code === 'AUTH_401') {
+          handleAuthError();
+          setSubmitError('❌ Session expired. Please authenticate again.');
+        } else {
+          console.error('Error auto-loading draft:', error);
+          setSubmitError('Failed to load draft');
+        }
         setShowValidationSummary(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } finally {
@@ -702,7 +764,7 @@ function Write() {
     };
 
     fetchDraft();
-  }, [address, location.search]);
+  }, [address, location.search, isAuthenticated]);
 
 
   const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -745,9 +807,39 @@ function Write() {
     );
   }
 
+  const draftsDisabled = !isAuthenticated;
+
   return (
     <div className="write">
       <div className="write-container">
+        {!isAuthenticated && (
+          <div className="auth-banner">
+            <div className="auth-banner__content">
+              <p>
+                Authenticate this wallet to access publishing features. Saving drafts and publishing is available once you sign in.
+              </p>
+              <div className="auth-banner__actions">
+                <button
+                  className="wallet-connect-button wallet-connect-button--disconnected"
+                  type="button"
+                  onClick={login}
+                  disabled={isAuthenticating}
+                >
+                  <WalletMinimal
+                    size={18}
+                    strokeWidth={2.4}
+                    className="wallet-connect-button--disconnected__icon"
+                    aria-hidden="true"
+                  />
+                  <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">
+                    {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                  </span>
+                </button>
+                {authError && <span className="auth-banner__error">{authError}</span>}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="write-layout">
@@ -923,57 +1015,65 @@ function Write() {
                     ×
                   </button>
                 </div>
-                <p className="draft-info">We automatically save your work every 5 seconds. Drafts are kept for 7 days.</p>
-                <div className="draft-list">
-                  {availableDrafts.length === 0 ? (
-                    <p className="no-drafts">No drafts available</p>
-                  ) : (
-                    availableDrafts.map((draft) => (
-                      <div key={draft.id} className="draft-item">
-                      <div className="draft-info">
-                        <h4>{draft.title || 'Untitled Draft'}</h4>
-                        <p className="draft-preview">
-                          {extractPlainText(draft.content, 100, 'No content yet')}
-                        </p>
-                        <div className="draft-meta">
-                          <span className={`draft-pill ${draft.isAutoSave ? 'auto' : 'manual'}`}>
-                            {draft.isAutoSave ? 'Auto-save' : 'Manual save'}
-                          </span>
-                          <span className="draft-date">
-                            <Clock size={14} />
-                            {new Date(draft.updatedAt).toLocaleDateString()}
-                          </span>
-                          <span className="draft-price">${draft.price.toFixed(2)}</span>
+                {!isAuthenticated ? (
+                  <div className="unauthenticated-drafts">
+                    <p>❌ Authenticate your wallet to view drafts.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="draft-info">We automatically save your work every 5 seconds. Drafts are kept for 7 days.</p>
+                    <div className="draft-list">
+                      {availableDrafts.length === 0 ? (
+                        <p className="no-drafts">No drafts available</p>
+                      ) : (
+                        availableDrafts.map((draft) => (
+                          <div key={draft.id} className="draft-item">
+                            <div className="draft-info">
+                              <h4>{draft.title || 'Untitled Draft'}</h4>
+                              <p className="draft-preview">
+                                {extractPlainText(draft.content, 100, 'No content yet')}
+                              </p>
+                              <div className="draft-meta">
+                                <span className={`draft-pill ${draft.isAutoSave ? 'auto' : 'manual'}`}>
+                                  {draft.isAutoSave ? 'Auto-save' : 'Manual save'}
+                                </span>
+                                <span className="draft-date">
+                                  <Clock size={14} />
+                                  {new Date(draft.updatedAt).toLocaleDateString()}
+                                </span>
+                                <span className="draft-price">${draft.price.toFixed(2)}</span>
+                              </div>
+                            </div>
+                            <div className="draft-actions" role="group" aria-label="Draft actions">
+                              <div className="table-cell actions">
+                                <button
+                                  type="button"
+                                  className="action-btn edit-btn"
+                                  onClick={() => loadDraft(draft)}
+                                  aria-label="Edit draft"
+                                  title="Edit draft"
+                                >
+                                  <Edit aria-hidden="true" />
+                                  <span className="sr-only">Edit draft</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="action-btn delete-btn"
+                                  onClick={() => deleteDraft(draft.id)}
+                                  aria-label="Delete draft"
+                                  title="Delete draft"
+                                >
+                                  <Trash2 aria-hidden="true" />
+                                  <span className="sr-only">Delete draft</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="draft-actions" role="group" aria-label="Draft actions">
-                          <div className="table-cell actions">
-                            <button
-                              type="button"
-                              className="action-btn edit-btn"
-                              onClick={() => loadDraft(draft)}
-                              aria-label="Edit draft"
-                              title="Edit draft"
-                            >
-                              <Edit aria-hidden="true" />
-                              <span className="sr-only">Edit draft</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="action-btn delete-btn"
-                              onClick={() => deleteDraft(draft.id)}
-                              aria-label="Delete draft"
-                              title="Delete draft"
-                            >
-                              <Trash2 aria-hidden="true" />
-                              <span className="sr-only">Delete draft</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1496,12 +1596,15 @@ function Write() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (!isAuthenticated) {
+                      setShowDrafts(true);
+                      return;
+                    }
                     if (showDrafts) {
                       setShowDrafts(false);
                     } else {
                       loadDrafts();
                       setShowDrafts(true);
-                      // Scroll to top after state updates (next frame)
                       setTimeout(() => {
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }, 0);
@@ -1517,7 +1620,7 @@ function Write() {
                   type="button"
                   onClick={saveDraft}
                   className="action-btn save-btn"
-                  disabled={isDraft}
+                  disabled={isDraft || !isAuthenticated}
                 >
                   <Save size={18} />
                   {isDraft ? 'Saved!' : 'Save'}
@@ -1534,7 +1637,7 @@ function Write() {
                 <button
                   type="submit"
                   className="action-btn publish-btn"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isAuthenticated}
                 >
                   <Send size={18} />
                   {isSubmitting ? 'Publishing...' : 'Publish'}

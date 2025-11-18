@@ -13,6 +13,7 @@ interface AuthContextValue {
   login: () => Promise<boolean>;
   logout: () => Promise<void>;
   getAuthHeaders: () => Record<string, string>;
+  handleAuthError: () => void;
 }
 
 interface AuthProviderProps {
@@ -101,7 +102,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authenticatedAddress, setAuthenticatedAddress] = useState<string | undefined>(undefined);
+  const [authenticatedAddress, setAuthenticatedAddress] = useState<string | undefined>(() => {
+    if (typeof window === 'undefined') return undefined;
+    return localStorage.getItem(AUTHED_ADDRESS_KEY) || undefined;
+  });
 
   const isAuthenticated = Boolean(token);
 
@@ -127,13 +131,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Clear token if wallet disconnects or address changes
   useEffect(() => {
     if (!address || !isConnected) {
-      if (token) {
-        setToken(null);
-        apiService.setAuthHeaderProvider(null);
-      }
-      if (authenticatedAddress) {
-        setAuthenticatedAddress(undefined);
-      }
       return;
     }
 
@@ -141,8 +138,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setToken(null);
       apiService.setAuthHeaderProvider(null);
       setAuthenticatedAddress(undefined);
+      localStorage.removeItem(AUTHED_ADDRESS_KEY);
     }
-  }, [address, isConnected, authenticatedAddress, token]);
+  }, [address, isConnected, authenticatedAddress]);
 
   const login = useCallback(async (): Promise<boolean> => {
     if (!address || !isConnected) {
@@ -244,6 +242,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }));
       setToken(nextToken);
       setAuthenticatedAddress(address);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(AUTHED_ADDRESS_KEY, address);
+      }
       return true;
     } catch (err) {
       console.error('Authentication error:', err);
@@ -261,6 +262,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setToken(null);
     setError(null);
     setAuthenticatedAddress(undefined);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(AUTHED_ADDRESS_KEY);
+    }
 
     if (!currentToken) {
       return;
@@ -288,19 +292,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [token]);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      token,
-      isAuthenticated,
-      isAuthenticating,
-      error,
-      authenticatedAddress,
-      login,
-      logout,
-      getAuthHeaders,
-    }),
-    [token, isAuthenticated, isAuthenticating, error, login, logout, getAuthHeaders]
-  );
+ const value = useMemo<AuthContextValue>(
+   () => ({
+     token,
+     isAuthenticated,
+     isAuthenticating,
+     error,
+     authenticatedAddress,
+     login,
+     logout,
+     getAuthHeaders,
+     handleAuthError: () => {
+       apiService.setAuthHeaderProvider(null);
+       setToken(null);
+       setAuthenticatedAddress(undefined);
+       if (typeof window !== 'undefined') {
+         localStorage.removeItem(TOKEN_STORAGE_KEY);
+         localStorage.removeItem(AUTHED_ADDRESS_KEY);
+       }
+     },
+   }),
+    [token, isAuthenticated, isAuthenticating, error, login, logout, getAuthHeaders, authenticatedAddress]
+ );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -312,3 +325,4 @@ export function useAuth() {
   }
   return context;
 }
+const AUTHED_ADDRESS_KEY = 'penny_auth_wallet';

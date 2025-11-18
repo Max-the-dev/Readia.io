@@ -3866,6 +3866,78 @@ main {
   margin: 0;
 }
 
+/* Auth Banner - Non-invasive notification */
+.auth-banner {
+  max-width: 1200px;
+  margin: 20px auto 24px auto;
+  background: rgba(249, 250, 251, 0.95);
+  border: 1px solid rgba(209, 213, 219, 0.6);
+  border-radius: 12px;
+  padding: 16px 20px;
+  backdrop-filter: blur(8px);
+}
+
+.auth-banner--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin: 40px auto;
+  max-width: 1200px;
+}
+
+/* Write and EditArticle pages - center banner and match write-layout content width */
+.write .write-container > .auth-banner {
+  max-width: calc(1200px - 88px); /* Subtract layout (20px×2) + form (24px×2) + panel (24px×2) padding */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.auth-banner__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.auth-banner__content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Auth button inherits wallet-connect-button--disconnected styling */
+
+.auth-banner__error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .auth-banner__content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .auth-banner__actions {
+    width: 100%;
+  }
+
+  .auth-banner__actions button {
+    flex: 1;
+  }
+}
+
 /* Payment Success Toast */
 .payment-toast {
   position: fixed;
@@ -12523,6 +12595,9 @@ main {
   }
 }
 .wallet-connect-button--disconnected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background-color: rgb(15, 15, 15);
   color: #ffffff;
   border: none;
@@ -12531,9 +12606,14 @@ main {
   box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.15);
   transition: color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease, width 0.3s ease;
   border-radius: 8px;
-  padding: 14px 24px; /* bigger vertical padding */
+  padding: 14px 24px;
   position: relative;
   overflow: hidden;
+}
+
+.wallet-connect-button--disconnected:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .wallet-connect-button--disconnected::before {

@@ -75,7 +75,7 @@ const AUTH_REQUIRED_ERROR = 'AUTH_REQUIRED';
 
 function Dashboard() {
   const { isConnected, isConnecting, address, balance, disconnect } = useWallet();
-  const { login, isAuthenticated, isAuthenticating, error: authError } = useAuth();
+  const { login, isAuthenticated, isAuthenticating, error: authError, handleAuthError } = useAuth();
   const navigate = useNavigate();
 
   // Available categories (must match backend validation schema)
@@ -193,9 +193,11 @@ function Dashboard() {
           : response.error;
         setArticleError(friendlyError || 'An unexpected error occurred');
       }
-    } catch (err) {
-      // Network error or exception - show generic message
-      if (err instanceof Error && err.message && err.message !== 'Failed to fetch') {
+    } catch (err: any) {
+      if (err?.code === 'AUTH_401') {
+        handleAuthError();
+        setArticleError('❌ Session expired. Please authenticate again.');
+      } else if (err instanceof Error && err.message && err.message !== 'Failed to fetch') {
         setArticleError(err.message);
       } else {
         setArticleError('Failed to fetch articles');
@@ -224,11 +226,16 @@ function Dashboard() {
           : response.error;
         setAuthorError(prev => prev || friendlyError || 'Failed to fetch author stats');
       }
-    } catch (err) {
-      const fallbackMessage = err instanceof Error && err.message && err.message !== 'Failed to fetch'
-        ? err.message
-        : 'Failed to fetch author stats';
-      setAuthorError(prev => prev || fallbackMessage);
+    } catch (err: any) {
+      if (err?.code === 'AUTH_401') {
+        handleAuthError();
+        setAuthorError('❌ Session not found');
+      } else {
+        const fallbackMessage = err instanceof Error && err.message && err.message !== 'Failed to fetch'
+          ? err.message
+          : 'Failed to fetch author stats';
+        setAuthorError(prev => prev || fallbackMessage);
+      }
       console.error('Error fetching author:', err);
     }
   };
@@ -243,8 +250,11 @@ function Dashboard() {
       } else if (response.error === AUTH_REQUIRED_ERROR) {
         setPurchases7d(0);
       }
-    } catch (error) {
-      console.error('Error fetching purchase stats:', error);
+    } catch (err: any) {
+      if (err?.code === 'AUTH_401') {
+        handleAuthError();
+      }
+      console.error('Error fetching purchase stats:', err);
     }
   };
 
@@ -269,10 +279,16 @@ function Dashboard() {
         setDrafts([]);
         setDraftsError(response.error || 'Failed to load drafts');
       }
-    } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : 'Failed to load drafts';
-      setDrafts([]);
-      setDraftsError(message);
+    } catch (err: any) {
+      if (err?.code === 'AUTH_401') {
+        handleAuthError();
+        setDrafts([]);
+        setDraftsError('❌ Session not found');
+      } else {
+        const message = err instanceof Error && err.message ? err.message : 'Failed to load drafts';
+        setDrafts([]);
+        setDraftsError(message);
+      }
       console.error('Error fetching drafts:', err);
     } finally {
       setDraftsLoading(false);
@@ -335,6 +351,11 @@ function Dashboard() {
 
   const publishDraft = async () => {
     if (!address || !draftConfirmPublish) return;
+    if (!isAuthenticated) {
+      setDraftsError('Authenticate your wallet to publish drafts.');
+      setDraftConfirmPublish(null);
+      return;
+    }
 
     setIsPublishingDraft(true);
     setDraftsError('');
@@ -352,6 +373,11 @@ function Dashboard() {
     try {
       const validationResponse = await apiService.validateArticle(articlePayload);
       if (!validationResponse.success) {
+        if (validationResponse.error === AUTH_REQUIRED_ERROR) {
+          setDraftsError('Authenticate your wallet to publish drafts.');
+          setDraftConfirmPublish(null);
+          return;
+        }
         const combined = [validationResponse.error, validationResponse.message]
           .filter(Boolean)
           .join('\n');
@@ -367,6 +393,11 @@ function Dashboard() {
         fetchArticles();
         fetchAuthor();
       } else {
+        if (publishResponse.error === AUTH_REQUIRED_ERROR) {
+          setDraftsError('Authenticate your wallet to publish drafts.');
+          setDraftConfirmPublish(null);
+          return;
+        }
         const message = publishResponse.error || 'Failed to publish draft';
         const details = (publishResponse as any).details;
         if (details && Array.isArray(details)) {
@@ -377,10 +408,15 @@ function Dashboard() {
         }
         setDraftConfirmPublish(null);
       }
-    } catch (err) {
-      console.error('Error publishing draft:', err);
-      const message = err instanceof Error && err.message ? err.message : 'Failed to publish draft';
-      setDraftsError(message);
+    } catch (err: any) {
+      if (err?.code === 'AUTH_401') {
+        handleAuthError();
+        setDraftsError('❌ Session expired. Please authenticate again.');
+      } else {
+        console.error('Error publishing draft:', err);
+        const message = err instanceof Error && err.message ? err.message : 'Failed to publish draft';
+        setDraftsError(message);
+      }
       setDraftConfirmPublish(null);
     } finally {
       setIsPublishingDraft(false);
@@ -705,16 +741,25 @@ function Dashboard() {
           <div className="auth-banner">
             <div className="auth-banner__content">
               <p>
-                Authenticate this wallet to unlock your full dashboard—stats, drafts, and payout
-                controls stay hidden until you sign once per session.
+                Authenticate this wallet to unlock your dashboard—insights, drafts, and wallet
+                management are hidden until you sign in.
               </p>
               <div className="auth-banner__actions">
                 <button
-                  className="primary-btn"
+                  className="wallet-connect-button wallet-connect-button--disconnected"
+                  type="button"
                   onClick={login}
                   disabled={isAuthenticating}
                 >
-                  {isAuthenticating ? 'Authenticating...' : 'Authenticate Wallet'}
+                  <WalletMinimal
+                    size={18}
+                    strokeWidth={2.4}
+                    className="wallet-connect-button--disconnected__icon"
+                    aria-hidden="true"
+                  />
+                  <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">
+                    {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                  </span>
                 </button>
                 {authError && <span className="auth-banner__error">{authError}</span>}
               </div>

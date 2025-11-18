@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
+import { useAuth } from '../contexts/AuthContext';
 import AppKitConnectButton from '../components/AppKitConnectButton';
 import { Save, Eye, ArrowLeft, X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Editor } from '@tinymce/tinymce-react';
@@ -11,6 +12,7 @@ function EditArticle() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isConnected, address } = useWallet();
+  const { login, isAuthenticated, isAuthenticating, error: authError, handleAuthError, getAuthHeaders } = useAuth();
   
   const [article, setArticle] = useState<Article | null>(null);
   const [title, setTitle] = useState<string>('');
@@ -88,13 +90,26 @@ function EditArticle() {
 
   // Load article data on component mount
   useEffect(() => {
-    if (id) {
+    if (id && isAuthenticated && address) {
       loadArticle();
     }
-  }, [id]);
+  }, [id, isAuthenticated, address]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setArticle(null);
+      setTitle('');
+      setContent('');
+      setPrice('0.05');
+      setSubmitSuccess(false);
+      setSubmitError('');
+      setShowValidationSummary(false);
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const loadArticle = async () => {
-    if (!id) return;
+    if (!id || !isAuthenticated || !address) return;
     
     setLoading(true);
     try {
@@ -111,9 +126,14 @@ function EditArticle() {
       } else {
         setSubmitError('Article not found');
       }
-    } catch (error) {
-      setSubmitError('Error loading article');
-      console.error('Error loading article:', error);
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate again.');
+      } else {
+        setSubmitError('Error loading article');
+        console.error('Error loading article:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -124,6 +144,13 @@ function EditArticle() {
 
   const handleUpdateArticle = async () => {
     if (!address || !article) return;
+
+    if (!isAuthenticated) {
+      setSubmitError('Authenticate your wallet to edit this article.');
+      setShowValidationSummary(true);
+      setShowUpdateConfirm(false);
+      return;
+    }
 
     const priceValue = parseFloat(price);
     if (!Number.isFinite(priceValue)) {
@@ -150,14 +177,23 @@ function EditArticle() {
         setSubmitError('');
         setSubmitSuccess(true);
       } else {
-        setSubmitError(response.error || 'Failed to update article');
+        if (response.error === 'AUTH_REQUIRED') {
+          setSubmitError('Authenticate your wallet to edit this article.');
+        } else {
+          setSubmitError(response.error || 'Failed to update article');
+        }
         setShowValidationSummary(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    } catch (error) {
-      setSubmitError('An unexpected error occurred');
+    } catch (error: any) {
+      if (error?.code === 'AUTH_401') {
+        handleAuthError();
+        setSubmitError('❌ Session expired. Please authenticate again.');
+      } else {
+        setSubmitError('An unexpected error occurred');
+        console.error('Error updating article:', error);
+      }
       setShowValidationSummary(true);
-      console.error('Error updating article:', error);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -179,6 +215,13 @@ function EditArticle() {
   const handleUpdateConfirm = async () => {
     if (!address) {
       setSubmitError('Please connect your wallet first');
+      setShowValidationSummary(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setSubmitError('Authenticate your wallet to edit this article.');
       setShowValidationSummary(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -220,6 +263,37 @@ function EditArticle() {
             <h1>Connect Your Wallet</h1>
             <p>Connect your wallet to edit articles.</p>
             <AppKitConnectButton />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="write">
+        <div className="write-container">
+          <div className="auth-banner auth-banner--centered">
+            <div className="auth-banner__content">
+              <p>Authenticate this wallet to access publishing features. Saving drafts and publishing is available once you sign in.</p>
+              <div className="auth-banner__actions">
+                <button
+                  className="wallet-connect-button wallet-connect-button--disconnected"
+                  type="button"
+                  onClick={login}
+                  disabled={isAuthenticating}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="wallet-connect-button--disconnected__icon" aria-hidden="true">
+                    <path d="M17 14h.01"></path>
+                    <path d="M7 7h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14"></path>
+                  </svg>
+                  <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">
+                    {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                  </span>
+                </button>
+                {authError && <span className="auth-banner__error">{authError}</span>}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -268,9 +342,35 @@ function EditArticle() {
     );
   }
 
+  const editLocked = !isAuthenticated;
+
   return (
     <div className="write">
       <div className="write-container">
+        {!isAuthenticated && (
+          <div className="auth-banner">
+            <div className="auth-banner__content">
+              <p>Authenticate this wallet to access the dashboard. Article controls, insights, and wallet management stay hidden until you sign in.</p>
+              <div className="auth-banner__actions">
+                <button
+                  className="wallet-connect-button wallet-connect-button--disconnected"
+                  type="button"
+                  onClick={login}
+                  disabled={isAuthenticating}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="wallet-connect-button--disconnected__icon" aria-hidden="true">
+                    <path d="M17 14h.01"></path>
+                    <path d="M7 7h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14"></path>
+                  </svg>
+                  <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">
+                    {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
+                  </span>
+                </button>
+                {authError && <span className="auth-banner__error">{authError}</span>}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Main Content */}
         <div className="write-layout">
           <form className="write-form">
@@ -367,7 +467,7 @@ function EditArticle() {
                 type="button" 
                 onClick={handleUpdateConfirm}
                 className="action-btn publish-btn"
-                disabled={isSubmitting}
+                disabled={isSubmitting || editLocked}
               >
                 <Save size={18} />
                 {isSubmitting ? 'Updating...' : 'Update Article'}
@@ -460,6 +560,40 @@ function EditArticle() {
                     images_upload_url: 'http://localhost:3001/api/upload',
                     images_upload_credentials: false,
                     automatic_uploads: true,
+                    images_upload_handler: async (blobInfo: any) => {
+                      if (!isAuthenticated) {
+                        setSubmitError('Authenticate your wallet to upload images.');
+                        throw new Error('Authentication required');
+                      }
+
+                      const authHeaders = getAuthHeaders();
+                      if (!authHeaders.Authorization) {
+                        setSubmitError('Authenticate your wallet to upload images.');
+                        throw new Error('Authentication required');
+                      }
+
+                      const formData = new FormData();
+                      formData.append('file', blobInfo.blob(), blobInfo.filename());
+
+                      const response = await fetch('http://localhost:3001/api/upload', {
+                        method: 'POST',
+                        headers: authHeaders,
+                        body: formData,
+                      });
+
+                      if (response.status === 401) {
+                        handleAuthError();
+                        setSubmitError('❌ Session expired. Please authenticate again.');
+                        throw new Error('Unauthorized');
+                      }
+
+                      const result = await response.json();
+                      if (!response.ok || !result.success || !result.url) {
+                        throw new Error(result.error || 'Failed to upload image');
+                      }
+
+                      return result.url;
+                    },
                     
                     // File picker for more control
                     file_picker_types: 'image',
@@ -472,14 +606,31 @@ function EditArticle() {
                         input.onchange = function() {
                           const file = (this as HTMLInputElement).files?.[0];
                           if (file) {
+                            if (!isAuthenticated) {
+                              setSubmitError('Authenticate your wallet to upload images.');
+                              return;
+                            }
+                            const authHeaders = getAuthHeaders();
+                            if (!authHeaders.Authorization) {
+                              setSubmitError('Authenticate your wallet to upload images.');
+                              return;
+                            }
                             const formData = new FormData();
                             formData.append('file', file);
                             
                             fetch('http://localhost:3001/api/upload', {
                               method: 'POST',
+                              headers: authHeaders,
                               body: formData
                             })
-                            .then(response => response.json())
+                            .then(async response => {
+                              if (response.status === 401) {
+                                handleAuthError();
+                                setSubmitError('❌ Session expired. Please authenticate again.');
+                                throw new Error('Unauthorized');
+                              }
+                              return response.json();
+                            })
                             .then(result => {
                               if (result.success) {
                                 callback(result.url, { alt: file.name });
@@ -640,6 +791,7 @@ function EditArticle() {
                     await handleUpdateConfirm();
                   }}
                   className="action-btn publish-btn"
+                  disabled={editLocked}
                 >
                   <Save size={18} />
                   Update Article
@@ -682,7 +834,7 @@ function EditArticle() {
                   type="button" 
                   onClick={handleUpdateArticle}
                   className="action-btn publish-btn"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || editLocked}
                 >
                   <CheckCircle size={18} />
                   {isSubmitting ? 'Updating...' : 'Confirm & Update'}

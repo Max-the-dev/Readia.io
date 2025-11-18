@@ -141,7 +141,12 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        const error = data.error || `HTTP error! status: ${response.status}`;
+        // If we got a 401, surface a structured error so the auth context can react
+        if (response.status === 401) {
+          throw Object.assign(new Error(error), { code: 'AUTH_401' });
+        }
+        throw new Error(error);
       }
 
       return data;
