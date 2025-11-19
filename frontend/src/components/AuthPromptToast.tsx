@@ -1,43 +1,41 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { WalletMinimal } from 'lucide-react';
+import { useAuthToast } from '../contexts/AuthToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
-interface AuthPromptToastProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAuthenticate: () => void;
-  message: string;
-  isAuthenticating: boolean;
-}
+function AuthPromptToast() {
+  const { isOpen, message, hideAuthToast } = useAuthToast();
+  const { login, isAuthenticating } = useAuth();
 
-function AuthPromptToast({
-  isOpen,
-  onClose,
-  onAuthenticate,
-  message,
-  isAuthenticating,
-}: AuthPromptToastProps) {
   // Auto-close after 5 seconds
   useEffect(() => {
     if (!isOpen) return;
 
     const timer = setTimeout(() => {
-      onClose();
+      hideAuthToast();
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [isOpen, onClose]);
+  }, [isOpen, hideAuthToast]);
+
+  const handleAuthenticate = async () => {
+    await login();
+    // LikeButton will handle retry logic via its useEffect
+  };
 
   if (!isOpen) return null;
 
-  return (
-    <div className="auth-toast-overlay" onClick={onClose}>
+  // Render to document.body using portal
+  return createPortal(
+    <div className="auth-toast-overlay" onClick={hideAuthToast}>
       <div className="auth-toast" onClick={(e) => e.stopPropagation()}>
         <div className="auth-toast__content">
           <p className="auth-toast__message">{message}</p>
           <button
             className="wallet-connect-button wallet-connect-button--disconnected"
             type="button"
-            onClick={onAuthenticate}
+            onClick={handleAuthenticate}
             disabled={isAuthenticating}
           >
             <WalletMinimal
@@ -52,7 +50,8 @@ function AuthPromptToast({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

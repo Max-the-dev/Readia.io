@@ -1,11 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { WalletProvider } from './contexts/WalletContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { AuthToastProvider } from './contexts/AuthToastContext';
 import { useWalletConnectionManager } from './hooks/useWalletConnectionManager';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import SessionExpiredModal from './components/SessionExpiredModal';
+import AuthPromptToast from './components/AuthPromptToast';
 import Home from './pages/Home';
 import Write from './pages/Write';
 import Dashboard from './pages/Dashboard';
@@ -56,6 +58,7 @@ function AppContent() {
       </main>
       <Footer />
       <SessionExpiredModal />
+      <AuthPromptToast />
     </>
   );
 }
@@ -64,12 +67,14 @@ function App() {
   return (
     <WalletProvider>
       <AuthProvider>
-        <Router>
-          <ScrollToTop />
-          <div className="App">
-            <AppContent />
-          </div>
-        </Router>
+        <AuthToastProvider>
+          <Router>
+            <ScrollToTop />
+            <div className="App">
+              <AppContent />
+            </div>
+          </Router>
+        </AuthToastProvider>
       </AuthProvider>
     </WalletProvider>
   );

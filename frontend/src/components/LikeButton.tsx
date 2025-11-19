@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Heart } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import AuthPromptToast from './AuthPromptToast';
+import { useAuthToast } from '../contexts/AuthToastContext';
 
 interface LikeButtonProps {
   articleId: number;
@@ -16,10 +16,10 @@ function LikeButton({ articleId, userAddress, initialLikes, className = '', onLi
   const [likes, setLikes] = useState(initialLikes);
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const pendingLikeAction = useRef(false);
 
-  const { login, isAuthenticated, isAuthenticating } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const { showAuthToast, hideAuthToast } = useAuthToast();
 
   // Update likes when initialLikes prop changes
   useEffect(() => {
@@ -49,7 +49,7 @@ function LikeButton({ articleId, userAddress, initialLikes, className = '', onLi
     const retryLikeAction = async () => {
       if (isAuthenticated && pendingLikeAction.current && userAddress) {
         pendingLikeAction.current = false;
-        setShowAuthPrompt(false);
+        hideAuthToast();
 
         // Execute the like action
         await performLikeAction();
@@ -57,7 +57,7 @@ function LikeButton({ articleId, userAddress, initialLikes, className = '', onLi
     };
 
     retryLikeAction();
-  }, [isAuthenticated, userAddress]);
+  }, [isAuthenticated, userAddress, hideAuthToast]);
 
   const performLikeAction = async () => {
     if (!userAddress || isLoading) return;
@@ -109,10 +109,10 @@ function LikeButton({ articleId, userAddress, initialLikes, className = '', onLi
   const handleLikeToggle = async () => {
     if (isLoading) return;
 
-    // If user is not authenticated, show auth prompt
+    // If user is not authenticated, show global auth toast
     if (!isAuthenticated || !userAddress) {
       pendingLikeAction.current = true;
-      setShowAuthPrompt(true);
+      showAuthToast('🔐 Authenticate to like articles');
       return;
     }
 
@@ -120,60 +120,30 @@ function LikeButton({ articleId, userAddress, initialLikes, className = '', onLi
     await performLikeAction();
   };
 
-  const handleAuthenticate = async () => {
-    await login();
-    // The retry logic in useEffect will handle the like action after auth
-  };
-
-  const handleCloseAuthPrompt = () => {
-    setShowAuthPrompt(false);
-    pendingLikeAction.current = false;
-  };
-
   if (!userAddress && !isAuthenticated) {
     return (
-      <>
-        <button
-          className={`like-button ${className}`}
-          onClick={handleLikeToggle}
-          disabled={isLoading}
-          title="Authenticate to like this article"
-        >
-          <Heart size={16} />
-          <span>{likes}</span>
-        </button>
-
-        <AuthPromptToast
-          isOpen={showAuthPrompt}
-          onClose={handleCloseAuthPrompt}
-          onAuthenticate={handleAuthenticate}
-          message="🔐 Authenticate to like articles"
-          isAuthenticating={isAuthenticating}
-        />
-      </>
+      <button
+        className={`like-button ${className}`}
+        onClick={handleLikeToggle}
+        disabled={isLoading}
+        title="Authenticate to like this article"
+      >
+        <Heart size={16} />
+        <span>{likes}</span>
+      </button>
     );
   }
 
   return (
-    <>
-      <button
-        className={`like-button ${isLiked ? 'like-button-liked' : ''} ${isLoading ? 'like-button-loading' : ''} ${className}`}
-        onClick={handleLikeToggle}
-        disabled={isLoading}
-        title={isLiked ? 'Unlike this article' : 'Like this article'}
-      >
-        <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
-        <span>{likes}</span>
-      </button>
-
-      <AuthPromptToast
-        isOpen={showAuthPrompt}
-        onClose={handleCloseAuthPrompt}
-        onAuthenticate={handleAuthenticate}
-        message="🔐 Authenticate to like articles"
-        isAuthenticating={isAuthenticating}
-      />
-    </>
+    <button
+      className={`like-button ${isLiked ? 'like-button-liked' : ''} ${isLoading ? 'like-button-loading' : ''} ${className}`}
+      onClick={handleLikeToggle}
+      disabled={isLoading}
+      title={isLiked ? 'Unlike this article' : 'Like this article'}
+    >
+      <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
+      <span>{likes}</span>
+    </button>
   );
 }
 
