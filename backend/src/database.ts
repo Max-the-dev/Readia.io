@@ -142,6 +142,7 @@ class Database {
   }
 
   private async findAuthorUuidByWallet(address: string): Promise<string | null> {
+    console.log('[findAuthorUuidByWallet] Looking up address:', address);
     const { data, error } = await supabase
       .from('author_wallets')
       .select('author_uuid')
@@ -149,10 +150,13 @@ class Database {
       .limit(1);
 
     if (error) {
+      console.log('[findAuthorUuidByWallet] Error:', error);
       throw error;
     }
 
-    return data && data.length > 0 ? data[0].author_uuid : null;
+    const uuid = data && data.length > 0 ? data[0].author_uuid : null;
+    console.log('[findAuthorUuidByWallet] Found UUID:', uuid);
+    return uuid;
   }
 
   private readonly articleSortColumnMap: Record<string, string> = {
@@ -466,6 +470,7 @@ class Database {
   }
 
   async getAuthorByUuid(authorUuid: string): Promise<Author | null> {
+    console.log('[getAuthorByUuid] Looking up UUID:', authorUuid);
     const { data, error } = await supabase
       .from('authors')
       .select('*')
@@ -473,19 +478,25 @@ class Database {
       .single();
 
     if (error) {
+      console.log('[getAuthorByUuid] Error:', error.code, error.message);
       if (error.code === 'PGRST116') return null;
       throw error;
     }
 
+    console.log('[getAuthorByUuid] Found author with address:', data?.address);
     return this.hydrateAuthorRow(data);
   }
 
   async getAuthorByWallet(address: string): Promise<Author | null> {
+    console.log('[getAuthorByWallet] Looking up wallet address:', address);
     const authorUuid = await this.findAuthorUuidByWallet(address);
     if (!authorUuid) {
+      console.log('[getAuthorByWallet] No UUID found, returning null');
       return null;
     }
-    return this.getAuthorByUuid(authorUuid);
+    const author = await this.getAuthorByUuid(authorUuid);
+    console.log('[getAuthorByWallet] Returning author:', author ? { address: author.address, authorUuid: author.authorUuid } : 'null');
+    return author;
   }
 
   async recalculateAuthorTotals(authorAddress: string): Promise<void> {
@@ -838,20 +849,20 @@ class Database {
       const { data, error } = await supabase
         .from('payments')
         .select('id')
-        .eq('article_id', 'articleId')
+        .eq('article_id', articleId)  // ✅ Fixed: was 'articleId' (string literal)
         .eq('user_address', normalizedUserAddress)
         .single()
-      
+
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
-      return !!data; 
+      return !!data;
 
     }
 
     // Get all wallets addresses for this author (user)
-    const { data: wallets, error: walletsError } = await supabase 
+    const { data: wallets, error: walletsError } = await supabase
       .from('author_wallets')
       .select('address')
       .eq('author_uuid', authorUuid)
@@ -868,11 +879,11 @@ class Database {
     const walletAddresses = wallets.map(w => w.address);
 
     // Check if ANY of author's wallets has paid for resource
-    const { data, error } = await supabase 
+    const { data, error } = await supabase
       .from('payments')
       .select('id')
       .eq('article_id', articleId)
-      .eq('user_address', walletAddresses)
+      .in('user_address', walletAddresses)  // ✅ Fixed: was .eq() instead of .in()
       .limit(1);
 
     if (error) {
