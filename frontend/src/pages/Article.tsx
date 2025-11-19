@@ -87,7 +87,10 @@ function Article() {
   if (caip.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
   return 'solana-devnet';
 };
-  const resolvedSolanaNetwork = detectSolanaNetwork(caipNetworkId);
+  const resolvedSolanaNetwork = useMemo(
+    () => detectSolanaNetwork(caipNetworkId),
+    [caipNetworkId]
+  );
   
 
 
@@ -323,6 +326,8 @@ function Article() {
     const isSolanaSelected = selectedNetworkFamily === 'solana';
     const selectedNetwork: SupportedNetwork = isSolanaSelected ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
+    console.log('🔧 [PURCHASE] Network:', caipNetworkId, '| Resolved:', resolvedSolanaNetwork, '| Selected:', selectedNetwork);
+
     setIsProcessingPayment(true);
     setPaymentError('');
 
@@ -366,7 +371,7 @@ function Article() {
     }
   };
 
-  // x402 tip 
+  // x402 tip
   const handleTip = async () => {
     const amount = selectedTipAmount || parseFloat(customTipAmount);
 
@@ -377,6 +382,8 @@ function Article() {
 
     const isSolanaTip = selectedTipNetworkFamily === 'solana';
     const selectedNetwork: SupportedNetwork = isSolanaTip ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
+
+    console.log('🔧 [TIP] Network:', caipNetworkId, '| Resolved:', resolvedSolanaNetwork, '| Selected:', selectedNetwork);
 
     if (isSolanaTip && !solanaSigner) {
       setTipResult({ success: false, message: 'Please connect a Solana wallet to tip' });

@@ -93,6 +93,8 @@ function resolveNetworkPreference(req: Request): SupportedX402Network {
         ? raw[0]
         : undefined;
 
+  console.log('🔧 [BACKEND] Network from query:', raw, '| Candidate:', candidate);
+
   if (candidate && SUPPORTED_X402_NETWORKS.includes(candidate as SupportedX402Network)) {
     return candidate as SupportedX402Network;
   }

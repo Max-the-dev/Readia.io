@@ -40,7 +40,10 @@ function Footer() {
     if (caip.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
     return 'solana-devnet';
   };
-  const resolvedSolanaNetwork = detectSolanaNetwork(caipNetworkId);
+  const resolvedSolanaNetwork = useMemo(
+    () => detectSolanaNetwork(caipNetworkId),
+    [caipNetworkId]
+  );
   const donationShareUrl = useMemo(
     () => (typeof window !== 'undefined' ? `${window.location.origin}/donate` : ''),
     []
@@ -332,6 +335,8 @@ function Footer() {
     const network: SupportedNetwork = isSolanaSelected
       ? resolvedSolanaNetwork
       : getNetworkFromChain(chain?.id);
+
+    console.log('🔧 [DONATE] Network:', caipNetworkId, '| Resolved:', resolvedSolanaNetwork, '| Selected:', network);
 
     try {
       const result = await x402PaymentService.donate(
