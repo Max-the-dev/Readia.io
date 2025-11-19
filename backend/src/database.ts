@@ -142,7 +142,6 @@ class Database {
   }
 
   private async findAuthorUuidByWallet(address: string): Promise<string | null> {
-    console.log('[findAuthorUuidByWallet] Looking up address:', address);
     const { data, error } = await supabase
       .from('author_wallets')
       .select('author_uuid')
@@ -150,12 +149,10 @@ class Database {
       .limit(1);
 
     if (error) {
-      console.log('[findAuthorUuidByWallet] Error:', error);
       throw error;
     }
 
     const uuid = data && data.length > 0 ? data[0].author_uuid : null;
-    console.log('[findAuthorUuidByWallet] Found UUID:', uuid);
     return uuid;
   }
 
@@ -470,7 +467,6 @@ class Database {
   }
 
   async getAuthorByUuid(authorUuid: string): Promise<Author | null> {
-    console.log('[getAuthorByUuid] Looking up UUID:', authorUuid);
     const { data, error } = await supabase
       .from('authors')
       .select('*')
@@ -478,24 +474,19 @@ class Database {
       .single();
 
     if (error) {
-      console.log('[getAuthorByUuid] Error:', error.code, error.message);
       if (error.code === 'PGRST116') return null;
       throw error;
     }
 
-    console.log('[getAuthorByUuid] Found author with address:', data?.address);
     return this.hydrateAuthorRow(data);
   }
 
   async getAuthorByWallet(address: string): Promise<Author | null> {
-    console.log('[getAuthorByWallet] Looking up wallet address:', address);
     const authorUuid = await this.findAuthorUuidByWallet(address);
     if (!authorUuid) {
-      console.log('[getAuthorByWallet] No UUID found, returning null');
       return null;
     }
     const author = await this.getAuthorByUuid(authorUuid);
-    console.log('[getAuthorByWallet] Returning author:', author ? { address: author.address, authorUuid: author.authorUuid } : 'null');
     return author;
   }
 

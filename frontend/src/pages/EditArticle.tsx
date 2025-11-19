@@ -147,20 +147,15 @@ function EditArticle() {
   };
 
   const checkEditPermission = async (articleId: number, userAddress: string) => {
-    console.log('[EditArticle] Checking edit permission for article:', articleId);
-    console.log('[EditArticle] User address:', userAddress);
     try {
       const response = await apiService.canEditArticle(articleId, userAddress);
-      console.log('[EditArticle] API response:', response);
       if (response.success && response.data) {
-        console.log('[EditArticle] Can edit:', response.data.canEdit);
         setIsAuthorized(response.data.canEdit);
       } else {
-        console.log('[EditArticle] API call failed or no data');
         setIsAuthorized(false);
       }
     } catch (error) {
-      console.error('[EditArticle] Error checking edit permission:', error);
+      console.error('Error checking edit permission:', error);
       setIsAuthorized(false);
     }
   };

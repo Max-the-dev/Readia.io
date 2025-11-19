@@ -76,20 +76,9 @@ async function resolveCanonicalAuthorAddress(address: string): Promise<{
   author: Author | null;
 }> {
   const normalized = normalizeFlexibleAddress(address);
-  console.log('[resolveCanonicalAuthorAddress] Input address:', address);
-  console.log('[resolveCanonicalAuthorAddress] Normalized address:', normalized);
-
   const author = await db.getAuthorByWallet(normalized);
-  console.log('[resolveCanonicalAuthorAddress] Found author:', author ? {
-    address: author.address,
-    authorUuid: author.authorUuid
-  } : 'null');
-
-  const canonicalAddress = author?.address || normalized;
-  console.log('[resolveCanonicalAuthorAddress] Returning canonical address:', canonicalAddress);
-
   return {
-    canonicalAddress,
+    canonicalAddress: author?.address || normalized,
     author,
   };
 }
@@ -2138,10 +2127,6 @@ router.get('/articles/:id/can-edit/:userAddress', readLimiter, async (req: Reque
     const articleId = parseInt(req.params.id);
     const { userAddress } = req.params;
 
-    console.log('=== CAN-EDIT CHECK START ===');
-    console.log('[can-edit] Article ID:', articleId);
-    console.log('[can-edit] User Address:', userAddress);
-
     if (isNaN(articleId)) {
       const response: ApiResponse<never> = {
         success: false,
@@ -2153,7 +2138,6 @@ router.get('/articles/:id/can-edit/:userAddress', readLimiter, async (req: Reque
     // Get the article
     const article = await db.getArticleById(articleId);
     if (!article) {
-      console.log('[can-edit] Article not found');
       const response: ApiResponse<never> = {
         success: false,
         error: 'Article not found'
@@ -2161,15 +2145,11 @@ router.get('/articles/:id/can-edit/:userAddress', readLimiter, async (req: Reque
       return res.status(404).json(response);
     }
 
-    console.log('[can-edit] Article found - authorAddress:', article.authorAddress);
-
     // Resolve canonical address (supports secondary wallets)
     let canonicalAddress: string;
     try {
       ({ canonicalAddress } = await resolveCanonicalAuthorAddress(userAddress));
-      console.log('[can-edit] Resolved canonical address:', canonicalAddress);
-    } catch (error) {
-      console.log('[can-edit] Failed to resolve canonical address:', error);
+    } catch {
       const response: ApiResponse<{ canEdit: boolean }> = {
         success: true,
         data: { canEdit: false }
@@ -2179,11 +2159,6 @@ router.get('/articles/:id/can-edit/:userAddress', readLimiter, async (req: Reque
 
     // Check if user owns the article
     const canEdit = article.authorAddress === canonicalAddress;
-    console.log('[can-edit] Comparison:');
-    console.log('  article.authorAddress:', article.authorAddress);
-    console.log('  canonicalAddress:     ', canonicalAddress);
-    console.log('  Match:', canEdit);
-    console.log('=== CAN-EDIT CHECK END ===');
 
     const response: ApiResponse<{ canEdit: boolean }> = {
       success: true,
