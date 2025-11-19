@@ -473,17 +473,9 @@ export function requireOwnership(field: string) {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const incoming = req.body?.[field];
-    if (incoming) {
-      const normalized = tryNormalizeFlexibleAddress(incoming);
-      if (!normalized) {
-        return res.status(400).json({ success: false, error: 'Invalid wallet address supplied' });
-      }
-      if (normalized !== tryNormalizeFlexibleAddress(req.auth.address)) {
-        return res.status(403).json({ success: false, error: 'Address mismatch for this action' });
-      }
-    }
-
+    // Don't validate incoming address - let the route handler check authorization
+    // via resolveCanonicalAuthorAddress() which supports secondary wallets
+    // Just set the field to the authenticated wallet address
     if (req.body) {
       req.body[field] = req.auth.address;
     }
