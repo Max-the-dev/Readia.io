@@ -26,9 +26,9 @@ const X402Test: React.FC = () => {
   );
 
   const articles = [
-    { id: '191', title: 'Test article 1', price: '$0.01' },
-    { id: '192', title: 'Test article 2', price: '$0.01' },
-    { id: '193', title: 'Test article 3', price: '$0.01' },
+    { id: '194', title: 'Test article 1', price: '$0.01' },
+    { id: '195', title: 'Test article 2', price: '$0.01' },
+    { id: '196', title: 'Test article 3', price: '$0.01' },
   ];
 
   const [currentPaymentReq, setCurrentPaymentReq] = useState<PaymentRequirement | null>(null);
@@ -294,7 +294,7 @@ Encoded Header:
           successLines.push(`🔗 Verify Payment: ${explorerUrl}`);
         }
 
-        successLines.push('', `Congrats on completing your first transaction on ${currentNetworkName} 🚀`);
+        successLines.push('', `Congrats on completing your first transaction on ${paymentNetworkLabel} 🚀`);
 
         const successMsg = successLines.join('\n');
         let successHtml = successMsg.replace(/\n/g, '<br />');
