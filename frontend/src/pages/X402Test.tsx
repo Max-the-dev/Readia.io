@@ -100,9 +100,9 @@ const X402Test: React.FC = () => {
         : 'Connect a supported Base or Solana network.';
 
   const articles = [
-    { id: '92', title: 'Test article 1', price: '$0.01' },
-    { id: '93', title: 'Test article 2', price: '$0.01' },
-    { id: '94', title: 'Test article 3', price: '$0.01' },
+    { id: '185', title: 'Test article 1', price: '$0.01' },
+    { id: '186', title: 'Test article 2', price: '$0.01' },
+    { id: '187', title: 'Test article 3', price: '$0.01' },
   ];
 
   const getPaymentRequirements = async () => {

@@ -83,8 +83,13 @@ function Explore() {
       try {
         const response = await apiService.getArticles();
         if (response.success && response.data) {
-          setArticles(response.data);
-          setFilteredArticles(response.data);
+          // Filter out test articles (used only for x402 test page)
+          const TEST_ARTICLE_AUTHOR = '0x6D084C5857b7FE93e3F947a09a8A68E6B2d5Ec75';
+          const filtered = response.data.filter(
+            article => article.authorAddress.toLowerCase() !== TEST_ARTICLE_AUTHOR.toLowerCase()
+          );
+          setArticles(filtered);
+          setFilteredArticles(filtered);
         }
       } catch (error) {
         console.error('Error fetching articles:', error);

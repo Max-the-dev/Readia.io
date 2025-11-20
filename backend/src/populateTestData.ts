@@ -3,20 +3,13 @@ import { Author, SupportedAuthorNetwork } from './types';
 
 const PLATFORM_BASE_ADDRESS =
   process.env.X402_PLATFORM_EVM_ADDRESS ||
-  '0xEc115640B09416a59fE77e4e7b852fE700Fa6bF1';
-const PLATFORM_SOL_ADDRESS =
-  process.env.X402_PLATFORM_SOL_ADDRESS || 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51';
+  '0x6D084C5857b7FE93e3F947a09a8A68E6B2d5Ec75';
 
 const SEED_AUTHORS: Array<Pick<Author, 'address' | 'primaryPayoutNetwork' | 'createdAt'>> = [
   {
     address: PLATFORM_BASE_ADDRESS,
     primaryPayoutNetwork: 'base',
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    address: PLATFORM_SOL_ADDRESS,
-    primaryPayoutNetwork: 'solana',
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
@@ -31,25 +24,25 @@ type ValidationArticleConfig = {
 
 const VALIDATION_ARTICLES: ValidationArticleConfig[] = [
   {
-    title: 'Test Article #1',
+    title: 'Test Article 1',
     content:
-      '<p>Use this article to validate Base mainnet purchases via the Coinbase x402 facilitator.</p><p>It is pinned to the platform Base wallet and costs exactly $0.01.</p>',
+      '<p>The evolution of decentralized finance has fundamentally changed how we think about ownership and value transfer on the internet. Unlike traditional financial systems that rely on intermediaries, blockchain technology enables peer-to-peer transactions that are transparent, immutable, and accessible to anyone with an internet connection.</p><p>Smart contracts have emerged as the backbone of this revolution, automating complex financial operations without requiring trust in centralized authorities. From automated market makers to lending protocols, these self-executing agreements are reshaping how value flows through digital ecosystems.</p><p>As we move forward, the intersection of artificial intelligence and blockchain presents unprecedented opportunities for creating more efficient, secure, and user-friendly financial systems that can serve billions of people worldwide.</p>',
     authorAddress: PLATFORM_BASE_ADDRESS,
     authorPrimaryNetwork: 'base',
   },
   {
-    title: 'Test Article #2',
+    title: 'Test Article 2',
     content:
-      '<p>Second Base article for regression testing. Keeping a sibling entry ensures we can purchase twice without violating 1 purchase per wallet per article rule.</p><p>Also priced at $0.01.</p>',
+      '<p>The art of sourdough baking has experienced a remarkable renaissance in recent years, connecting modern home bakers with ancient fermentation techniques that date back thousands of years. At its core, sourdough is a living ecosystem—a symbiotic relationship between wild yeast and lactobacilli bacteria that transforms simple flour and water into complex, flavorful bread.</p><p>What makes sourdough unique is its natural leavening process. Unlike commercial yeast breads, sourdough develops its characteristic tangy flavor and open crumb structure through slow fermentation, which not only enhances taste but also makes the bread more digestible and nutritious.</p><p>The ritual of maintaining a sourdough starter has become a meditative practice for many, offering a tangible connection to traditional foodways in our increasingly automated world. Each loaf tells a story of time, patience, and the invisible microorganisms that make it all possible.</p>',
     authorAddress: PLATFORM_BASE_ADDRESS,
     authorPrimaryNetwork: 'base',
   },
   {
-    title: 'Test Article #3',
+    title: 'Test Article 3',
     content:
-      '<p>This article is tied to the Solana payout address so the harness can walk through SPL USDC purchases.</p><p>It mirrors the Base price ($0.01) for consistency across networks.</p>',
-    authorAddress: PLATFORM_SOL_ADDRESS,
-    authorPrimaryNetwork: 'solana',
+      '<p>Large language models have rapidly transformed from experimental research projects into powerful tools that are reshaping how we interact with technology. These AI systems, trained on vast amounts of text data, can understand context, generate human-like responses, and assist with everything from writing code to analyzing complex documents.</p><p>The implications extend far beyond simple chatbots. Modern AI models are being integrated into software development workflows, content creation pipelines, and decision-making processes across industries. They serve as collaborative partners, augmenting human capabilities rather than simply replacing them.</p><p>As these technologies continue to evolve, questions around ethics, bias, and responsible deployment become increasingly important. The challenge lies not just in building more powerful models, but in ensuring they serve humanity in ways that are transparent, fair, and aligned with our values.</p>',
+    authorAddress: PLATFORM_BASE_ADDRESS,
+    authorPrimaryNetwork: 'base',
   },
 ];
 
@@ -106,7 +99,7 @@ async function populateDatabase() {
         purchases: 0,
         earnings: 0,
         readTime: calculateReadTime(config.content),
-        categories: ['Validation'],
+        categories: [] ,
         likes: 0,
         popularityScore: 0,
       };
