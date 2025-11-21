@@ -111,7 +111,7 @@ function resolveNetworkPreference(req: Request): SupportedX402Network {
  */
 const readLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 100 : 1000, // Relax limits in development
+  max: isProduction ? 200 : 1000, // Relax limits in development
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.'
@@ -128,7 +128,7 @@ const readLimiter = rateLimit({
  */
 const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 20 : 200,
+  max: isProduction ? 100 : 200,
   message: {
     success: false,
     error: 'Too many write requests. Please slow down and try again later.'
@@ -145,7 +145,7 @@ const writeLimiter = rateLimit({
  */
 const criticalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 100,
+  max: isProduction ? 75 : 100,
   message: {
     success: false,
     error: 'Too many attempts. Please wait before trying again.'
@@ -162,7 +162,7 @@ const criticalLimiter = rateLimit({
  */
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 100,
+  max: isProduction ? 50 : 100,
   message: {
     success: false,
     error: 'Too many upload requests. Please wait before uploading more files.'
