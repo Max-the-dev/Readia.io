@@ -109,7 +109,7 @@ function Home() {
                 Explore Articles
               </Link>
             </div>
-            <p className="hero-subtitle">
+            <p className="home-hero-subtitle">
               Readers: Pay only for what you read—no subscriptions, no ads.
               <br></br>
               Authors: Receive 100% of revenue directly into your wallet.
