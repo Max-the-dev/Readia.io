@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { WalletProvider } from './contexts/WalletContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthToastProvider } from './contexts/AuthToastContext';
@@ -27,10 +28,49 @@ import Whitepaper from './pages/Whitepaper';
 import NotFound from './pages/NotFound';
 import './App.css'
 
+const DEFAULT_TITLE = 'Readia.io - Micropayment Content Platform';
+const ROUTE_TITLES: Record<string, string> = {
+  '/': 'Readia.io - Micropayment Content Platform',
+  '/write': 'Readia - Write an Article',
+  '/dashboard': 'Readia Dashboard',
+  '/whitepaper': 'Readia Whitepaper',
+  '/about': 'About Readia',
+  '/how-it-works': 'How Readia Works',
+  '/pricing': 'Readia Pricing',
+  '/resources': 'Readia Resources',
+  '/help': 'Readia Help Center',
+  '/privacy': 'Readia Privacy Policy',
+  '/terms': 'Readia Terms of Service',
+  '/contact': 'Contact Readia',
+  '/x402-test': 'Readia x402 Test',
+  '/explore': 'Explore Readia',
+};
+
+function usePageTitle() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    let title = ROUTE_TITLES[pathname];
+
+    if (!title) {
+      if (pathname.startsWith('/article/')) {
+        title = 'Readia Article';
+      } else if (pathname.startsWith('/edit/')) {
+        title = 'Readia Editor';
+      } else {
+        title = DEFAULT_TITLE;
+      }
+    }
+
+    document.title = title;
+  }, [pathname]);
+}
+
 // Inner component that uses the wallet connection manager
 function AppContent() {
   // This hook prevents auto-reconnect when user has explicitly disconnected
   useWalletConnectionManager();
+  usePageTitle();
 
   return (
     <>
