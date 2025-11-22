@@ -14,7 +14,7 @@ function Home() {
     "Pay only for what you read",
     "No subscriptions",
     "No ads",
-    "No middlemen",e 
+    "No middlemen", 
     "100% Free",
     "Sign up, publish, get paid"
   ];
