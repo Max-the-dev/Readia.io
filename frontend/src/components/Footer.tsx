@@ -394,7 +394,7 @@ function Footer() {
             <p>Content Monetization Reimagined</p>
             {/* Action Buttons */}
             <div className="footer-actions">
-              <Link to="/x402-test" className="x402-validation-button">
+              <Link to="/x402-test" className="donate-button">
                 <span className="top-key"></span>
                 <span className="button-text">
                   <Laptop size={18} />
