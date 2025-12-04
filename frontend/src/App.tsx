@@ -24,6 +24,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import X402Test from './pages/X402Test';
+import ReadToken from './pages/ReadToken';
 import Explore from './pages/Explore';
 import Whitepaper from './pages/Whitepaper';
 import NotFound from './pages/NotFound';
@@ -44,6 +45,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/terms': 'Readia Terms of Service',
   '/contact': 'Contact Readia',
   '/x402-test': 'Readia x402 Test',
+  '/read-token': 'Readia Token Information',
   '/explore': 'Explore Readia',
 };
 
@@ -93,6 +95,7 @@ function AppContent() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/x402-test" element={<X402Test />} />
+          <Route path="/read-token" element={<ReadToken />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="*" element={<NotFound />} />
        </Routes>

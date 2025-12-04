@@ -26,5 +26,6 @@
 @import './styles/pages/dashboard.css';
 @import './styles/pages/write.css';
 @import './styles/pages/x402-test.css';
+@import './styles/pages/read-token.css';
 @import './styles/pages/article.css';
 @import './styles/pages/static.css';
