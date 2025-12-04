@@ -291,13 +291,20 @@
 }
 
 
-.link:hover,
+.link:hover {
+  outline: 0;
+  width: 130px;
+  color: var(--text-primary);
+}
 
+.link:hover::before {
+  transform: translateX(0);
+}
 
-.link:hover::before,
-
-
-.link:hover .link-title,
+.link:hover .link-title {
+  transform: translateX(0);
+  opacity: 1;
+}
 
 
 .link-icon {
@@ -6238,10 +6245,15 @@ w3m-input:focus {
 
 
 .btn-cssbuttons span,
-
+.btn-cssbuttons span span {
+  display: inline-flex;
+  vertical-align: middle;
+  transition: 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
+  position: relative;
+  z-index: 1;
+}
 
 .success-share-trigger .btn-cssbuttons span,
-
 .success-share-trigger .btn-cssbuttons span span {
   align-items: center;
   justify-content: center;
@@ -10706,10 +10718,21 @@ w3m-input:focus {
 
 
 .filter-input,
-
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  transition: border-color 0.2s ease;
+}
 
 .filter-input:focus,
-
+.filter-select:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.1);
+}
 
 .filter-actions {
   display: flex;
@@ -13268,6 +13291,25 @@ w3m-input:focus {
 
 
 .editor-section-body ul,
+.editor-section-body ol {
+  list-style-position: outside;
+  padding-left: 24px;
+  margin: 18px 0;
+}
+
+.editor-section-body ul {
+  list-style-type: disc;
+}
+
+.editor-section-body ol {
+  list-style-type: decimal;
+}
+
+.editor-section-body li {
+  margin-bottom: 12px;
+  line-height: 1.75;
+  color: #0f172a;
+}
 
 
 .editor-placeholder {
