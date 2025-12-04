@@ -8,9 +8,12 @@ function Header() {
   return (
     <header className="header">
       <div className="container">
-        <Link to="/" className="logo">
-          <h1>Readia.io</h1>
-        </Link>
+        <div className="header-left">
+          <ThemeToggle />
+          <Link to="/" className="logo">
+            <h1>Readia.io</h1>
+          </Link>
+        </div>
         <nav className="nav-links-center">
           <Link to="/explore" className="link">
             <span className="link-icon"><BookOpen size={20}/></span>
@@ -26,7 +29,6 @@ function Header() {
           </Link>
         </nav>
         <div className="auth-container">
-          <ThemeToggle />
           <AppKitConnectButton />
           <AuthStatusBadges />
         </div>
