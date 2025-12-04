@@ -23,6 +23,11 @@
   height: 64px;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
 
 .logo {
   text-decoration: none;
@@ -32,7 +37,6 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  margin-left: 100px;
 }
 
 
