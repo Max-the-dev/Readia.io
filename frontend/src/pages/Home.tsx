@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { PenTool, BookOpen } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 import PennyPenIcon from '../components/PennyPenIcon';
+import TokenInfoCard from '../components/TokenInfoCard';
 
 // We'll fetch real articles from the backend instead of using mock data
 
@@ -99,6 +100,11 @@ function Home() {
                 <span className="cursor">|</span>
               </span>
             </div>
+            <p className="home-hero-subtitle">
+              Readers: Pay only for what you read—no subscriptions, no ads.
+              <br></br>
+              Authors: Receive 100% of revenue directly into your wallet.
+            </p>
             <div className="hero-cta-buttons">
               <Link to="/write" className="cta-simple-button">
                 <PenTool size={18} />
@@ -109,12 +115,13 @@ function Home() {
                 Explore Articles
               </Link>
             </div>
-            <p className="home-hero-subtitle">
-              Readers: Pay only for what you read—no subscriptions, no ads.
-              <br></br>
-              Authors: Receive 100% of revenue directly into your wallet.
-            </p>
+            <TokenInfoCard contractAddress="C8wvVNuRPm237bQqqcfRxas77GTK3RzzoBCkWgrGpump" />
           </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="scroll-indicator">
+          <div className="scroll-arrow"></div>
         </div>
 
       </div>
