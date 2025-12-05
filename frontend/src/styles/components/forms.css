@@ -22,7 +22,7 @@
 .search-section {
   margin: 24px 0;
   padding: 20px;
-  background: white;
+  background: var(--bg-primary);
   border-radius: 8px;
   border: 1px solid var(--border-light);
 }
