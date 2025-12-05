@@ -2409,7 +2409,7 @@ w3m-input:focus {
 
 .table-row:hover {
   background-color: var(--bg-secondary);
-  box-shadow: inset 3px 0 var(--contrast-bg), 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   border-left-color: var(--contrast-bg);
 }
 
@@ -2418,6 +2418,22 @@ w3m-input:focus {
   border-bottom: none;
 }
 
+.articles-table .table-cell.actions .action-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+
+.articles-table .table-cell.actions .action-btn:hover {
+  background: var(--bg-hover);
+  border: none;
+}
+
+
+.articles-table .table-cell.actions .delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
 
 .table-cell {
   display: flex;
@@ -14598,7 +14614,10 @@ w3m-input:focus {
 }
 
 
-.wallet-lab__primary:hover,
+.wallet-lab__primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+}
 
 
 .wallet-lab__ghost {
@@ -14614,7 +14633,12 @@ w3m-input:focus {
 }
 
 
-.wallet-lab__ghost:hover,
+.wallet-lab__ghost:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+  background: var(--bg-secondary);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+}
 
 
 .wallet-lab__status {
@@ -14663,13 +14687,13 @@ w3m-input:focus {
 .payout-confirm h3 {
   margin: 0 0 12px;
   font-size: 1.35rem;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
 
 .payout-confirm p {
   margin: 0 0 20px;
-  color: #475569;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
@@ -14681,29 +14705,42 @@ w3m-input:focus {
 }
 
 
-.btn-ghost,
-
-
 .btn-ghost {
-  border: 1px solid rgba(15, 23, 42, 0.2);
-  background: rgba(248, 250, 252, 0.9);
-  color: #0f172a;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 
-.btn-ghost:hover,
+.btn-ghost:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
 
 
 .btn-danger {
   border: none;
   background: #dc2626;
   color: #fff;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 600;
   box-shadow: 0 12px 30px rgba(220, 38, 38, 0.35);
+  transition: all 0.2s ease;
 }
 
 
-.btn-danger:hover,
+.btn-danger:hover {
+  background: #b91c1c;
+  box-shadow: 0 14px 32px rgba(185, 28, 28, 0.35);
+}
 
 
 .paywall-connect-panel {
@@ -14820,7 +14857,7 @@ w3m-input:focus {
 .plusButton:focus-visible .plusIcon {
   color: var(--plus_iconHoverColor, var(--plus_iconColor));
   stroke: var(--plus_iconHoverColor, var(--plus_iconColor));
-  transform: rotate(180deg);
+  transform: translateY(-1px);
 }
 
 
