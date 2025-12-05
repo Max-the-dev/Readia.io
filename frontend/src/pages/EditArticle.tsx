@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { useAuth } from '../contexts/AuthContext';
 import AppKitConnectButton from '../components/AppKitConnectButton';
+import { useTheme } from '../contexts/ThemeContext';
 import { Save, Eye, ArrowLeft, X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Editor } from '@tinymce/tinymce-react';
 import { apiService, Article, API_BASE_URL } from '../services/api';
@@ -27,6 +28,8 @@ function EditArticle() {
   const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
   const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
   const [checkingAuth, setCheckingAuth] = useState<boolean>(false);
+  const { theme } = useTheme();
+  const editorRef = useRef<any>(null);
 
   // Content limits (match Write page)
   const MAX_TITLE_LENGTH = 200;
@@ -89,6 +92,54 @@ function EditArticle() {
 
   const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
   const charCount = content.length;
+  const applyEditorTheme = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const doc = editor.getDoc();
+    if (!doc) return;
+
+    const root = doc.documentElement;
+    if (!root) return;
+    const palette: Record<string, string> = theme === 'dark'
+      ? {
+          'text-color': '#f5f5f5',
+          'heading-color': '#ffffff',
+          'muted-color': '#d1d5db',
+          'code-bg': '#1f2933',
+          'code-text': '#f5f5f5',
+          'pre-bg': '#111827',
+          'blockquote-border': '#374151',
+          'blockquote-text': '#cbd5f5',
+          'table-border': '#374151',
+          'table-head-bg': '#1f2933'
+        }
+      : {
+          'text-color': '#1a1a1a',
+          'heading-color': '#1a1a1a',
+          'muted-color': '#6b7280',
+          'code-bg': '#f3f4f6',
+          'code-text': '#1a1a1a',
+          'pre-bg': '#f8f9fa',
+          'blockquote-border': '#e5e7eb',
+          'blockquote-text': '#6b7280',
+          'table-border': '#e1e8ed',
+          'table-head-bg': '#f8f9fa'
+        };
+
+    Object.entries(palette).forEach(([token, value]) => {
+      root.style.setProperty(`--editor-${token}`, value);
+    });
+
+    if (doc.body) {
+      doc.body.style.background = 'transparent';
+      doc.body.style.color = palette['text-color'];
+      doc.body.style.caretColor = palette['text-color'];
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    applyEditorTheme();
+  }, [applyEditorTheme]);
 
   // Load article data on component mount
   useEffect(() => {
@@ -559,7 +610,11 @@ function EditArticle() {
               <div className="tinymce-wrapper">
                 <Editor
                   apiKey="7ompssow13ixn3z1ds3slkwik6xp3uytm0sks18m4sqk2m4q"
-                  value={content}
+                    value={content}
+                    onInit={(_, editor) => {
+                      editorRef.current = editor;
+                      applyEditorTheme();
+                    }}
                   onEditorChange={(content) => {
                     clearSubmitFeedback();
                     setContent(content);
@@ -669,16 +724,29 @@ function EditArticle() {
                     },
                     
                     content_style: `
+                      :root {
+                        --editor-text-color: #1a1a1a;
+                        --editor-heading-color: #1a1a1a;
+                        --editor-muted-color: #6b7280;
+                        --editor-code-bg: #f3f4f6;
+                        --editor-code-text: #1a1a1a;
+                        --editor-pre-bg: #f8f9fa;
+                        --editor-blockquote-border: #1d9bf0;
+                        --editor-blockquote-text: #536471;
+                        --editor-table-border: #e1e8ed;
+                        --editor-table-head-bg: #f8f9fa;
+                      }
                       body {
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
                         font-size: 16px;
                         line-height: 1.6;
-                        color: #1a1a1a;
+                        color: var(--editor-text-color);
                         padding: 20px;
                         max-width: none;
+                        background: transparent;
                       }
                       h1, h2, h3, h4, h5, h6 {
-                        color: #1a1a1a;
+                        color: var(--editor-heading-color);
                         font-weight: 600;
                         margin-top: 2rem;
                         margin-bottom: 1rem;
@@ -688,25 +756,27 @@ function EditArticle() {
                       h3 { font-size: 1.25rem; }
                       p { margin: 0 0 1rem 0; }
                       blockquote {
-                        border-left: 4px solid #1d9bf0;
+                        border-left: 4px solid var(--editor-blockquote-border);
                         padding-left: 16px;
                         margin: 1rem 0;
                         font-style: italic;
-                        color: #536471;
+                        color: var(--editor-blockquote-text);
                       }
                       code {
-                        background: #f1f3f4;
+                        background: var(--editor-code-bg);
+                        color: var(--editor-code-text);
                         padding: 2px 6px;
                         border-radius: 4px;
                         font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
                         font-size: 0.9em;
                       }
                       pre {
-                        background: #f8f9fa;
+                        background: var(--editor-pre-bg);
+                        color: var(--editor-code-text);
                         padding: 16px;
                         border-radius: 8px;
                         overflow-x: auto;
-                        border: 1px solid #e1e8ed;
+                        border: 1px solid var(--editor-table-border);
                       }
                       img {
                         max-width: 100%;
@@ -732,16 +802,17 @@ function EditArticle() {
                         border-collapse: collapse;
                         width: 100%;
                         margin: 1rem 0;
-                        border: 1px solid #e1e8ed;
+                        border: 1px solid var(--editor-table-border);
                       }
                       table td, table th {
-                        border: 1px solid #e1e8ed;
+                        border: 1px solid var(--editor-table-border);
                         padding: 12px 16px;
                         text-align: left;
                       }
                       table th {
-                        background: #f8f9fa;
+                        background: var(--editor-table-head-bg);
                         font-weight: 600;
+                        color: var(--editor-heading-color);
                       }
                     `,
                     
