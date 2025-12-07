@@ -1,0 +1,450 @@
+.shillApp {
+  background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.1), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(37, 99, 235, 0.1), transparent 35%),
+    var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  margin: 16px 0 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.brandBadge {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  border: 1px solid rgba(124, 58, 237, 0.25);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.navLink {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-dark);
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.navLink:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.navLinkActive {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(124, 58, 237, 0.12));
+  color: var(--text-primary);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.walletButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-dark);
+  background: var(--contrast-inverse-bg);
+  color: var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.walletButton:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.heroCopy {
+  padding: 24px;
+  background: var(--bg-card);
+  border-radius: 18px;
+  border: 1px solid var(--border-dark);
+  box-shadow: var(--shadow-md);
+}
+
+.heroTitle {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.heroSubtitle {
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.15);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.badgePurple {
+  background: rgba(124, 58, 237, 0.08);
+  color: #6b21a8;
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.primaryBtn,
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primaryBtn {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+}
+
+.primaryBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.ghostBtn {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-dark);
+}
+
+.ghostBtn:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+.heroStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.statCard {
+  padding: 14px;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-medium);
+  border-radius: 12px;
+}
+
+.statLabel {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.statValue {
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.heroPanel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: 14px;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panelTitle {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.panelPill {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dark);
+  color: var(--text-secondary);
+}
+
+.panelItem {
+  padding: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.panelLabel {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.panelValue {
+  font-weight: 700;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 32px 0 16px;
+}
+
+.sectionTitle {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.sectionHint {
+  color: var(--text-secondary);
+}
+
+.questGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.questCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.questCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-hover);
+}
+
+.questTitle {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.questDescription {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.questMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.questSponsor {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.questPrice {
+  font-weight: 800;
+}
+
+.questTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dark);
+  color: var(--text-secondary);
+}
+
+.tagHot {
+  background: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.subSection {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-medium);
+}
+
+.tokenCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: 12px;
+}
+
+.tokenHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tokenTitle {
+  font-weight: 800;
+  font-size: 18px;
+}
+
+.tokenBadge {
+  background: rgba(16, 185, 129, 0.12);
+  color: #0f9c69;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-weight: 700;
+}
+
+.tokenBenefits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.tokenBenefit {
+  padding: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  display: grid;
+  gap: 6px;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.comingSoon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(26, 26, 26, 0.05);
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-medium);
+  font-weight: 700;
+}
+
+.inlineActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav {
+    width: 100%;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

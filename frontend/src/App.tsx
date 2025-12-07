@@ -28,6 +28,7 @@ import ReadToken from './pages/ReadToken';
 import Explore from './pages/Explore';
 import Whitepaper from './pages/Whitepaper';
 import NotFound from './pages/NotFound';
+import ShillQuestApp from './apps/shill-quest/ShillQuestApp';
 import './App.css'
 
 const DEFAULT_TITLE = 'Readia.io - Micropayment Content Platform';
@@ -47,6 +48,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/x402-test': 'Readia x402 Test',
   '/read-token': 'Readia Token Information',
   '/explore': 'Explore Readia',
+  '/shill': 'ShillQuest by Readia',
 };
 
 function usePageTitle() {
@@ -69,15 +71,16 @@ function usePageTitle() {
   }, [pathname]);
 }
 
-// Inner component that uses the wallet connection manager
 function AppContent() {
   // This hook prevents auto-reconnect when user has explicitly disconnected
   useWalletConnectionManager();
   usePageTitle();
+  const { pathname } = useLocation();
+  const isShillRoute = pathname.startsWith('/shill');
 
   return (
     <>
-      <Header />
+      {!isShillRoute && <Header />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -97,10 +100,11 @@ function AppContent() {
           <Route path="/x402-test" element={<X402Test />} />
           <Route path="/read-token" element={<ReadToken />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/shill/*" element={<ShillQuestApp />} />
           <Route path="*" element={<NotFound />} />
        </Routes>
       </main>
-      <Footer />
+      {!isShillRoute && <Footer />}
       <SessionExpiredModal />
       <AuthPromptToast />
     </>
