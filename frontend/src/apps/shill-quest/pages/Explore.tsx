@@ -1,72 +1,100 @@
-import { useMemo, useState } from 'react';
-import QuestCard from '../components/QuestCard';
-import { Quest } from '../types';
-import styles from '../ShillQuest.module.css';
+import { mockQuests } from '../data/mockQuests';
 
-interface ExploreProps {
-  quests: Quest[];
-}
-
-const categories = ['All', 'DeFi', 'NFT', 'Gaming', 'Token Launch', 'Education'];
-
-function Explore({ quests }: ExploreProps) {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
-
-  const filtered = useMemo(() => {
-    return quests.filter((quest) => {
-      const matchesCategory = category === 'All' || quest.tags.includes(category);
-      const matchesSearch = quest.title.toLowerCase().includes(search.toLowerCase()) ||
-        quest.description.toLowerCase().includes(search.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [category, quests, search]);
-
+function Explore() {
   return (
-    <div className={styles.shell}>
-      <div className={styles.sectionHeading}>
-        <div>
-          <h1 className={styles.sectionTitle}>Explore quests</h1>
-          <p className={styles.sectionHint}>Find campaigns that match your content style. More filters coming soon.</p>
+    <div className="explore-page">
+      <div className="container">
+        <div className="explore-hero">
+          <div className="hero-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+            </svg>
+          </div>
+          <h1>Explore Quests</h1>
+          <p>Find campaigns that match your audience and start earning.</p>
         </div>
-        <span className={styles.panelPill}>Live MVP</span>
-      </div>
 
-      <div className={styles.subSection}>
-        <div className={styles.inlineActions}>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`${styles.navLink} ${category === cat ? styles.navLinkActive : ''}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="explore-content">
+          <div className="categories-sidebar">
+            <div className="sidebar-header">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" /><path d="M7 7h.01" />
+              </svg>
+              <h3>Categories</h3>
+            </div>
+            <div className="category-list">
+              <button className="category-item active">All Quests <span className="selected-indicator">✓</span></button>
+              <button className="category-item">DeFi</button>
+              <button className="category-item">NFT</button>
+              <button className="category-item">Gaming</button>
+              <button className="category-item">Infrastructure</button>
+              <button className="category-item">Token Launch</button>
+              <button className="category-item">Education</button>
+            </div>
+          </div>
+
+          <div className="explore-main">
+            <div className="search-section">
+              <div className="search-container">
+                <div className="search-box">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="search-icon">
+                    <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" placeholder="Search quests..." className="search-input" />
+                </div>
+                <button className="filter-toggle">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                </button>
+              </div>
+              <div className="search-results-info">
+                <div className="results-count">
+                  <p>Found {mockQuests.length} quests</p>
+                </div>
+                <div className="view-toggle">
+                  <button className="view-btn active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />
+                    </svg>
+                  </button>
+                  <button className="view-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="8" x2="21" y1="6" y2="6" /><line x1="8" x2="21" y1="12" y2="12" /><line x1="8" x2="21" y1="18" y2="18" /><line x1="3" x2="3.01" y1="6" y2="6" /><line x1="3" x2="3.01" y1="12" y2="12" /><line x1="3" x2="3.01" y1="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="explore-articles">
+              <div className="article-grid">
+                {mockQuests.map((quest) => (
+                  <div className="article-card" key={quest.id}>
+                    <a href="#" className="article-card-link">
+                      <h3>{quest.title}</h3>
+                      <p>{quest.description}</p>
+                    </a>
+                    <div className="article-meta">
+                      <div className="author-info">
+                        <span className="author">by {quest.sponsor}</span>
+                        <span className="read-time">• {quest.spotsTaken}/{quest.spotsTotal}</span>
+                      </div>
+                      <span className="price">${quest.payout.toFixed(2)}</span>
+                    </div>
+                    <div className="article-stats">
+                      <div className="article-stats-left">
+                        {quest.tags.map((tag) => (
+                          <span className={`quest-tag ${tag.toLowerCase() === 'hot' ? 'hot' : ''}`} key={tag}>{tag}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className={styles.inlineActions}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search quests..."
-            className={styles.walletButton}
-            style={{ width: '100%', maxWidth: 360 }}
-          />
-          <span className={styles.comingSoon}>Advanced filters coming soon</span>
-        </div>
-      </div>
-
-      <div className={styles.sectionHeading}>
-        <h2 className={styles.sectionTitle}>Results</h2>
-        <span className={styles.sectionHint}>{filtered.length} quests</span>
-      </div>
-
-      <div className={styles.questGrid}>
-        {filtered.map((quest) => (
-          <QuestCard key={quest.id} quest={quest} />
-        ))}
       </div>
     </div>
   );
