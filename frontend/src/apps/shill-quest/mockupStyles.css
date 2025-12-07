@@ -635,7 +635,6 @@ main {
 .typing-text-box {
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-primary);
   min-height: 56px;
   display: flex;
   align-items: center;
@@ -643,12 +642,32 @@ main {
   text-align: center;
   white-space: normal;
   margin-top: 4px;
-  width: 100%;
+}
+
+/* Green text style with glow */
+.typing-text-box .typing-text {
+  color: var(--accent-green);
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+[data-theme="light"] .typing-text-box .typing-text {
+  color: var(--accent-green-dark);
+  text-shadow: 0 0 10px rgba(5, 150, 105, 0.35);
 }
 
 .cursor {
-  animation: blink 1s infinite;
-  color: var(--accent-blue);
+  animation: blink 0.8s step-end infinite;
+  color: var(--accent-green);
+  font-weight: 400;
+  margin-left: 1px;
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+[data-theme="light"] .cursor {
+  color: var(--accent-green-dark);
+  text-shadow: 0 0 6px rgba(5, 150, 105, 0.4);
 }
 
 @keyframes blink {
@@ -700,7 +719,7 @@ main {
 }
 
 .hero-subtitle {
-  font-size: 1.1rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 auto 8px auto;
@@ -721,6 +740,11 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .hero-powered-label {
@@ -736,6 +760,13 @@ main {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.hero-powered-brand:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-hover);
 }
 
 /* Scroll Indicator - matches Readia */
@@ -2587,13 +2618,189 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   margin: 48px auto;
 }
 
-/* Social proof wrapper */
-.token-social-proof {
+/* ==============================================
+   TOKENOMICS SECTION
+   ============================================== */
+
+.tokenomics-section {
+  background: var(--bg-secondary);
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 80px 20px;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.tokenomics-inner {
+  max-width: 900px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 32px;
+}
+
+.tokenomics-section h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+.tokenomics-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: -16px 0 0 0;
+  text-align: center;
+}
+
+.tokenomics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
   width: 100%;
+}
+
+.tokenomics-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.tokenomics-card:hover {
+  border-color: var(--accent-green);
+  transform: translateY(-2px);
+}
+
+.tokenomics-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.tokenomics-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.tokenomics-utility {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 28px 32px;
+}
+
+.tokenomics-utility h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.utility-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.utility-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+}
+
+.utility-item svg {
+  color: var(--accent-green);
+  flex-shrink: 0;
+}
+
+.utility-item span {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+/* ==============================================
+   SOCIAL PROOF SECTION (Stats & Partners)
+   ============================================== */
+
+.social-proof-section {
+  background: var(--bg-primary);
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 80px 20px;
+}
+
+.social-proof-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 48px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+}
+
+.stat-number {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.partners-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+.partners-title {
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
 }
 
 /* ==============================================
@@ -2610,8 +2817,13 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   }
 
   .stats-grid,
-  .token-stats-grid {
+  .token-stats-grid,
+  .tokenomics-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .utility-list {
+    grid-template-columns: 1fr;
   }
 
   .values-grid {
@@ -2673,8 +2885,18 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator {
   }
 
   .stats-grid,
-  .token-stats-grid {
+  .token-stats-grid,
+  .tokenomics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tokenomics-section,
+  .social-proof-section {
+    padding: 60px 20px;
+  }
+
+  .tokenomics-value {
+    font-size: 1.5rem;
   }
 
   .token-stat-number {

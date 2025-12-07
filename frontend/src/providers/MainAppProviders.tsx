@@ -11,7 +11,7 @@ interface Props {
 
 function MainAppProviders({ children }: Props) {
   return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig}>
+    <WagmiProvider config={wagmiAdapter.wagmiConfig} reconnectOnMount={false}>
       <WalletProvider>
         <AuthProvider>
           <AuthToastProvider>{children}</AuthToastProvider>

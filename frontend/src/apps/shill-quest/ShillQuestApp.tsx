@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, Wallet, Moon, Sun, Home as HomeIcon, Search, Plus, WalletMinimal, HelpCircle, Compass, LayoutDashboard, BookOpen, Info, Globe, FileText, Shield } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useShillWallet } from './contexts/ShillWalletContext';
 import mockupCss from './mockupStyles.css?raw';
 import layoutCss from '../../styles/layout.css?raw';
 import themeCss from '../../styles/theme.css?raw';
@@ -32,12 +33,28 @@ function ShillQuestContent({
   theme,
   toggleTheme,
   location,
+  walletAddress,
+  isWalletConnected,
+  walletIcon,
+  walletName,
+  networkIcon,
+  usdcBalance,
+  onConnectWallet,
 }: {
   onNavigate: (page: PageKey) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   location: string;
+  walletAddress: string | undefined;
+  isWalletConnected: boolean;
+  walletIcon: string | undefined;
+  walletName: string | undefined;
+  networkIcon: string | null;
+  usdcBalance: string | null;
+  onConnectWallet: () => void;
 }) {
+  const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const showUsdcBalance = isWalletConnected && usdcBalance !== null;
   // Derive activePage from URL - makes URL the source of truth
   const activePage: PageKey = (() => {
     const path = location.replace('/shill', '').replace('/', '');
@@ -86,17 +103,48 @@ function ShillQuestContent({
           </nav>
 
           <div className="auth-container">
-            <button className="wallet-connect-button wallet-connect-button--disconnected" type="button">
-              <WalletMinimal
-                aria-hidden="true"
-                className="wallet-connect-button--disconnected__icon"
-                strokeWidth={2.4}
-                size={18}
-              />
-              <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">Connect Wallet</span>
-            </button>
+            {isWalletConnected && walletAddress ? (
+              <button className="wallet-connect-button" type="button" onClick={onConnectWallet}>
+                <div className="wallet-info">
+                  {walletIcon && (
+                    <img
+                      src={walletIcon}
+                      alt={walletName || 'Wallet'}
+                      className="wallet-icon"
+                    />
+                  )}
+                  {networkIcon && (
+                    <img
+                      src={networkIcon}
+                      alt="Network"
+                      className="network-icon"
+                    />
+                  )}
+                  <span className="wallet-address">{formatAddress(walletAddress)}</span>
+                </div>
+                {showUsdcBalance && (
+                  <>
+                    <div className="wallet-divider" aria-hidden="true" />
+                    <div className="wallet-balance-inline" aria-live="polite">
+                      <span className="wallet-balance__value">{usdcBalance}</span>
+                      <span className="wallet-balance__ticker">USDC</span>
+                    </div>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button className="wallet-connect-button wallet-connect-button--disconnected" type="button" onClick={onConnectWallet}>
+                <WalletMinimal
+                  aria-hidden="true"
+                  className="wallet-connect-button--disconnected__icon"
+                  strokeWidth={2.4}
+                  size={18}
+                />
+                <span className="wallet-connect-button__text wallet-connect-button--disconnected__label">Connect Wallet</span>
+              </button>
+            )}
             <div className="auth-status-badges">
-              <div className="auth-badge auth-badge--inactive" title="Wallet Not Connected">
+              <div className={`auth-badge ${isWalletConnected ? 'auth-badge--active' : 'auth-badge--inactive'}`} title={isWalletConnected ? 'Wallet Connected' : 'Wallet Not Connected'}>
                 <Wallet size={16} />
               </div>
               <div className="auth-badge auth-badge--inactive" title="Not Authenticated">
@@ -217,6 +265,7 @@ function ShillQuestApp() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const { address, isConnected, walletIcon, walletName, networkIcon, usdcBalance, connect } = useShillWallet();
 
   useEffect(() => {
     if (hostRef.current && !shadowRoot) {
@@ -249,7 +298,19 @@ function ShillQuestApp() {
         ? createPortal(
           <>
             <style>{themeCss + layoutCss + staticCss + miscCss + navigationCss + badgesCss + walletCss + mockupCss}</style>
-            <ShillQuestContent onNavigate={handleNav} theme={theme} toggleTheme={toggleTheme} location={location.pathname} />
+            <ShillQuestContent
+              onNavigate={handleNav}
+              theme={theme}
+              toggleTheme={toggleTheme}
+              location={location.pathname}
+              walletAddress={address}
+              isWalletConnected={isConnected}
+              walletIcon={walletIcon}
+              walletName={walletName}
+              networkIcon={networkIcon}
+              usdcBalance={usdcBalance}
+              onConnectWallet={connect}
+            />
           </>,
           shadowRoot
         )

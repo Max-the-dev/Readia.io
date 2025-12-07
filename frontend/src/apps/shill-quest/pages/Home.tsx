@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { mockQuests } from '../data/mockQuests';
 
 interface HomeProps {
@@ -7,6 +7,51 @@ interface HomeProps {
 
 function Home({ setPage }: HomeProps) {
   const featured = useMemo(() => mockQuests.slice(0, 3), []);
+
+  // Crypto degen typing animation phrases
+  const degenPhrases = [
+    "Instant payouts, no cap",
+    "x402 SOL & BASE USDC",
+    "Shilling pays the bills now",
+    "Automated content verification",
+    "Control budget, content types, and payout",
+    "Stack rewards for viral content",
+    "Shill, get paid, repeat",
+    "Stack racks for posting",
+    "Post content, print money",
+  ];
+
+  const [currentPhrase, setCurrentPhrase] = useState(0);
+  const [displayText, setDisplayText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    const currentText = degenPhrases[currentPhrase];
+
+    if (isTyping) {
+      if (displayText.length < currentText.length) {
+        const timeout = setTimeout(() => {
+          setDisplayText(currentText.slice(0, displayText.length + 1));
+        }, 80); // Slightly faster typing for degen energy
+        return () => clearTimeout(timeout);
+      } else {
+        const timeout = setTimeout(() => {
+          setIsTyping(false);
+        }, 2000);
+        return () => clearTimeout(timeout);
+      }
+    } else {
+      if (displayText.length > 0) {
+        const timeout = setTimeout(() => {
+          setDisplayText(displayText.slice(0, -1));
+        }, 40); // Faster deletion
+        return () => clearTimeout(timeout);
+      } else {
+        setCurrentPhrase((prev) => (prev + 1) % degenPhrases.length);
+        setIsTyping(true);
+      }
+    }
+  }, [displayText, isTyping, currentPhrase, degenPhrases]);
 
   return (
     <>
@@ -31,9 +76,12 @@ function Home({ setPage }: HomeProps) {
         <section className="hero">
           <div className="hero-content">
             <h1>Get Paid to Shill</h1>
-            <div className="hero-dynamic">
+            <div className="hero-dynamic" aria-live="polite" aria-atomic="true">
               <div className="typing-text-box">
-                <span className="typing-text">Instant payouts<span className="cursor">|</span></span>
+                <span className="typing-text">
+                  {displayText}
+                  <span className="cursor" aria-hidden="true">|</span>
+                </span>
               </div>
             </div>
             <div className="hero-cta-buttons">
@@ -53,12 +101,12 @@ function Home({ setPage }: HomeProps) {
           </div>
           <div className="hero-lower">
             <p className="hero-subtitle">
-              <span>Projects post bounties for content creation.</span>
-              <span>Creators submit posts and get paid instantly via x402.</span>
+              <span>Post bounties for content creation.</span>
+              <span>Make content & get paid instantly via x402.</span>
             </p>
             <div className="hero-meta">
               <span className="hero-powered-label">Powered by</span>
-              <span className="hero-powered-brand">Readia x402</span>
+              <a href="https://readia.io" target="_blank" rel="noopener noreferrer" className="hero-powered-brand">Readia.io</a>
             </div>
           </div>
         </section>
@@ -67,6 +115,7 @@ function Home({ setPage }: HomeProps) {
         </div>
       </div>
 
+      {/* Token Section */}
       <section className="token-section shillquest-token">
         <div className="token-section-inner">
           <div className="token-header">
@@ -93,31 +142,60 @@ function Home({ setPage }: HomeProps) {
             <a href="#" className="token-learn-btn" data-page="about" onClick={(e) => { e.preventDefault(); setPage('about'); }}>Learn More</a>
           </div>
         </div>
+      </section>
 
-        <div className="token-section-divider"></div>
+      {/* Tokenomics Section */}
+      <section className="tokenomics-section">
+        <div className="tokenomics-inner">
+          <h2>Tokenomics</h2>
+          <p className="tokenomics-subtitle">Fair launch, no presale, no team allocation</p>
 
-        <div className="token-social-proof">
-          <div className="token-stats-grid">
-            <div className="token-stat-card">
-              <span className="token-stat-number">1,234+</span>
-              <span className="token-stat-label">Quests Completed</span>
+          <div className="tokenomics-grid">
+            <div className="tokenomics-card">
+              <span className="tokenomics-value">1B</span>
+              <span className="tokenomics-label">Total Supply</span>
             </div>
-            <div className="token-stat-card">
-              <span className="token-stat-number">$50,000+</span>
-              <span className="token-stat-label">Paid to Creators</span>
+            <div className="tokenomics-card">
+              <span className="tokenomics-value">0%</span>
+              <span className="tokenomics-label">Team Allocation</span>
             </div>
-            <div className="token-stat-card">
-              <span className="token-stat-number">50+</span>
-              <span className="token-stat-label">Active Projects</span>
+            <div className="tokenomics-card">
+              <span className="tokenomics-value">100%</span>
+              <span className="tokenomics-label">Circulating</span>
             </div>
-            <div className="token-stat-card">
-              <span className="token-stat-number">500+</span>
-              <span className="token-stat-label">Active Creators</span>
+            <div className="tokenomics-card">
+              <span className="tokenomics-value">0%</span>
+              <span className="tokenomics-label">Tax</span>
             </div>
           </div>
 
-          <div className="token-partners">
-            <h3 className="token-partners-title">Trusted By Leading Projects</h3>
+        </div>
+      </section>
+
+      {/* Stats & Social Proof Section */}
+      <section className="social-proof-section">
+        <div className="social-proof-inner">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-number">1,234+</span>
+              <span className="stat-label">Quests Completed</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">$50,000+</span>
+              <span className="stat-label">Paid to Creators</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">50+</span>
+              <span className="stat-label">Active Projects</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">500+</span>
+              <span className="stat-label">Active Creators</span>
+            </div>
+          </div>
+
+          <div className="partners-section">
+            <h3 className="partners-title">Trusted By Leading Projects</h3>
             <div className="partners-marquee">
               <div className="partners-track">
                 <div className="partner-logo">Solana</div>

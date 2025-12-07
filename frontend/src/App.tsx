@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ScrollToTop from './components/ScrollToTop';
 import ShillQuestApp from './apps/shill-quest/ShillQuestApp';
+import ShillQuestProviders from './apps/shill-quest/providers/ShillQuestProviders';
 import './App.css';
 
 const MainAppProviders = lazy(() => import('./providers/MainAppProviders'));
@@ -14,7 +15,14 @@ function App() {
       <Router>
         <ScrollToTop />
         <Routes>
-          <Route path="/shill/*" element={<ShillQuestApp />} />
+          <Route
+            path="/shill/*"
+            element={
+              <ShillQuestProviders>
+                <ShillQuestApp />
+              </ShillQuestProviders>
+            }
+          />
           <Route
             path="/*"
             element={
