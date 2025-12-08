@@ -5,6 +5,7 @@ import { Lock, Wallet, Moon, Sun, Home as HomeIcon, Search, Plus, WalletMinimal,
 import { useTheme } from '../../contexts/ThemeContext';
 import { useShillWallet } from './contexts/ShillWalletContext';
 import mockupCss from './mockupStyles.css?raw';
+import questCss from './styles/quest.css?raw';
 import layoutCss from '../../styles/layout.css?raw';
 import themeCss from '../../styles/theme.css?raw';
 import staticCss from '../../styles/pages/static.css?raw';
@@ -18,6 +19,7 @@ import {
   Home,
   Explore,
   Create,
+  Quest,
   Help,
   Privacy,
   Terms,
@@ -26,7 +28,7 @@ import {
   Ecosystem,
 } from './pages';
 
-type PageKey = 'home' | 'explore' | 'create' | 'contact' | 'privacy' | 'terms' | 'how-it-works' | 'about' | 'ecosystem';
+type PageKey = 'home' | 'explore' | 'create' | 'quest' | 'contact' | 'privacy' | 'terms' | 'how-it-works' | 'about' | 'ecosystem';
 
 function ShillQuestContent({
   onNavigate,
@@ -57,8 +59,9 @@ function ShillQuestContent({
   const showUsdcBalance = isWalletConnected && usdcBalance !== null;
   // Derive activePage from URL - makes URL the source of truth
   const activePage: PageKey = (() => {
-    const path = location.replace('/shill', '').replace('/', '');
+    const path = location.replace('/shill', '').replace(/^\//, '');
     if (path === '' || path === 'home') return 'home';
+    if (path.startsWith('quest/') || path === 'quest') return 'quest';
     if (['explore', 'create', 'contact', 'privacy', 'terms', 'how-it-works', 'about', 'ecosystem'].includes(path)) {
       return path as PageKey;
     }
@@ -166,6 +169,10 @@ function ShillQuestContent({
 
         <section id="page-create" className={`page ${activePage === 'create' ? 'active' : ''}`}>
           <Create />
+        </section>
+
+        <section id="page-quest" className={`page ${activePage === 'quest' ? 'active' : ''}`}>
+          <Quest />
         </section>
 
         <section id="page-contact" className={`page ${activePage === 'contact' ? 'active' : ''}`}>
@@ -297,7 +304,7 @@ function ShillQuestApp() {
       {shadowRoot
         ? createPortal(
           <>
-            <style>{themeCss + layoutCss + staticCss + miscCss + navigationCss + badgesCss + walletCss + mockupCss}</style>
+            <style>{themeCss + layoutCss + staticCss + miscCss + navigationCss + badgesCss + walletCss + mockupCss + questCss}</style>
             <ShillQuestContent
               onNavigate={handleNav}
               theme={theme}

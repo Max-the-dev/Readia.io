@@ -24,12 +24,12 @@ function Explore() {
             </div>
             <div className="category-list">
               <button className="category-item active">All Quests <span className="selected-indicator">✓</span></button>
-              <button className="category-item">DeFi</button>
-              <button className="category-item">NFT</button>
-              <button className="category-item">Gaming</button>
-              <button className="category-item">Infrastructure</button>
               <button className="category-item">Token Launch</button>
-              <button className="category-item">Education</button>
+              <button className="category-item">Product Launch</button>
+              <button className="category-item">New Feature</button>
+              <button className="category-item">Partnership</button>
+              <button className="category-item">Airdrop</button>
+              <button className="category-item">Event</button>
             </div>
           </div>
 
