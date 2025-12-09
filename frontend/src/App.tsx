@@ -11,7 +11,8 @@ const MainLayout = lazy(() => import('./MainLayout'));
 
 // ShillQuest is only accessible in development/staging, not on production readia.io
 const isProductionReadia =
-  import.meta.env.PROD && window.location.hostname === 'readia.io';
+  import.meta.env.PROD &&
+  (window.location.hostname === 'readia.io' || window.location.hostname === 'www.readia.io');
 
 function App() {
   return (
