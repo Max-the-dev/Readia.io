@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penny.io - Marketing Screenshot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ==============================================
+       THEME VARIABLES - Light & Dark Mode
+       ============================================== */
+    :root {
+      /* Background Colors */
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8f9fa;
+
+      /* Text Colors */
+      --text-primary: #1a1a1a;
+      --text-secondary: #536471;
+      --text-tertiary: #6b7280;
+
+      /* Border Colors */
+      --border-light: #e1e8ed;
+
+      /* High-contrast elements */
+      --contrast-bg: #1a1a1a;
+
+      /* Gradients */
+      --gradient-text-light: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
+    }
+
+    /* Dark Theme */
+    [data-theme="dark"] {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #1a1a1a;
+
+      --text-primary: #ffffff;
+      --text-secondary: #b0b0b0;
+      --text-tertiary: #888888;
+
+      --border-light: #2a2a2a;
+
+      --contrast-bg: #e5e5e5;
+
+      --gradient-text-light: linear-gradient(135deg, #ffffff 0%, #b0b0b0 100%);
+    }
+
+    /* ==============================================
+       BASE STYLES
+       ============================================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ==============================================
+       HERO GRID SECTION
+       ============================================== */
+    .hero-grid-section {
+      position: relative;
+      background-color: var(--bg-secondary);
+      width: 100vw;
+      min-height: 100vh;
+    }
+
+    /* Grid pattern background */
+    .hero-grid-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 0;
+      background-image:
+        linear-gradient(to right, var(--border-light) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--border-light) 1px, transparent 1px);
+      background-size: 20px 30px;
+    }
+
+    /* ==============================================
+       HERO CONTENT
+       ============================================== */
+    .home-hero-grid {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 48px 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .home-hero {
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    /* ==============================================
+       POWERED BY BADGE
+       ============================================== */
+    .hero-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      background-color: var(--bg-primary);
+      box-shadow: 0 5px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .hero-powered-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      font-weight: 600;
+    }
+
+    .hero-powered-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--contrast-bg);
+    }
+
+    /* ==============================================
+       HERO TITLE
+       ============================================== */
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin: 0;
+      letter-spacing: -1px;
+      background: var(--gradient-text-light);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ==============================================
+       TAGLINE
+       ============================================== */
+    .tagline {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline-hidden {
+      display: none;
+    }
+
+    /* ==============================================
+       RESPONSIVE
+       ============================================== */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .tagline {
+        font-size: 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero-grid-section">
+    <div class="home-hero-grid">
+      <div class="home-hero hero">
+        <!-- Powered by badge -->
+        <div class="hero-meta">
+          <span class="hero-powered-label">Powered by</span>
+          <span class="hero-powered-brand">Coinbase x402</span>
+        </div>
+
+        <!-- Hero title -->
+        <h1>The New Content Economy</h1>
+
+        <!-- Tagline options - toggle by adding/removing 'tagline-hidden' class -->
+        <p class="tagline tagline-a">No subscriptions. No ads. Just micropayments.</p>
+        <p class="tagline tagline-b tagline-hidden">Instant payouts. Zero middlemen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!--
+  ==============================================
+  USAGE INSTRUCTIONS
+  ==============================================
+
+  TO SWITCH TO DARK MODE:
+  Change line 2 from: <html lang="en" data-theme="light">
+  To: <html lang="en" data-theme="dark">
+
+  TO SWITCH TAGLINE:
+  - For "No subscriptions. No ads. Just content." (default):
+    Keep tagline-a without 'tagline-hidden'
+    Keep tagline-b with 'tagline-hidden'
+
+  - For "Instant payouts. Zero middlemen.":
+    Add 'tagline-hidden' to tagline-a
+    Remove 'tagline-hidden' from tagline-b
+
+  - For NO TAGLINE (title only):
+    Add 'tagline-hidden' to both tagline elements
+
+  RECOMMENDED SCREENSHOT SIZES:
+  - Social media (Open Graph): 1200 x 630
+  - Presentation: 1920 x 1080
+  - Square: 1080 x 1080
+
+  ==============================================
+  -->
+</body>
+</html>
