@@ -42,6 +42,9 @@ export interface Quest {
   // Stats (system-managed)
   submissionsCount: number;
   submissionsPaid: number;
+
+  // Engagement
+  hot?: boolean;              // Featured/trending flag based on engagement
 }
 
 // Helper to extract @handle from X URL
