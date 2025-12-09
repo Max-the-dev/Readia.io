@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { mockQuests } from '../data/mockQuests';
+import { extractXHandle, calcProgress } from '../types';
 
 interface HomeProps {
   setPage: (page: string) => void;
@@ -224,32 +225,54 @@ function Home({ setPage }: HomeProps) {
       <div className="featured-articles">
         <h2>Latest Quests</h2>
         <div className="article-grid">
-          {featured.map((quest) => (
-            <div className="article-card" key={quest.id}>
-              <a href="#" className="article-card-link" data-page="quest-detail">
-                <h3>{quest.title}</h3>
-                <p>{quest.description}</p>
-              </a>
-              <div className="article-meta">
-                <div className="author-info">
-                  <span className="author">by {quest.sponsor}</span>
-                  <span className="read-time">• {quest.spotsTaken}/{quest.spotsTotal} spots</span>
+          {featured.map((quest) => {
+            const handle = extractXHandle(quest.xUrl);
+            const progress = calcProgress(quest.budgetUsed, quest.totalBudget);
+            const hasBonus = quest.bonusAmount && quest.bonusAmount > 0;
+
+            return (
+              <div className="quest-card" key={quest.id}>
+                <a href={`/shill/quest/${quest.id}`} className="quest-card-link">
+                  {/* Badge Row */}
+                  <div className="quest-card-badges">
+                    <span className="quest-card-category">{quest.category}</span>
+                    {hasBonus && (
+                      <span className="quest-card-bonus">+${quest.bonusAmount}</span>
+                    )}
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="quest-card-title">{quest.title}</h3>
+                  <p className="quest-card-desc">{quest.description}</p>
+                </a>
+
+                {/* Divider */}
+                <div className="quest-card-divider" />
+
+                {/* Footer Row 1: Handle & Payout */}
+                <div className="quest-card-footer-row">
+                  <span className="quest-card-handle">by @{handle}</span>
+                  <span className="quest-card-payout">${quest.payoutPerPost.toFixed(2)}/task</span>
                 </div>
-                <span className="price">${quest.payout.toFixed(2)}</span>
+
+                {/* Footer Row 2: Content Type & Progress */}
+                <div className="quest-card-footer-row">
+                  <span className="quest-card-type">{quest.contentType}</span>
+                  <div className="quest-card-progress">
+                    <div className="quest-card-progress-bar">
+                      <div
+                        className="quest-card-progress-fill"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <span className="quest-card-progress-text">
+                      ${quest.budgetUsed}/${quest.totalBudget}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="article-stats">
-                <div className="article-stats-left">
-                  {quest.tags.map((tag) => (
-                    <span className={`quest-tag ${tag.toLowerCase() === 'hot' ? 'hot' : ''}`} key={tag}>{tag}</span>
-                  ))}
-                  {quest.daysLeft ? <span className="quest-tag">{quest.daysLeft} days left</span> : null}
-                </div>
-                <div className="article-stats-right">
-                  {quest.bonus ? <span className="bonus-tag">{quest.bonus}</span> : null}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

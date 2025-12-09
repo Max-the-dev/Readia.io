@@ -775,24 +775,59 @@ function SuccessModal({ questTitle, onClose }: { questTitle: string; onClose: ()
 function QuestCardPreview({ formData, hasBonus }: { formData: QuestFormData; hasBonus: boolean }) {
   const displayTitle = formData.title || 'Your Quest Title';
   const displayDescription = formData.description || 'Quest description will appear here...';
-  const displayPayout = formData.payoutPerPost ? `$${parseFloat(formData.payoutPerPost).toFixed(2)}` : '$0.00';
+  const displayPayout = formData.payoutPerPost ? parseFloat(formData.payoutPerPost).toFixed(2) : '0.00';
+  const displayBonusAmount = formData.bonusAmount ? parseFloat(formData.bonusAmount) : 0;
+
+  // Extract @handle from X URL
+  const extractHandle = (url: string) => {
+    if (!url) return 'yourproject';
+    const match = url.match(/(?:x\.com|twitter\.com)\/([^\/\?]+)/);
+    return match ? match[1] : 'yourproject';
+  };
+  const handle = extractHandle(formData.xUrl);
+
+  // For new quests, budgetUsed is 0
+  const budgetUsed = 0;
+  const totalBudget = formData.totalBudget ? parseFloat(formData.totalBudget) : 0;
+  const progress = totalBudget > 0 ? Math.min((budgetUsed / totalBudget) * 100, 100) : 0;
 
   return (
     <div className="quest-card-preview">
       <div className="quest-card">
-        <div className="quest-card-header">
-          <span className="quest-category">{formData.category}</span>
-          {hasBonus && <span className="quest-bonus-badge">+Bonus</span>}
+        {/* Badge Row */}
+        <div className="quest-card-badges">
+          <span className="quest-card-category">{formData.category}</span>
+          {hasBonus && displayBonusAmount > 0 && (
+            <span className="quest-card-bonus">+${displayBonusAmount}</span>
+          )}
         </div>
+
+        {/* Title & Description */}
         <h3 className="quest-card-title">{displayTitle}</h3>
         <p className="quest-card-desc">{displayDescription}</p>
-        <div className="quest-card-footer">
-          <div className="quest-payout">
-            <span className="payout-amount">{displayPayout}</span>
-            <span className="payout-label">per post</span>
-          </div>
-          <div className="quest-meta">
-            <span className="quest-type">{formData.contentType}</span>
+
+        {/* Divider */}
+        <div className="quest-card-divider" />
+
+        {/* Footer Row 1: Handle & Payout */}
+        <div className="quest-card-footer-row">
+          <span className="quest-card-handle">by @{handle}</span>
+          <span className="quest-card-payout">${displayPayout}/task</span>
+        </div>
+
+        {/* Footer Row 2: Content Type & Progress */}
+        <div className="quest-card-footer-row">
+          <span className="quest-card-type">{formData.contentType}</span>
+          <div className="quest-card-progress">
+            <div className="quest-card-progress-bar">
+              <div
+                className="quest-card-progress-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="quest-card-progress-text">
+              ${budgetUsed}/${totalBudget || 0}
+            </span>
           </div>
         </div>
       </div>

@@ -1,14 +1,15 @@
 import { useLocation } from 'react-router-dom';
 import { DollarSign, Users, Target, Award, ChevronRight, Zap, Eye, Wallet, Globe, Twitter, MessageCircle, Send, Calendar, Tag } from 'lucide-react';
+import { Quest as QuestType, calcProgress } from '../types';
 
 // Mock data - will be replaced with actual DB hooks
-const mockQuestData = {
+const mockQuestData: QuestType = {
   id: '1',
   // Project Details
   projectName: 'Readia',
+  xUrl: 'https://x.com/Readia_io',
   tokenTicker: '$READ',
   websiteUrl: 'https://readia.io',
-  xUrl: 'https://x.com/Readia_io',
   telegramUrl: 'https://t.me/readia',
   discordUrl: '',
   // Quest Details
@@ -20,6 +21,7 @@ const mockQuestData = {
   // Rewards
   payoutPerPost: 10,
   totalBudget: 500,
+  budgetUsed: 120,
   bonusAmount: 25,
   bonusThreshold: 1000,
   bonusMetric: 'likes',
@@ -29,10 +31,10 @@ const mockQuestData = {
   startDate: '2025-01-15',
   endDate: '2025-02-15',
   // Settings
-  reviewMode: 'auto' as const,
+  reviewMode: 'auto',
   // Stats
-  submissionsApproved: 12,
-  maxSubmissions: 50,
+  submissionsCount: 15,
+  submissionsPaid: 12,
 };
 
 function Quest() {
@@ -58,8 +60,10 @@ function Quest() {
 
   const formatWallet = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-  const spotsRemaining = quest.maxSubmissions - quest.submissionsApproved;
-  const spotsClass = spotsRemaining <= 5 ? (spotsRemaining === 0 ? 'full' : 'limited') : '';
+  // Calculate budget progress
+  const budgetProgress = calcProgress(quest.budgetUsed, quest.totalBudget);
+  const budgetRemaining = quest.totalBudget - quest.budgetUsed;
+  const budgetClass = budgetProgress >= 90 ? (budgetProgress >= 100 ? 'full' : 'limited') : '';
 
   const hasBonus = quest.bonusAmount && quest.bonusThreshold;
 
@@ -109,7 +113,7 @@ function Quest() {
           <div className="quest-stat-card">
             <DollarSign size={24} />
             <span className="quest-stat-value">${quest.payoutPerPost.toFixed(2)}</span>
-            <span className="quest-stat-label">per post</span>
+            <span className="quest-stat-label">per task</span>
           </div>
           <div className="quest-stat-card">
             <Target size={24} />
@@ -118,8 +122,8 @@ function Quest() {
           </div>
           <div className="quest-stat-card">
             <Users size={24} />
-            <span className="quest-stat-value">{quest.maxSubmissions}</span>
-            <span className="quest-stat-label">max submissions</span>
+            <span className="quest-stat-value">{quest.submissionsPaid}</span>
+            <span className="quest-stat-label">submissions paid</span>
           </div>
           {hasBonus && (
             <div className="quest-stat-card bonus">
@@ -219,12 +223,12 @@ function Quest() {
             <Send size={20} />
             Submit Content
           </button>
-          <div className={`quest-spots ${spotsClass}`}>
-            <Users size={16} />
-            {spotsRemaining === 0 ? (
-              <span>No spots remaining</span>
+          <div className={`quest-spots ${budgetClass}`}>
+            <DollarSign size={16} />
+            {budgetRemaining <= 0 ? (
+              <span>Budget fully allocated</span>
             ) : (
-              <span>{spotsRemaining} spots remaining</span>
+              <span>${budgetRemaining.toFixed(2)} budget remaining</span>
             )}
           </div>
         </div>

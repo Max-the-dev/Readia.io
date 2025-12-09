@@ -1,5 +1,5 @@
-import { ArrowRight, Flame } from 'lucide-react';
-import { Quest } from '../types';
+import { ArrowRight } from 'lucide-react';
+import { Quest, extractXHandle } from '../types';
 import styles from '../ShillQuest.module.css';
 
 interface QuestCardProps {
@@ -8,6 +8,9 @@ interface QuestCardProps {
 }
 
 function QuestCard({ quest, onClick }: QuestCardProps) {
+  const handle = extractXHandle(quest.xUrl);
+  const hasBonus = quest.bonusAmount && quest.bonusAmount > 0;
+
   return (
     <button
       type="button"
@@ -21,22 +24,17 @@ function QuestCard({ quest, onClick }: QuestCardProps) {
 
       <div className={styles.questMeta}>
         <div className={styles.questSponsor}>
-          by {quest.sponsor} • {quest.spotsTaken}/{quest.spotsTotal}
+          by @{handle} • ${quest.budgetUsed}/${quest.totalBudget}
         </div>
         <div className={styles.questPrice}>
-          ${quest.payout.toFixed(2)}
+          ${quest.payoutPerPost.toFixed(2)}/task
         </div>
       </div>
 
       <div className={styles.questTags}>
-        {quest.tags.map((tag) => (
-          <span key={tag} className={`${styles.tag} ${tag === 'Hot' || quest.hot ? styles.tagHot : ''}`}>
-            {tag === 'Hot' ? <Flame size={14} /> : null}
-            {tag}
-          </span>
-        ))}
-        {quest.bonus ? <span className={styles.tag}>{quest.bonus}</span> : null}
-        {quest.daysLeft ? <span className={styles.tag}>{quest.daysLeft} days left</span> : null}
+        <span className={styles.tag}>{quest.category}</span>
+        <span className={styles.tag}>{quest.contentType}</span>
+        {hasBonus && <span className={styles.tag}>+${quest.bonusAmount} bonus</span>}
       </div>
 
       <div className={styles.inlineActions}>
