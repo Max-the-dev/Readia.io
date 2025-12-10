@@ -42,17 +42,14 @@ function FavoriteButton({ articleId, className = '', onFavoriteChange }: Favorit
   useEffect(() => {
     const handleFavoriteChanged = (event: Event) => {
       const { articleId: changedId, isFavorited: newState } = (event as CustomEvent).detail;
-      console.log('FavoriteButton received event:', { changedId, newState, myArticleId: articleId });
-      if (changedId === articleId) {
-        console.log('Updating isFavorited to:', newState);
+      // Use == for comparison to handle string/number mismatch
+      if (Number(changedId) === articleId) {
         setIsFavorited(newState);
       }
     };
 
-    console.log('FavoriteButton: Adding event listener for articleId:', articleId);
     window.addEventListener('favoriteChanged', handleFavoriteChanged);
     return () => {
-      console.log('FavoriteButton: Removing event listener for articleId:', articleId);
       window.removeEventListener('favoriteChanged', handleFavoriteChanged);
     };
   }, [articleId]);

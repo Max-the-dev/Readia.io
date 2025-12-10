@@ -83,7 +83,6 @@ function LibraryModal({
           onDataChange(historyItems, updated);
         }
         // Dispatch custom event so FavoriteButton components can update
-        console.log('Dispatching favoriteChanged event:', { articleId, isFavorited: false });
         window.dispatchEvent(new CustomEvent('favoriteChanged', {
           detail: { articleId, isFavorited: false }
         }));
