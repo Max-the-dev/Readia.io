@@ -199,11 +199,11 @@ export const likeRequestSchema = z.object({
 // ============================================
 
 export const historyRecordSchema = z.object({
-  articleId: z.number().int('Article ID must be an integer').positive('Article ID must be positive')
+  articleId: z.coerce.number().int('Article ID must be an integer').positive('Article ID must be positive')
 });
 
 export const favoriteRequestSchema = z.object({
-  articleId: z.number().int('Article ID must be an integer').positive('Article ID must be positive'),
+  articleId: z.coerce.number().int('Article ID must be an integer').positive('Article ID must be positive'),
   favorite: z.boolean()
 });
 
