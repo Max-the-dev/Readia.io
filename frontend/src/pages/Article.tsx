@@ -367,6 +367,11 @@ function Article() {
         setPaymentError('');
         setShowPaymentToast(true);
         setTimeout(() => setShowPaymentToast(false), 3000);
+
+        // Record to reading history
+        apiService.recordHistory(article.id).catch(err => {
+          console.error('Failed to record history:', err);
+        });
       } else {
         const errorMessage = paymentResult.error || 'Payment verification failed';
         console.error('x402 payment failed:', errorMessage, paymentResult.rawResponse);

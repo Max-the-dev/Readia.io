@@ -82,6 +82,10 @@ function LibraryModal({
         if (onDataChange) {
           onDataChange(historyItems, updated);
         }
+        // Dispatch custom event so FavoriteButton components can update
+        window.dispatchEvent(new CustomEvent('favoriteChanged', {
+          detail: { articleId, isFavorited: false }
+        }));
       }
     } catch (err) {
       console.error('Failed to remove favorite:', err);

@@ -38,6 +38,20 @@ function FavoriteButton({ articleId, className = '', onFavoriteChange }: Favorit
     checkFavoriteStatus();
   }, [articleId, isAuthenticated, address]);
 
+  // Listen for favorite changes from other components (e.g., LibraryModal)
+  useEffect(() => {
+    const handleFavoriteChanged = (event: CustomEvent<{ articleId: number; isFavorited: boolean }>) => {
+      if (event.detail.articleId === articleId) {
+        setIsFavorited(event.detail.isFavorited);
+      }
+    };
+
+    window.addEventListener('favoriteChanged', handleFavoriteChanged as EventListener);
+    return () => {
+      window.removeEventListener('favoriteChanged', handleFavoriteChanged as EventListener);
+    };
+  }, [articleId]);
+
   // Retry favorite action after authentication
   useEffect(() => {
     const retryFavoriteAction = async () => {
