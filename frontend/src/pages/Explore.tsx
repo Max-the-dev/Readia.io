@@ -4,10 +4,11 @@ import { Search, Filter, X, BookOpen, Tag, Grid, List, ArrowUp } from 'lucide-re
 import { apiService, Article } from '../services/api';
 import { useWallet } from '../contexts/WalletContext';
 import LikeButton from '../components/LikeButton';
+import FavoriteButton from '../components/FavoriteButton';
 
 function Explore() {
   const { address } = useWallet();
-  
+
   // Utility function to strip HTML tags from preview text
   const stripHtmlTags = (html: string) => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -65,13 +66,13 @@ function Explore() {
 
   // Handle like count changes
   const handleLikeChange = (articleId: number, newLikeCount: number) => {
-    setArticles(prev => prev.map(article => 
-      article.id === articleId 
+    setArticles(prev => prev.map(article =>
+      article.id === articleId
         ? { ...article, likes: newLikeCount }
         : article
     ));
-    setFilteredArticles(prev => prev.map(article => 
-      article.id === articleId 
+    setFilteredArticles(prev => prev.map(article =>
+      article.id === articleId
         ? { ...article, likes: newLikeCount }
         : article
     ));
@@ -114,14 +115,14 @@ function Explore() {
 
     // Category filter
     if (selectedCategory !== 'All Articles') {
-      filtered = filtered.filter(article => 
+      filtered = filtered.filter(article =>
         article.categories && article.categories.includes(selectedCategory)
       );
     }
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(article => 
+      filtered = filtered.filter(article =>
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         article.preview.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -129,7 +130,7 @@ function Explore() {
 
     // Author filter
     if (authorFilter) {
-      filtered = filtered.filter(article => 
+      filtered = filtered.filter(article =>
         article.authorAddress.toLowerCase().includes(authorFilter.toLowerCase())
       );
     }
@@ -138,14 +139,14 @@ function Explore() {
     if (dateFilter !== 'all') {
       const now = new Date();
       const filterDate = new Date();
-      
+
       if (dateFilter === 'week') {
         filterDate.setDate(now.getDate() - 7);
       } else if (dateFilter === 'month') {
         filterDate.setMonth(now.getMonth() - 1);
       }
-      
-      filtered = filtered.filter(article => 
+
+      filtered = filtered.filter(article =>
         new Date(article.publishDate) >= filterDate
       );
     }
@@ -170,13 +171,13 @@ function Explore() {
 
   // Load more articles into view
   const loadMore = () => {
-    if (isLoadingMore || !hasMore) return; 
+    if (isLoadingMore || !hasMore) return;
 
     setIsLoadingMore(true);
 
-    // Simulate slight delay for UX 
+    // Simulate slight delay for UX
     setTimeout(() => {
-      const BATCH_SIZE = 20; 
+      const BATCH_SIZE = 20;
       const currentLength = displayedArticles.length;
       const nextBatch = filteredArticles.slice(currentLength, currentLength + BATCH_SIZE);
 
@@ -186,7 +187,7 @@ function Explore() {
     }, 300);
   };
 
-  // Intersection Observer for infinite scroll 
+  // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -296,8 +297,8 @@ function Explore() {
                     </button>
                   )}
                 </div>
-                
-                <button 
+
+                <button
                   onClick={() => setShowFilters(!showFilters)}
                   className={`filter-toggle ${showFilters ? 'active' : ''}`}
                 >
@@ -319,11 +320,11 @@ function Explore() {
                         className="filter-input"
                       />
                     </div>
-                    
+
                     <div className="filter-group">
                       <label>Date:</label>
-                      <select 
-                        value={dateFilter} 
+                      <select
+                        value={dateFilter}
                         onChange={(e) => setDateFilter(e.target.value)}
                         className="filter-select"
                       >
@@ -332,7 +333,7 @@ function Explore() {
                         <option value="month">Last month</option>
                       </select>
                     </div>
-                    
+
                     <div className="filter-group">
                       <label>Sort by:</label>
                       <select
@@ -346,9 +347,9 @@ function Explore() {
                         <option value="likes">Most Liked</option>
                       </select>
                     </div>
-                    
+
                     <div className="filter-separator"></div>
-                    
+
                     <div className="filter-actions">
                       <button onClick={clearFilters} className="clear-btn">
                         Clear All
@@ -357,7 +358,7 @@ function Explore() {
                   </div>
                 </div>
               )}
-              
+
               {/* Results count and view toggle */}
               <div className="search-results-info">
                 <div className="results-count">
@@ -417,6 +418,10 @@ function Explore() {
                               className="article-stats-like-button"
                               onLikeChange={handleLikeChange}
                             />
+                            <FavoriteButton
+                              articleId={article.id}
+                              className="article-stats-favorite-button"
+                            />
                             <span className="price">${article.price.toFixed(2)}</span>
                           </div>
                         </div>
@@ -450,7 +455,7 @@ function Explore() {
                     <h3>No articles found</h3>
                     <p>Try adjusting your search terms or filters</p>
                     {(searchTerm || authorFilter || dateFilter !== 'all' || selectedCategory !== 'All Articles') && (
-                      <button 
+                      <button
                         className="clear-filters-btn"
                         onClick={clearFilters}
                       >

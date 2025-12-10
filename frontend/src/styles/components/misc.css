@@ -12520,6 +12520,96 @@ w3m-input:focus {
 }
 
 
+/* Favorite button */
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.favorite-button:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  transform: translateY(-1px);
+}
+
+.favorite-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.favorite-button-active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.favorite-button-active svg {
+  animation: starBounce 0.5s ease;
+}
+
+.favorite-button-active:hover {
+  border-color: #d97706;
+  color: #d97706;
+  background-color: rgba(245, 158, 11, 0.15);
+}
+
+.favorite-button-loading {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.favorite-button svg {
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.favorite-button:hover:not(:disabled) svg {
+  transform: scale(1.1);
+}
+
+@keyframes starBounce {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.3); }
+  50% { transform: scale(0.9); }
+  75% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+[data-theme="dark"] .favorite-button {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .favorite-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .favorite-button-active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(245, 158, 11, 0.8);
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .favorite-button-active:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(245, 158, 11, 1);
+  color: #fbbf24;
+}
+
+
 /* Like button in article cards */
 
 

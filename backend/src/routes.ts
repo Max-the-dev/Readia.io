@@ -14,7 +14,10 @@ import {
   articleIdSchema,
   draftIdSchema,
   likeRequestSchema,
-  deleteRequestSchema
+  deleteRequestSchema,
+  historyRecordSchema,
+  favoriteRequestSchema,
+  historyQuerySchema
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
 import { facilitator } from '@coinbase/x402';
@@ -2439,5 +2442,210 @@ async function resolveSolanaAtaOwner(ataAddress: string, network: SupportedX402N
     return null;
   }
 }
+
+// ============================================
+// USER HISTORY & FAVORITES (AUTHENTICATED)
+// ============================================
+
+async function enforceHistoryCap(wallet: string, client = pgPool) {
+  await client.query(
+    `
+    DELETE FROM user_reads
+    WHERE wallet_address = $1
+      AND id IN (
+        SELECT id FROM user_reads
+        WHERE wallet_address = $1
+        ORDER BY last_read_at DESC, id DESC
+        OFFSET 20
+      )
+    `,
+    [wallet]
+  );
+}
+
+async function enforceFavoritesCap(wallet: string, client = pgPool) {
+  await client.query(
+    `
+    DELETE FROM user_favorites
+    WHERE wallet_address = $1
+      AND id IN (
+        SELECT id FROM user_favorites
+        WHERE wallet_address = $1
+        ORDER BY created_at DESC, id DESC
+        OFFSET 20
+      )
+    `,
+    [wallet]
+  );
+}
+
+router.post('/users/me/history', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { articleId } = validate(historyRecordSchema, req.body);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const article = await db.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, error: 'ARTICLE_NOT_FOUND' });
+    }
+
+    await pgPool.query(
+      `
+      INSERT INTO user_reads (wallet_address, article_id)
+      VALUES ($1, $2)
+      ON CONFLICT (wallet_address, article_id)
+      DO UPDATE SET
+        last_read_at = NOW(),
+        read_count = user_reads.read_count + 1
+      `,
+      [walletAddress, articleId]
+    );
+
+    await enforceHistoryCap(walletAddress);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error recording history:', error);
+    return res.status(500).json({ success: false, error: 'Failed to record history' });
+  }
+});
+
+router.get('/users/me/history', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { limit } = validate(historyQuerySchema, req.query);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const { rows } = await pgPool.query(
+      `
+      SELECT
+        ur.article_id AS id,
+        a.title,
+        a.preview,
+        a.categories,
+        a.author_address,
+        a.publish_date,
+        ur.last_read_at
+      FROM user_reads ur
+      JOIN articles a ON a.id = ur.article_id
+      WHERE ur.wallet_address = $1
+      ORDER BY ur.last_read_at DESC
+      LIMIT $2
+      `,
+      [walletAddress, limit || 20]
+    );
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch history' });
+  }
+});
+
+router.post('/users/me/favorites', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { articleId, favorite } = validate(favoriteRequestSchema, req.body);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const article = await db.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, error: 'ARTICLE_NOT_FOUND' });
+    }
+
+    if (favorite) {
+      await pgPool.query(
+        `
+        INSERT INTO user_favorites (wallet_address, article_id)
+        VALUES ($1, $2)
+        ON CONFLICT (wallet_address, article_id) DO NOTHING
+        `,
+        [walletAddress, articleId]
+      );
+      await enforceFavoritesCap(walletAddress);
+    } else {
+      await pgPool.query(
+        `DELETE FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
+        [walletAddress, articleId]
+      );
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating favorite:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update favorite' });
+  }
+});
+
+router.get('/users/me/favorites', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { limit } = validate(historyQuerySchema, req.query);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const { rows } = await pgPool.query(
+      `
+      SELECT
+        uf.article_id AS id,
+        a.title,
+        a.preview,
+        a.categories,
+        a.author_address,
+        a.publish_date,
+        uf.created_at AS favorited_at
+      FROM user_favorites uf
+      JOIN articles a ON a.id = uf.article_id
+      WHERE uf.wallet_address = $1
+      ORDER BY uf.created_at DESC
+      LIMIT $2
+      `,
+      [walletAddress, limit || 20]
+    );
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
+  }
+});
+
+// Check if a specific article is favorited
+router.get('/users/me/favorites/:articleId/status', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const articleId = parseInt(req.params.articleId, 10);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    if (isNaN(articleId)) {
+      return res.status(400).json({ success: false, error: 'Invalid article ID' });
+    }
+
+    const { rows } = await pgPool.query(
+      `SELECT 1 FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
+      [walletAddress, articleId]
+    );
+
+    return res.json({ success: true, data: { isFavorited: rows.length > 0 } });
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check favorite status' });
+  }
+});
 
 export default router;

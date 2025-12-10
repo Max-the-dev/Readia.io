@@ -53,6 +53,25 @@
   font-size: 0.9rem;
 }
 
+.article-favorite-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.article-favorite-button.is-active {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #4f46e5;
+}
+
 .article-categories {
   display: flex;
   align-items: center;

@@ -68,6 +68,17 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface UserArticleMeta {
+  id: number;
+  title: string;
+  preview: string;
+  categories: string[];
+  authorAddress: string;
+  publishDate: string;
+  lastReadAt?: string;
+  favoritedAt?: string;
+}
+
 export interface Draft {
   id: number;
   title: string;
@@ -346,6 +357,53 @@ class ApiService {
         method: 'DELETE',
         body: JSON.stringify({ authorAddress }),
       },
+      true
+    );
+  }
+
+  // Reading history / favorites (auth required)
+  async recordHistory(articleId: number): Promise<ApiResponse<null>> {
+    return this.request<null>(
+      '/users/me/history',
+      {
+        method: 'POST',
+        body: JSON.stringify({ articleId }),
+      },
+      true
+    );
+  }
+
+  async getHistory(limit = 20): Promise<ApiResponse<UserArticleMeta[]>> {
+    return this.request<UserArticleMeta[]>(
+      `/users/me/history?limit=${Math.min(limit, 20)}`,
+      {},
+      true
+    );
+  }
+
+  async setFavorite(articleId: number, favorite: boolean): Promise<ApiResponse<null>> {
+    return this.request<null>(
+      '/users/me/favorites',
+      {
+        method: 'POST',
+        body: JSON.stringify({ articleId, favorite }),
+      },
+      true
+    );
+  }
+
+  async getFavorites(limit = 20): Promise<ApiResponse<UserArticleMeta[]>> {
+    return this.request<UserArticleMeta[]>(
+      `/users/me/favorites?limit=${Math.min(limit, 20)}`,
+      {},
+      true
+    );
+  }
+
+  async getFavoriteStatus(articleId: number): Promise<ApiResponse<{ isFavorited: boolean }>> {
+    return this.request<{ isFavorited: boolean }>(
+      `/users/me/favorites/${articleId}/status`,
+      {},
       true
     );
   }

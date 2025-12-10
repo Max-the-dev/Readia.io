@@ -195,6 +195,27 @@ export const likeRequestSchema = z.object({
 });
 
 // ============================================
+// HISTORY / FAVORITES
+// ============================================
+
+export const historyRecordSchema = z.object({
+  articleId: z.number().int('Article ID must be an integer').positive('Article ID must be positive')
+});
+
+export const favoriteRequestSchema = z.object({
+  articleId: z.number().int('Article ID must be an integer').positive('Article ID must be positive'),
+  favorite: z.boolean()
+});
+
+export const historyQuerySchema = z.object({
+  limit: z.string().optional().transform((val) => {
+    if (!val) return 20;
+    const parsed = Number(val);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 20) : 20;
+  })
+});
+
+// ============================================
 // PAYMENT VALIDATION
 // ============================================
 

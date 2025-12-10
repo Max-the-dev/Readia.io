@@ -7,6 +7,7 @@ import { x402PaymentService, type SupportedNetwork } from '../services/x402Payme
 import { useAccount, useWalletClient } from 'wagmi';
 import { useAppKitProvider } from '@reown/appkit/react';
 import LikeButton from '../components/LikeButton';
+import FavoriteButton from '../components/FavoriteButton';
 import { sanitizeHTML } from '../utils/sanitize';
 import AppKitConnectButton from '../components/AppKitConnectButton';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
@@ -464,12 +465,16 @@ function Article() {
               <div className="publish-date">
                 <span>{new Date(article.publishDate).toLocaleDateString()}</span>
               </div>
-              <LikeButton 
-                articleId={article.id} 
-                userAddress={address} 
+              <LikeButton
+                articleId={article.id}
+                userAddress={address}
                 initialLikes={article.likes}
                 className="article-header-like-button"
                 onLikeChange={handleLikeChange}
+              />
+              <FavoriteButton
+                articleId={article.id}
+                className="article-header-favorite-button"
               />
             </div>
             {article.categories && article.categories.length > 0 && (
