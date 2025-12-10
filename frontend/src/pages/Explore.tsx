@@ -411,16 +411,16 @@ function Explore() {
                             <span className="purchases">{article.purchases} readers</span>
                           </div>
                           <div className="article-stats-right">
+                            <FavoriteButton
+                              articleId={article.id}
+                              className="article-stats-favorite-button"
+                            />
                             <LikeButton
                               articleId={article.id}
                               userAddress={address}
                               initialLikes={article.likes}
                               className="article-stats-like-button"
                               onLikeChange={handleLikeChange}
-                            />
-                            <FavoriteButton
-                              articleId={article.id}
-                              className="article-stats-favorite-button"
                             />
                             <span className="price">${article.price.toFixed(2)}</span>
                           </div>

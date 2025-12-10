@@ -11662,6 +11662,11 @@ w3m-input:focus {
   gap: 16px;
 }
 
+.article-stats-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .article-stats span {
   display: flex;
@@ -11670,8 +11675,9 @@ w3m-input:focus {
 }
 
 
-.article-stats-like-button {
-  padding: 2px 6px;
+.article-stats-like-button,
+.article-stats-favorite-button {
+  padding: 4px 8px;
   font-size: 14px;
   font-weight: 500;
   border-radius: 12px;

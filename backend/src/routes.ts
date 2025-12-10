@@ -2481,7 +2481,7 @@ async function enforceFavoritesCap(wallet: string, client = pgPool) {
 
 router.post('/users/me/history', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { articleId } = validate(historyRecordSchema, req.body);
+    const { articleId } = historyRecordSchema.parse(req.body);
     const walletAddress = req.auth?.address;
 
     if (!walletAddress) {
@@ -2516,7 +2516,7 @@ router.post('/users/me/history', writeLimiter, requireAuth, async (req: Authenti
 
 router.get('/users/me/history', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { limit } = validate(historyQuerySchema, req.query);
+    const { limit } = historyQuerySchema.parse(req.query);
     const walletAddress = req.auth?.address;
 
     if (!walletAddress) {
@@ -2551,7 +2551,7 @@ router.get('/users/me/history', readLimiter, requireAuth, async (req: Authentica
 
 router.post('/users/me/favorites', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { articleId, favorite } = validate(favoriteRequestSchema, req.body);
+    const { articleId, favorite } = favoriteRequestSchema.parse(req.body);
     const walletAddress = req.auth?.address;
 
     if (!walletAddress) {
@@ -2587,9 +2587,35 @@ router.post('/users/me/favorites', writeLimiter, requireAuth, async (req: Authen
   }
 });
 
+// Check if a specific article is favorited (must be before general /favorites route)
+router.get('/users/me/favorites/:articleId/status', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const articleId = parseInt(req.params.articleId, 10);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    if (isNaN(articleId)) {
+      return res.status(400).json({ success: false, error: 'Invalid article ID' });
+    }
+
+    const { rows } = await pgPool.query(
+      `SELECT 1 FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
+      [walletAddress, articleId]
+    );
+
+    return res.json({ success: true, data: { isFavorited: rows.length > 0 } });
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check favorite status' });
+  }
+});
+
 router.get('/users/me/favorites', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { limit } = validate(historyQuerySchema, req.query);
+    const { limit } = historyQuerySchema.parse(req.query);
     const walletAddress = req.auth?.address;
 
     if (!walletAddress) {
@@ -2619,32 +2645,6 @@ router.get('/users/me/favorites', readLimiter, requireAuth, async (req: Authenti
   } catch (error) {
     console.error('Error fetching favorites:', error);
     return res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
-  }
-});
-
-// Check if a specific article is favorited
-router.get('/users/me/favorites/:articleId/status', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const articleId = parseInt(req.params.articleId, 10);
-    const walletAddress = req.auth?.address;
-
-    if (!walletAddress) {
-      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
-    }
-
-    if (isNaN(articleId)) {
-      return res.status(400).json({ success: false, error: 'Invalid article ID' });
-    }
-
-    const { rows } = await pgPool.query(
-      `SELECT 1 FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
-      [walletAddress, articleId]
-    );
-
-    return res.json({ success: true, data: { isFavorited: rows.length > 0 } });
-  } catch (error) {
-    console.error('Error checking favorite status:', error);
-    return res.status(500).json({ success: false, error: 'Failed to check favorite status' });
   }
 });
 
