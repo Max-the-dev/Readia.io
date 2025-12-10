@@ -4,15 +4,11 @@ import { useAuthToast } from '../contexts/AuthToastContext';
 import '../styles/components/library.css';
 
 interface LibraryBarProps {
-  historyCount?: number;
-  favoritesCount?: number;
   onHistoryClick: () => void;
   onFavoritesClick: () => void;
 }
 
 function LibraryBar({
-  historyCount,
-  favoritesCount,
   onHistoryClick,
   onFavoritesClick,
 }: LibraryBarProps) {
@@ -46,9 +42,6 @@ function LibraryBar({
           title="History"
         >
           <Clock size={18} />
-          {isAuthenticated && historyCount !== undefined && historyCount > 0 && (
-            <span className="library-bar__badge">{historyCount}</span>
-          )}
         </button>
         <button
           type="button"
@@ -58,9 +51,6 @@ function LibraryBar({
           title="Favorites"
         >
           <Star size={18} />
-          {isAuthenticated && favoritesCount !== undefined && favoritesCount > 0 && (
-            <span className="library-bar__badge">{favoritesCount}</span>
-          )}
         </button>
       </div>
     </div>

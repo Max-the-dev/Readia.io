@@ -465,17 +465,19 @@ function Article() {
               <div className="publish-date">
                 <span>{new Date(article.publishDate).toLocaleDateString()}</span>
               </div>
-              <FavoriteButton
-                articleId={article.id}
-                className="article-header-favorite-button"
-              />
-              <LikeButton
-                articleId={article.id}
-                userAddress={address}
-                initialLikes={article.likes}
-                className="article-header-like-button"
-                onLikeChange={handleLikeChange}
-              />
+              <div className="article-actions">
+                <FavoriteButton
+                  articleId={article.id}
+                  className="article-header-favorite-button"
+                />
+                <LikeButton
+                  articleId={article.id}
+                  userAddress={address}
+                  initialLikes={article.likes}
+                  className="article-header-like-button"
+                  onLikeChange={handleLikeChange}
+                />
+              </div>
             </div>
             {article.categories && article.categories.length > 0 && (
               <div className="article-categories">

@@ -101,8 +101,6 @@ function Header() {
       {/* Library Sub-Header Bar - only on Explore, Article, Dashboard */}
       {showLibraryBar && (
         <LibraryBar
-          historyCount={historyItems.length}
-          favoritesCount={favoriteItems.length}
           onHistoryClick={handleOpenHistory}
           onFavoritesClick={handleOpenFavorites}
         />
