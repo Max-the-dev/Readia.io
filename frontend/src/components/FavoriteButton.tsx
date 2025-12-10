@@ -40,15 +40,16 @@ function FavoriteButton({ articleId, className = '', onFavoriteChange }: Favorit
 
   // Listen for favorite changes from other components (e.g., LibraryModal)
   useEffect(() => {
-    const handleFavoriteChanged = (event: CustomEvent<{ articleId: number; isFavorited: boolean }>) => {
-      if (event.detail.articleId === articleId) {
-        setIsFavorited(event.detail.isFavorited);
+    const handleFavoriteChanged = (event: Event) => {
+      const { articleId: changedId, isFavorited: newState } = (event as CustomEvent).detail;
+      if (changedId === articleId) {
+        setIsFavorited(newState);
       }
     };
 
-    window.addEventListener('favoriteChanged', handleFavoriteChanged as EventListener);
+    window.addEventListener('favoriteChanged', handleFavoriteChanged);
     return () => {
-      window.removeEventListener('favoriteChanged', handleFavoriteChanged as EventListener);
+      window.removeEventListener('favoriteChanged', handleFavoriteChanged);
     };
   }, [articleId]);
 

@@ -100,7 +100,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const [token, setToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+    // Set auth header synchronously on init (before any useEffect runs)
+    if (storedToken) {
+      apiService.setAuthHeaderProvider(() => ({
+        Authorization: `Bearer ${storedToken}`,
+      }));
+    }
+    return storedToken;
   });
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
