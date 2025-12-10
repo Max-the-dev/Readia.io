@@ -33,7 +33,7 @@ const modal = createAppKit({
   adapters: [wagmiAdapter, solanaAdapter],
   networks,
   metadata,
-  enableReconnect: false,
+  enableReconnect: true,
   themeMode: 'light',
   themeVariables: {
     '--apkt-font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',

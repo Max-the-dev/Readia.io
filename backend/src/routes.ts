@@ -2530,9 +2530,9 @@ router.get('/users/me/history', readLimiter, requireAuth, async (req: Authentica
         a.title,
         a.preview,
         a.categories,
-        a.author_address,
-        a.publish_date,
-        ur.last_read_at
+        a.author_address AS "authorAddress",
+        a.publish_date AS "publishDate",
+        ur.last_read_at AS "lastReadAt"
       FROM user_reads ur
       JOIN articles a ON a.id = ur.article_id
       WHERE ur.wallet_address = $1
@@ -2629,9 +2629,9 @@ router.get('/users/me/favorites', readLimiter, requireAuth, async (req: Authenti
         a.title,
         a.preview,
         a.categories,
-        a.author_address,
-        a.publish_date,
-        uf.created_at AS favorited_at
+        a.author_address AS "authorAddress",
+        a.publish_date AS "publishDate",
+        uf.created_at AS "favoritedAt"
       FROM user_favorites uf
       JOIN articles a ON a.id = uf.article_id
       WHERE uf.wallet_address = $1

@@ -54,14 +54,9 @@
   font-size: 0.875rem;
 }
 
-.article-header-like-button,
-.article-header-favorite-button {
+/* Reduce gap between favorite and like buttons in article meta */
+.article-meta .favorite-button + .like-button {
   margin-left: -16px;
-}
-
-.article-header-favorite-button {
-  margin-left: 0;
-  margin-right: -8px;
 }
 
 .article-categories {
