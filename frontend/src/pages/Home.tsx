@@ -204,14 +204,24 @@ function Home() {
             </div>
           </div>
 
-          <div className="token-contract">
-            <code className="token-contract-address">
-              {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
-            </code>
-            <button onClick={handleCopyAddress} className="token-copy-btn">
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? 'Copied!' : 'Copy CA'}
-            </button>
+          <div className="token-contract-row">
+            <div className="token-contract">
+              <code className="token-contract-address">
+                {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
+              </code>
+              <button onClick={handleCopyAddress} className="token-copy-btn">
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? 'Copied!' : 'Copy CA'}
+              </button>
+            </div>
+            <a
+              href="https://www.coingecko.com/en/coins/readia-io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-badge"
+            >
+              <img src="/icons/coingecko.svg" alt="CoinGecko" className="coingecko-logo" />
+            </a>
           </div>
 
           <div className="token-benefits-grid">

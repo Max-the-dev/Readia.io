@@ -244,6 +244,14 @@
 }
 
 /* Contract Address */
+.token-contract-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: -32px;
+}
+
 .token-contract {
   display: inline-flex;
   align-items: center;
@@ -251,8 +259,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 6px 12px;
-  margin-top: -32px;
+  padding: 10px 16px;
   overflow: hidden;
 }
 
@@ -282,6 +289,44 @@
 
 .token-copy-btn:hover {
   color: var(--text-primary);
+}
+
+/* CoinGecko / Listing Badges */
+.coingecko-badge,
+.listing-badge {
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
+}
+
+.coingecko-badge:hover,
+.listing-badge:hover {
+  opacity: 0.7;
+}
+
+.coingecko-logo {
+  height: 40px;
+  width: auto;
+}
+
+/* Dark mode: invert CoinGecko logo colors */
+[data-theme="dark"] .coingecko-logo {
+  filter: invert(1) brightness(1.1);
+}
+
+/* Token listings row (for ReadToken page) */
+.token-listings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-light);
+}
+
+.token-listings .coingecko-logo {
+  height: 48px;
 }
 
 /* Benefits Grid */

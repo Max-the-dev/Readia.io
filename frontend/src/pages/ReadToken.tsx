@@ -135,6 +135,18 @@ function ReadToken() {
             Buy $READ
           </a>
         </div>
+
+        {/* Listings */}
+        <div className="token-listings">
+          <a
+            href="https://www.coingecko.com/en/coins/readia-io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="listing-badge"
+          >
+            <img src="/icons/coingecko.svg" alt="CoinGecko" className="coingecko-logo" />
+          </a>
+        </div>
       </div>
     </div>
   );
