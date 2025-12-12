@@ -457,6 +457,46 @@ function estimateReadTime(content: string): string {
     return referrer.includes('/x402-test');
   };
 
+// GET /api/x402 - x402 Discovery endpoint for x402scan listing
+router.get('/x402', async (req: Request, res: Response) => {
+  const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'base';
+
+  const paymentRequirement = {
+    scheme: 'exact',
+    network,
+    maxAmountRequired: '10000', // $0.01 symbolic
+    resource: `${req.protocol}://${req.get('host')}/api/x402`,
+    description: 'Readia.io - The New Content Economy',
+    mimeType: 'application/json',
+    payTo: PLATFORM_EVM_ADDRESS,
+    maxTimeoutSeconds: 900,
+    asset: resolveAsset(network as SupportedX402Network),
+    outputSchema: {
+      input: { type: 'http', method: 'GET', discoverable: true }
+    },
+    extra: {
+      name: 'USD Coin',
+      version: '2',
+      title: 'Readia.io Platform',
+      category: 'content',
+      tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
+      serviceName: 'Readia.io',
+      serviceDescription: 'Readia.io - The New Content Economy',
+      pricing: {
+        currency: 'USD',
+        amount: '0.01',
+        display: '$0.01'
+      }
+    }
+  };
+
+  return res.status(402).json({
+    x402Version: 1,
+    error: 'Payment required',
+    accepts: [paymentRequirement]
+  });
+});
+
 // GET /api/articles - Get all articles or articles by author
 router.get('/articles', readLimiter, validate(getArticlesQuerySchema, 'query'), async (req: Request, res: Response) => {
   try {
