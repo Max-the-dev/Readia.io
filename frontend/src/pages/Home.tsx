@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { PenTool, BookOpen, Copy, Vote, Coins, Sparkles, Rocket, Check } from 'lucide-react';
+import { PenTool, BookOpen, Copy, Check } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 
 // We'll fetch real articles from the backend instead of using mock data
+
+const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$<{}!@$&*◦◇◆◎'.split('');
 
 function Home() {
   const benefits = [
@@ -32,6 +34,7 @@ function Home() {
   const [copied, setCopied] = useState(false);
   const [marketCap, setMarketCap] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number | null>(null);
+  const tokenSectionRef = useRef<HTMLDivElement | null>(null);
 
   // Format market cap for display (e.g., $1.2M, $500K)
   const formatMarketCap = (value: number): string => {
@@ -44,18 +47,6 @@ function Home() {
   };
 
   const CONTRACT_ADDRESS = 'C8wvVNuRPm237bQqqcfRxas77GTK3RzzoBCkWgrGpump';
-
-  const tokenBenefits = [
-    { icon: Vote, title: 'Governance Voting', description: 'Holders vote on platform decisions and feature priorities' },
-    { icon: Coins, title: 'Revenue Share', description: 'Earn a portion of platform revenue' },
-    { icon: Sparkles, title: 'Early Access', description: 'Get exclusive access to new features before launch' },
-  ];
-
-  const upcomingFeatures = [
-    { title: 'XXXXXX', timeline: 'Dec 2025' },
-    { title: 'XXXXXX', timeline: 'Jan 2026' },
-    { title: 'XXXXXX', timeline: 'Q1 2026' },
-  ];
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(CONTRACT_ADDRESS);
@@ -141,6 +132,59 @@ function Home() {
     }
   }, [displayText, isTyping, currentBenefit, benefits]);
 
+  // Glyph cursor effect for token section
+  useEffect(() => {
+    const surface = tokenSectionRef.current;
+    if (!surface) return;
+
+    // Find the particle container
+    const particleContainer = surface.querySelector('.token-section__particles') as HTMLElement;
+    if (!particleContainer) return;
+
+    let lastEmit = 0;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!surface || !particleContainer) return;
+
+      const rect = surface.getBoundingClientRect();
+      const x = event.clientX;
+      const y = event.clientY;
+
+      // Check if pointer is within section bounds (including padding)
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+        return;
+      }
+
+      // Skip if pointer is over interactive elements (buttons, links)
+      const target = event.target as HTMLElement;
+      if (target.closest('a, button')) return;
+
+      const now = performance.now();
+      if (now - lastEmit < 65) return;
+      lastEmit = now;
+
+      const particle = document.createElement('span');
+      particle.className = 'token-section__particle';
+      particle.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+      // Calculate position relative to the section element
+      const relativeX = x - rect.left;
+      const relativeY = y - rect.top;
+      particle.style.left = `${relativeX}px`;
+      particle.style.top = `${relativeY}px`;
+      particleContainer.appendChild(particle);
+
+      requestAnimationFrame(() => particle.classList.add('is-active'));
+
+      setTimeout(() => {
+        particle.remove();
+      }, 1200);
+    };
+
+    // Listen on document to catch all pointer events, then filter by section bounds
+    document.addEventListener('pointermove', handlePointerMove, { passive: true });
+    return () => document.removeEventListener('pointermove', handlePointerMove);
+  }, []);
+
   return (
     <div className="home">
       <div className="hero-grid-section home-hero-grid">
@@ -183,7 +227,8 @@ function Home() {
       </div>
 
       {/* $READ Token Section */}
-      <section className="token-section">
+      <section className="token-section" ref={tokenSectionRef}>
+        <div className="token-section__particles"></div>
         <div className="token-section-inner">
           <div className="token-header">
             <h2>$READ</h2>
@@ -204,50 +249,17 @@ function Home() {
             </div>
           </div>
 
-          <div className="token-contract-row">
-            <div className="token-contract">
-              <code className="token-contract-address">
-                {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
-              </code>
-              <button onClick={handleCopyAddress} className="token-copy-btn">
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Copied!' : 'Copy CA'}
-              </button>
-            </div>
-            <a
-              href="https://www.coingecko.com/en/coins/readia-io"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="listing-badge"
-            >
-              <img src="/icons/coingecko.svg" alt="CoinGecko" className="coingecko-logo" />
-            </a>
+          <div className="token-contract">
+            <code className="token-contract-address">
+              {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
+            </code>
+            <button onClick={handleCopyAddress} className="token-copy-btn">
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy CA'}
+            </button>
           </div>
 
-          <div className="token-benefits-grid">
-            {tokenBenefits.map((benefit, index) => (
-              <div key={index} className="token-benefit-card">
-                <div className="token-benefit-icon">
-                  <benefit.icon size={24} />
-                </div>
-                <h3>{benefit.title}</h3>
-                <p>{benefit.description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="token-roadmap">
-            <h3>Upcoming Features</h3>
-            <div className="token-roadmap-list">
-              {upcomingFeatures.map((feature, index) => (
-                <div key={index} className="token-roadmap-item">
-                  <Rocket size={16} />
-                  <span className="roadmap-title">{feature.title}</span>
-                  <span className="roadmap-timeline">{feature.timeline}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="token-section-divider"></div>
 
           <div className="token-cta">
             <a
@@ -261,6 +273,30 @@ function Home() {
             <Link to="/read-token" className="token-learn-btn">
               Learn More
             </Link>
+          </div>
+
+          <p className="token-tagline">
+            Explore holder benefits and the full Readia ecosystem.
+          </p>
+
+          <div className="token-listings">
+            <a
+              href="https://www.coingecko.com/en/coins/readia-io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-badge"
+            >
+              <img src="/icons/coingecko.svg" alt="CoinGecko" className="coingecko-logo" />
+            </a>
+            <a
+              href={`https://jup.ag/tokens/${CONTRACT_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-badge"
+            >
+              <img src="/icons/jupiter-light.svg" alt="Jupiter" className="jupiter-logo jupiter-logo-dark" />
+              <img src="/icons/jupiter-dark.svg" alt="Jupiter" className="jupiter-logo jupiter-logo-light" />
+            </a>
           </div>
         </div>
       </section>

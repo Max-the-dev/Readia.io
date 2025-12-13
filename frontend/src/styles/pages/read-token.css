@@ -1,38 +1,149 @@
 /* read-token.css */
-/* Styling for /read-token page */
+/* Styling for /read-token ecosystem page */
 
 .read-token-page {
-  /* Hero section styles inherited from home.css */
+  overflow-x: hidden;
 }
 
-/* Reduce space between hero buttons and subtitle on Read Token page only */
-.read-token-page .hero-cta-buttons {
-  margin-bottom: -8px;
+/* ========================================
+   1. ECOSYSTEM HERO
+   ======================================== */
+.ecosystem-hero {
+  padding: 100px 20px 80px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
 }
 
-.read-token-content {
-  padding: 80px 16px;
-  max-width: 1180px;
-  width: min(1180px, 97vw);
+.ecosystem-hero .hero-content {
+  max-width: 800px;
   margin: 0 auto;
 }
 
-.read-token-content h2 {
-  font-size: 2rem;
+.ecosystem-hero h1 {
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 16px;
-  text-align: center;
+  margin: 16px 0;
 }
 
-.read-token-content p {
-  font-size: 1.1rem;
+.ecosystem-subtitle {
+  font-size: 1.15rem;
   color: var(--text-secondary);
-  line-height: 1.8;
+  line-height: 1.7;
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ========================================
+   SHARED SECTION STYLES
+   ======================================== */
+.ecosystem-section {
+  padding: 80px 20px;
+}
+
+.ecosystem-section:nth-child(even) {
+  background: var(--bg-secondary);
+}
+
+.section-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.ecosystem-section h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+/* ========================================
+   2. TOKEN STATS SECTION
+   ======================================== */
+.token-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.token-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 24px;
   text-align: center;
 }
 
-/* DexScreener Embed */
+.stat-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-value.positive {
+  color: #16a34a;
+}
+
+.stat-value.negative {
+  color: #dc2626;
+}
+
+.stat-contract {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stat-contract code {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.copy-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.copy-btn:hover {
+  color: var(--text-primary);
+}
+
+/* ========================================
+   3. CHART SECTION
+   ======================================== */
+.chart-section {
+  background: var(--bg-primary) !important;
+}
+
 .dexscreener-embed {
   margin: 32px 0;
   box-shadow: var(--shadow-md);
@@ -40,69 +151,601 @@
   overflow: hidden;
 }
 
-/* Token Action Links */
-.token-links {
+.dexscreener-embed iframe {
+  border: none;
+  border-radius: 12px;
+  width: 100%;
+  height: 500px;
+}
+
+.chart-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.chart-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.chart-link:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-hover);
+}
+
+/* ========================================
+   4. TOKEN BENEFITS SECTION
+   ======================================== */
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.token-benefit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.token-benefit-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.token-benefit-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.token-benefit-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.token-benefit-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ========================================
+   5. PLATFORM FEATURES SECTION
+   ======================================== */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 28px;
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.feature-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.feature-card p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.feature-stats {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+/* ========================================
+   6. ROADMAP SECTION
+   ======================================== */
+.roadmap-timeline {
+  max-width: 700px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.roadmap-item {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.roadmap-item:last-child {
+  margin-bottom: 0;
+}
+
+.roadmap-timeline-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.roadmap-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--border-medium);
+  border: 3px solid var(--bg-primary);
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.roadmap-item--completed .roadmap-dot {
+  background: #16a34a;
+}
+
+.roadmap-item--in-progress .roadmap-dot {
+  background: #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+.roadmap-line {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: calc(100% + 32px);
+  background: var(--border-light);
+}
+
+.roadmap-item:last-child .roadmap-line {
+  display: none;
+}
+
+.roadmap-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.roadmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.roadmap-date {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.roadmap-status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.status--completed {
+  background: rgba(22, 163, 74, 0.1);
+  color: #16a34a;
+}
+
+.status--in-progress {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.status--planned {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.roadmap-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+.roadmap-milestones {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.roadmap-milestones li {
+  padding: 6px 0 6px 24px;
+  position: relative;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.roadmap-milestones li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--text-muted);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+}
+
+/* ========================================
+   7. TEAM SECTION
+   ======================================== */
+.team-grid {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.team-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  max-width: 300px;
+}
+
+.team-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  overflow: hidden;
+  border: 3px solid var(--border-light);
+}
+
+.team-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.team-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.team-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.team-role {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 16px 0;
+}
+
+.team-bio {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.team-social {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.team-social a {
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+}
+
+.team-social a:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+/* ========================================
+   8. PARTNERSHIPS SECTION
+   ======================================== */
+.partnerships-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+
+.partnership-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.partnership-card--link:hover {
+  border-color: var(--border-medium);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.partnership-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partnership-logo img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.partnership-logo-placeholder {
+  width: 48px;
+  height: 48px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+.partnership-category {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.partnership-card h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+}
+
+.partnership-card p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ========================================
+   9. FOOTER CTA SECTION
+   ======================================== */
+.footer-cta-section {
+  background: var(--contrast-bg) !important;
+  text-align: center;
+  padding: 100px 20px !important;
+}
+
+.footer-cta-section h2 {
+  color: var(--contrast-text);
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.footer-cta-section p {
+  color: var(--contrast-text);
+  opacity: 0.9;
+  font-size: 1.1rem;
+  margin-bottom: 32px;
+}
+
+.footer-cta-buttons {
   display: flex;
   gap: 16px;
   justify-content: center;
   flex-wrap: wrap;
-  margin-top: 32px;
 }
 
-.token-link-button {
+.cta-primary-btn,
+.cta-secondary-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 24px;
-  border-radius: 8px;
-  text-decoration: none;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 1rem;
   font-weight: 600;
-  font-size: 0.95rem;
+  text-decoration: none;
   transition: all 0.2s ease;
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  border: 1px solid var(--button-border);
 }
 
-.token-link-button:hover {
-  background-color: var(--bg-hover);
+.cta-primary-btn {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.cta-primary-btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.token-link-primary {
-  background: var(--contrast-bg);
+.cta-secondary-btn {
+  background: transparent;
   color: var(--contrast-text);
-  border: none;
+  border: 2px solid var(--contrast-text);
 }
 
-.token-link-primary:hover {
-  background: var(--contrast-bg-hover);
+.cta-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* Mobile Responsive */
+/* ========================================
+   RESPONSIVE STYLES
+   ======================================== */
+@media (max-width: 1024px) {
+  .partnerships-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
-  .read-token-content {
-    padding: 40px 20px;
+  .ecosystem-hero {
+    padding: 80px 20px 60px;
   }
 
-  .read-token-content h2 {
-    font-size: 1.5rem;
+  .ecosystem-hero h1 {
+    font-size: 1.75rem;
   }
 
-  .read-token-content p {
+  .ecosystem-subtitle {
     font-size: 1rem;
   }
 
-  .dexscreener-embed iframe {
-    height: 500px;
+  .ecosystem-section {
+    padding: 60px 20px;
   }
 
-  .token-links {
+  .ecosystem-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .section-subtitle {
+    margin-bottom: 32px;
+  }
+
+  .token-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .benefits-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .partnerships-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .roadmap-item {
+    grid-template-columns: 20px 1fr;
+    gap: 16px;
+  }
+
+  .dexscreener-embed iframe {
+    height: 400px;
+  }
+
+  .footer-cta-section {
+    padding: 60px 20px !important;
+  }
+
+  .footer-cta-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .footer-cta-buttons {
     flex-direction: column;
   }
 
-  .token-link-button {
+  .cta-primary-btn,
+  .cta-secondary-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .partnerships-grid {
+    grid-template-columns: 1fr;
   }
 }
