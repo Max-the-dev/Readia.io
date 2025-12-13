@@ -1,6 +1,5 @@
-import { User } from 'lucide-react';
+import { User, Github, Users } from 'lucide-react';
 import XLogo from '../XLogo';
-import { Github } from 'lucide-react';
 
 interface TeamMemberCardProps {
   name: string;
@@ -10,6 +9,7 @@ interface TeamMemberCardProps {
   social?: {
     twitter?: string;
     github?: string;
+    community?: string;
   };
 }
 
@@ -38,6 +38,11 @@ function TeamMemberCard({ name, role, bio, avatar, social }: TeamMemberCardProps
           {social.github && (
             <a href={social.github} target="_blank" rel="noopener noreferrer">
               <Github size={18} />
+            </a>
+          )}
+          {social.community && (
+            <a href={social.community} target="_blank" rel="noopener noreferrer">
+              <Users size={18} />
             </a>
           )}
         </div>

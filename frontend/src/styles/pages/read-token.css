@@ -37,6 +37,379 @@
 }
 
 /* ========================================
+   ECOSYSTEM SHOWCASE - Hero Cards
+   ======================================== */
+.ecosystem-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.ecosystem-tagline {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 48px 0 8px 0;
+  opacity: 0;
+  animation: ecosystemFadeInUp 0.6s ease forwards;
+  animation-delay: 0.8s;
+}
+
+/* Grid Layout */
+.ecosystem-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  width: 100%;
+}
+
+/* ----------------------------------------
+   Base Card Styles
+   ---------------------------------------- */
+.ecosystem-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  text-decoration: none;
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  /* Staggered animation */
+  opacity: 0;
+  transform: translateY(20px);
+  animation: ecosystemCardIn 0.5s ease forwards;
+  animation-delay: calc(0.1s + var(--card-index, 0) * 0.1s);
+}
+
+.ecosystem-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card Icon */
+.ecosystem-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.ecosystem-card:hover .ecosystem-card__icon {
+  transform: scale(1.05);
+}
+
+/* Card Content */
+.ecosystem-card__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.ecosystem-card__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ecosystem-card__type {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ----------------------------------------
+   Badge Styles
+   ---------------------------------------- */
+.ecosystem-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Core/Token Badge */
+.ecosystem-badge--token {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #ffffff;
+}
+
+/* Live Badge */
+.ecosystem-badge--live {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+[data-theme="dark"] .ecosystem-badge--live {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.ecosystem-badge__dot {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: ecosystemLivePulse 2s ease-in-out infinite;
+}
+
+/* Coming Soon Badge */
+.ecosystem-badge--upcoming {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+[data-theme="dark"] .ecosystem-badge--upcoming {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+/* TBA Badge */
+.ecosystem-badge--tba {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------
+   Card Variants
+   ---------------------------------------- */
+
+/* Token Card - Primary emphasis */
+.ecosystem-card--token {
+  border-color: transparent;
+  background: linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+              linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) border-box;
+  border: 2px solid transparent;
+}
+
+.ecosystem-card--token .ecosystem-card__icon {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #ffffff;
+}
+
+.ecosystem-card--token .ecosystem-card__name {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Live Card */
+.ecosystem-card--live {
+  cursor: pointer;
+}
+
+.ecosystem-card--live:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Upcoming Card */
+.ecosystem-card--upcoming {
+  border-style: dashed;
+}
+
+/* TBA Card - Mystery Style */
+.ecosystem-card--tba {
+  border-style: dashed;
+  border-color: var(--border-light);
+}
+
+.ecosystem-card--tba:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.ecosystem-card__icon--locked {
+  background: transparent;
+  border: 1px dashed var(--border-medium);
+  color: var(--text-muted);
+}
+
+.ecosystem-card__name--mystery {
+  font-family: 'Monaco', 'Courier New', monospace;
+  letter-spacing: 4px;
+  color: var(--text-muted);
+}
+
+/* Shimmer Overlay for TBA */
+.ecosystem-card__shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.06) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: ecosystemCardShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: 16px;
+}
+
+[data-theme="dark"] .ecosystem-card__shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* ----------------------------------------
+   Keyframe Animations
+   ---------------------------------------- */
+@keyframes ecosystemCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ecosystemFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ecosystemLivePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes ecosystemCardShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ----------------------------------------
+   Ecosystem Showcase Responsive
+   ---------------------------------------- */
+@media (max-width: 900px) {
+  .ecosystem-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .ecosystem-showcase {
+    gap: 24px;
+  }
+
+  .ecosystem-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .ecosystem-card {
+    padding: 20px 12px 16px;
+  }
+
+  .ecosystem-card__icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ecosystem-card__name {
+    font-size: 0.9rem;
+  }
+
+  .ecosystem-card__type {
+    font-size: 0.65rem;
+  }
+
+  .ecosystem-badge {
+    top: 8px;
+    right: 8px;
+    padding: 3px 6px;
+    font-size: 0.55rem;
+  }
+
+  .ecosystem-tagline {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .ecosystem-grid {
+    grid-template-columns: 1fr;
+    max-width: 200px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .ecosystem-card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .ecosystem-card__shimmer {
+    animation: none;
+  }
+
+  .ecosystem-badge__dot {
+    animation: none;
+  }
+
+  .ecosystem-tagline {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ========================================
    SHARED SECTION STYLES
    ======================================== */
 .ecosystem-section {
@@ -138,14 +511,57 @@
 }
 
 /* ========================================
-   3. CHART SECTION
+   3. CHART ACCORDION
    ======================================== */
-.chart-section {
-  background: var(--bg-primary) !important;
+.chart-accordion {
+  margin-top: 32px;
+  text-align: center;
+}
+
+.chart-accordion__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0 auto;
+}
+
+.chart-accordion__trigger:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-hover);
+}
+
+.chart-accordion__trigger svg {
+  transition: transform 0.3s ease;
+}
+
+.chart-accordion__trigger.expanded svg {
+  transform: rotate(180deg);
+}
+
+.chart-accordion__content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+  opacity: 0;
+}
+
+.chart-accordion__content.expanded {
+  max-height: 700px;
+  opacity: 1;
+  margin-top: 24px;
 }
 
 .dexscreener-embed {
-  margin: 32px 0;
   box-shadow: var(--shadow-md);
   border-radius: 12px;
   overflow: hidden;
@@ -155,13 +571,13 @@
   border: none;
   border-radius: 12px;
   width: 100%;
-  height: 500px;
+  height: 580px;
 }
 
 .chart-links {
   display: flex;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .chart-link {
@@ -184,26 +600,76 @@
 }
 
 /* ========================================
-   4. TOKEN BENEFITS SECTION
+   4. TOKEN BENEFITS CAROUSEL
    ======================================== */
-.benefits-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+.benefits-carousel {
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+}
+
+.benefits-track {
+  display: flex;
+  gap: 20px;
+  animation: benefitsScroll 40s linear infinite;
+  width: max-content;
+  padding: 8px 0;
+}
+
+.benefits-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes benefitsScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .benefits-track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .benefits-carousel {
+    mask-image: none;
+    -webkit-mask-image: none;
+    overflow-x: auto;
+  }
 }
 
 .token-benefit-card {
+  flex-shrink: 0;
+  width: 260px;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 32px 24px;
+  padding: 24px 20px;
   text-align: center;
   transition: all 0.2s ease;
 }
 
 .token-benefit-card:hover {
   border-color: var(--border-medium);
-  transform: translateY(-4px);
   box-shadow: var(--shadow-md);
 }
 
@@ -211,86 +677,126 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  background: var(--bg-tertiary);
-  border-radius: 12px;
-  margin-bottom: 20px;
-  color: var(--text-primary);
-}
-
-.token-benefit-card h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
-}
-
-.token-benefit-card p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.6;
-}
-
-/* ========================================
-   5. PLATFORM FEATURES SECTION
-   ======================================== */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-}
-
-.feature-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 28px;
-  transition: all 0.2s ease;
-}
-
-.feature-card:hover {
-  border-color: var(--border-medium);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.feature-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 48px;
   height: 48px;
   background: var(--bg-tertiary);
   border-radius: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   color: var(--text-primary);
 }
 
-.feature-card h3 {
+.token-benefit-card h3 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
-.feature-card p {
-  font-size: 0.9rem;
+.token-benefit-card p {
+  font-size: 0.85rem;
   color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
 }
 
-.feature-stats {
-  display: inline-block;
-  margin-top: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
+/* ========================================
+   5. WHY READIA HIGHLIGHTS SECTION
+   ======================================== */
+.highlights-section {
+  padding: 80px 20px;
+  overflow: hidden;
+}
+
+.highlights-container {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 40px 20px;
+}
+
+.highlight-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 32px 40px;
+  max-width: 560px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.highlight-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Alternating positions */
+.highlight-card--left {
+  align-self: flex-start;
+  margin-left: 5%;
+}
+
+.highlight-card--right {
+  align-self: flex-end;
+  margin-right: 5%;
+}
+
+.highlight-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--text-primary);
-  background: var(--bg-tertiary);
-  padding: 4px 10px;
-  border-radius: 6px;
+  margin: 0 0 12px 0;
+}
+
+.highlight-card p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Icons beside cards */
+.highlight-card__bg-icon {
+  position: absolute;
+  top: 50%;
+  right: -160px;
+  transform: translateY(-50%);
+  color: var(--border-medium);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+/* Flip position for right-aligned cards */
+.highlight-card--right .highlight-card__bg-icon {
+  right: auto;
+  left: -160px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .highlights-container {
+    padding: 24px 0;
+  }
+
+  .highlight-card {
+    padding: 24px;
+    max-width: 100%;
+  }
+
+  .highlight-card--left,
+  .highlight-card--right {
+    align-self: center;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .highlight-card__bg-icon {
+    display: none;
+  }
 }
 
 /* ========================================
@@ -442,6 +948,7 @@
   display: flex;
   justify-content: center;
   gap: 24px;
+  margin-top: 24px;
 }
 
 .team-card {

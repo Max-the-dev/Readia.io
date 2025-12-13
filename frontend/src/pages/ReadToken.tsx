@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Github, Vote, Coins, Sparkles, FileText, Shield, DollarSign, Heart, Copy, Check } from 'lucide-react';
+import { Github, Vote, Coins, Sparkles, FileText, Shield, DollarSign, Heart, Copy, Check, Lock, ChevronDown, Percent, Award, Zap, Gift, TrendingUp, Headphones, Rocket, Users, UserPlus, Flag, ArrowLeftRight, Wallet, EyeOff } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import XLogo from '../components/XLogo';
 import {
   TokenBenefitCard,
-  FeatureCard,
   RoadmapItem,
   TeamMemberCard,
   PartnershipCard,
@@ -16,6 +16,7 @@ function ReadToken() {
   const [marketCap, setMarketCap] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [chartExpanded, setChartExpanded] = useState(false);
 
   // Format market cap for display
   const formatMarketCap = (value: number): string => {
@@ -59,16 +60,27 @@ function ReadToken() {
 
   // Data for sections
   const tokenBenefits = [
-    { icon: <Vote size={24} />, title: 'Governance', description: 'Vote on platform decisions, feature priorities, and treasury allocations' },
-    { icon: <Coins size={24} />, title: 'Revenue Share', description: 'Earn a portion of platform revenue distributed to token holders' },
-    { icon: <Sparkles size={24} />, title: 'Early Access', description: 'Get exclusive access to new features and beta programs before launch' },
+    { icon: <Vote size={24} />, title: 'Governance', description: 'Vote on key decisions, resource allocation, and revenue distribution' },
+    { icon: <Coins size={24} />, title: 'Revenue Share', description: 'Earn a portion of platform revenue distributed to holders' },
+    { icon: <Sparkles size={24} />, title: 'Early Access', description: 'Be first to try new features and beta programs' },
+    { icon: <Percent size={24} />, title: 'Reduced Fees', description: 'Enjoy discounted platform fees as a token holder' },
+    { icon: <Award size={24} />, title: 'Holder Badges', description: 'Stand out with exclusive badges as an early supporter' },
+    { icon: <Zap size={24} />, title: 'Pay with $READ', description: 'Use $READ to pay for services and products in the ecosystem' },
+    { icon: <Gift size={24} />, title: 'Exclusive Airdrops', description: 'Receive token airdrops and rewards for loyal holders' },
+    { icon: <TrendingUp size={24} />, title: 'Creator Rewards', description: 'Earn $READ for creating content in the ecosystem' },
+    { icon: <Headphones size={24} />, title: 'Priority Support', description: 'Get faster response times from the team' },
+    { icon: <Rocket size={24} />, title: 'Creator Boosts', description: 'Amplify your content with enhanced visibility' },
+    { icon: <Users size={24} />, title: 'Private Community', description: 'Access holder-only channels and discussions' },
+    { icon: <UserPlus size={24} />, title: 'Referral Rewards', description: 'Earn bonus tokens when you bring new users' },
   ];
 
-  const platformFeatures = [
-    { icon: <FileText size={24} />, title: 'Micropayment Content', description: 'Writers set prices from $0.01-$1.00 per article using the x402 protocol', stats: 'Live on Base' },
-    { icon: <Shield size={24} />, title: 'Web3 Authentication', description: 'Wallet-based auth with RainbowKit. No passwords, full ownership', stats: 'MetaMask & WalletConnect' },
-    { icon: <DollarSign size={24} />, title: 'USDC Payments', description: 'Instant settlements using USDC on Base for low fees and fast transactions', stats: 'Average fee: <$0.01' },
-    { icon: <Heart size={24} />, title: 'Social Features', description: 'Like articles, follow authors, and engage with the community', stats: 'Real-time interactions' },
+  const highlights: { title: string; description: string; bgIcon: LucideIcon }[] = [
+    { title: 'First on x402', description: 'Readia is the first content marketplace built on Coinbase\'s x402 payment protocol—a new standard for internet commerce. We\'re not building on existing rails; we\'re helping define what comes next.', bgIcon: Flag },
+    { title: 'No Middlemen', description: 'No ads interrupting your reading. No personal data harvested and sold. No payment processors skimming fees. Just direct, transparent transactions between consumers and creators.', bgIcon: ArrowLeftRight },
+    { title: 'Instant Full Payouts', description: 'Creators receive 100% of every payment the moment it happens. No waiting for monthly payouts. No platform fees eating into your earnings. Transaction costs are near-zero, so more money stays in your pocket.', bgIcon: Wallet },
+    { title: 'Secure by Design', description: 'Every transaction is cryptographically secured and publicly verifiable on the blockchain. No centralized database to breach, no credentials to steal. Security isn\'t a feature—it\'s the foundation.', bgIcon: Shield },
+    { title: 'Private by Default', description: 'No sign-up forms asking for your life story and credit card information. No personal data required. Stay anonymous or build a reputation publically — your choice.', bgIcon: EyeOff },
+    { title: 'For Everyone', description: 'Whether you\'re crypto-native or have never touched a wallet, Readia meets you where you are. Sign up and pay with familiar methods like X OAuth and Apple Pay. Start earning instantly - zero learning curve.', bgIcon: Users },
   ];
 
   const roadmapData = [
@@ -126,10 +138,19 @@ function ReadToken() {
     {
       name: 'Founder',
       role: 'Founder & Developer',
-      bio: 'Building the future of decentralized content monetization.',
+      bio: 'Building the future of decentralized content economy.',
+      social: {
+        twitter: 'https://x.com/devvinggold',
+        github: 'https://github.com/Max-the-dev/Readia.io',
+      },
+    },
+    {
+      name: 'The Intern',
+      role: 'Here for the vibes',
+      bio: 'Forced to shill Readia and make mediocre memes.',
       social: {
         twitter: 'https://x.com/Readia_io',
-        github: 'https://github.com/Max-the-dev/Readia.io',
+        community: 'https://x.com/i/communities/1986841883000156422',
       },
     },
   ];
@@ -148,14 +169,58 @@ function ReadToken() {
       <section className="ecosystem-hero">
         <div className="hero-content">
           <div className="hero-meta">
-            <span className="hero-powered-label">The</span>
-            <span className="hero-powered-brand">$READ Ecosystem</span>
+            <span className="hero-powered-label">Powered by</span>
+            <span className="hero-powered-brand">Coinbase x402</span>
           </div>
-          <h1>Powering Decentralized Content</h1>
-          <p className="ecosystem-subtitle">
-            Governance, revenue sharing, and exclusive access for token holders.
-            Join the community shaping the future of micropayments.
-          </p>
+          <h1>The Readia Ecosystem</h1>
+          <div className="ecosystem-showcase">
+            <div className="ecosystem-grid">
+              {/* Readia.io - Live */}
+              <Link to="/" className="ecosystem-card ecosystem-card--live" style={{ '--card-index': 0 } as React.CSSProperties}>
+                <div className="ecosystem-card__icon"><FileText size={24} /></div>
+                <div className="ecosystem-card__content">
+                  <h3 className="ecosystem-card__name">Readia.io</h3>
+                  <span className="ecosystem-card__type">Content Marketplace</span>
+                </div>
+                <span className="ecosystem-badge ecosystem-badge--live">
+                  <span className="ecosystem-badge__dot"></span>Live
+                </span>
+              </Link>
+
+              {/* ShillQuest - Upcoming */}
+              <div className="ecosystem-card ecosystem-card--upcoming" style={{ '--card-index': 1 } as React.CSSProperties}>
+                <div className="ecosystem-card__icon"><Sparkles size={24} /></div>
+                <div className="ecosystem-card__content">
+                  <h3 className="ecosystem-card__name">ShillQuest</h3>
+                  <span className="ecosystem-card__type">Marketing Platform</span>
+                </div>
+                <span className="ecosystem-badge ecosystem-badge--upcoming">Coming Soon</span>
+              </div>
+
+              {/* TBA - Newsletter */}
+              <div className="ecosystem-card ecosystem-card--tba" style={{ '--card-index': 2 } as React.CSSProperties}>
+                <div className="ecosystem-card__shimmer"></div>
+                <div className="ecosystem-card__icon ecosystem-card__icon--locked"><Lock size={24} /></div>
+                <div className="ecosystem-card__content">
+                  <h3 className="ecosystem-card__name ecosystem-card__name--mystery">???</h3>
+                  <span className="ecosystem-card__type">Newsletter Service</span>
+                </div>
+                <span className="ecosystem-badge ecosystem-badge--tba">TBA</span>
+              </div>
+
+              {/* TBA - Live Feed */}
+              <div className="ecosystem-card ecosystem-card--tba" style={{ '--card-index': 3 } as React.CSSProperties}>
+                <div className="ecosystem-card__shimmer"></div>
+                <div className="ecosystem-card__icon ecosystem-card__icon--locked"><Lock size={24} /></div>
+                <div className="ecosystem-card__content">
+                  <h3 className="ecosystem-card__name ecosystem-card__name--mystery">???</h3>
+                  <span className="ecosystem-card__type">Live Feed</span>
+                </div>
+                <span className="ecosystem-badge ecosystem-badge--tba">TBA</span>
+              </div>
+            </div>
+          </div>
+          <div className="ecosystem-tagline">Join us in shaping the future of content monetization.</div>
           <div className="hero-cta-buttons">
             <a
               href="https://x.com/Readia_io"
@@ -187,7 +252,7 @@ function ReadToken() {
         </div>
       </section>
 
-      {/* 2. Token Stats Section */}
+      {/* 2. Token Stats Section (with Chart Accordion) */}
       <section className="ecosystem-section token-stats-section">
         <div className="section-inner">
           <h2>$READ Token</h2>
@@ -205,7 +270,7 @@ function ReadToken() {
               </span>
             </div>
             <div className="token-stat-card">
-              <span className="stat-label">Contract</span>
+              <span className="stat-label">Contract Address</span>
               <div className="stat-contract">
                 <code>{CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}</code>
                 <button onClick={handleCopyAddress} className="copy-btn">
@@ -214,28 +279,35 @@ function ReadToken() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* 3. Live Chart Section */}
-      <section className="ecosystem-section chart-section">
-        <div className="section-inner">
-          <h2>Live Chart</h2>
-          <div className="dexscreener-embed">
-            <iframe
-              src="https://dexscreener.com/solana/7hkhyz4picrcom1tupp898tc2shjd7yqtqkfrw4pptdr?embed=1&theme=dark&trades=0&info=0"
-              title="DexScreener Chart"
-            />
-          </div>
-          <div className="chart-links">
-            <a
-              href="https://dexscreener.com/solana/7hkhyz4picrcom1tupp898tc2shjd7yqtqkfrw4pptdr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="chart-link"
+          {/* Chart Accordion */}
+          <div className="chart-accordion">
+            <button
+              className={`chart-accordion__trigger ${chartExpanded ? 'expanded' : ''}`}
+              onClick={() => setChartExpanded(!chartExpanded)}
             >
-              View on DexScreener
-            </a>
+              <span>{chartExpanded ? 'Hide Chart' : 'View Live Chart'}</span>
+              <ChevronDown size={20} />
+            </button>
+
+            <div className={`chart-accordion__content ${chartExpanded ? 'expanded' : ''}`}>
+              <div className="dexscreener-embed">
+                <iframe
+                  src="https://dexscreener.com/solana/7hkhyz4picrcom1tupp898tc2shjd7yqtqkfrw4pptdr?embed=1&theme=dark&trades=0&info=0"
+                  title="DexScreener Chart"
+                />
+              </div>
+              <div className="chart-links">
+                <a
+                  href="https://dexscreener.com/solana/7hkhyz4picrcom1tupp898tc2shjd7yqtqkfrw4pptdr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="chart-link"
+                >
+                  View on DexScreener
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -245,24 +317,36 @@ function ReadToken() {
         <div className="section-inner">
           <h2>Holder Benefits</h2>
           <p className="section-subtitle">$READ holders unlock multiple benefits across the ecosystem</p>
-          <div className="benefits-grid">
-            {tokenBenefits.map((benefit, index) => (
+        </div>
+        <div className="benefits-carousel">
+          <div className="benefits-track">
+            {[...tokenBenefits, ...tokenBenefits].map((benefit, index) => (
               <TokenBenefitCard key={index} {...benefit} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* 5. Platform Features Section */}
-      <section className="ecosystem-section features-section">
+      {/* 5. A New Standard Section */}
+      <section className="ecosystem-section highlights-section">
         <div className="section-inner">
-          <h2>Platform Features</h2>
-          <p className="section-subtitle">What makes Readia.io unique</p>
-          <div className="features-grid">
-            {platformFeatures.map((feature, index) => (
-              <FeatureCard key={index} {...feature} />
-            ))}
-          </div>
+          <h2>A New Standard</h2>
+          <p className="section-subtitle">What the content economy was always meant to be</p>
+        </div>
+        <div className="highlights-container">
+          {highlights.map((item, index) => {
+            const BgIcon = item.bgIcon;
+            return (
+              <div
+                key={index}
+                className={`highlight-card ${index % 2 === 0 ? 'highlight-card--left' : 'highlight-card--right'}`}
+              >
+                <BgIcon className="highlight-card__bg-icon" size={120} strokeWidth={1} />
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -279,19 +363,7 @@ function ReadToken() {
         </div>
       </section>
 
-      {/* 7. Team Section */}
-      <section className="ecosystem-section team-section">
-        <div className="section-inner">
-          <h2>Team</h2>
-          <div className="team-grid">
-            {teamMembers.map((member, index) => (
-              <TeamMemberCard key={index} {...member} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 8. Partnerships Section */}
+      {/* 7. Partnerships Section */}
       <section className="ecosystem-section partnerships-section">
         <div className="section-inner">
           <h2>Partners & Integrations</h2>
@@ -303,11 +375,23 @@ function ReadToken() {
         </div>
       </section>
 
+      {/* 8. Team Section */}
+      <section className="ecosystem-section team-section">
+        <div className="section-inner">
+          <h2>Team</h2>
+          <div className="team-grid">
+            {teamMembers.map((member, index) => (
+              <TeamMemberCard key={index} {...member} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 9. Footer CTA Section */}
       <section className="ecosystem-section footer-cta-section">
         <div className="section-inner">
-          <h2>Ready to Join the $READ Ecosystem?</h2>
-          <p>Start earning, governing, and creating today.</p>
+          <h2>Ready to Join the Readia?</h2>
+          <p>Start creating and earning today.</p>
           <div className="footer-cta-buttons">
             <a
               href={`https://pump.fun/coin/${CONTRACT_ADDRESS}`}
@@ -317,8 +401,8 @@ function ReadToken() {
             >
               Buy $READ
             </a>
-            <Link to="/explore" className="cta-secondary-btn">
-              Explore Articles
+            <Link to="/write" className="cta-secondary-btn">
+              Start Writing
             </Link>
           </div>
         </div>
