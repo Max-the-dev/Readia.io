@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 import XLogo from '../components/XLogo';
 import {
   TokenBenefitCard,
-  RoadmapItem,
+  RoadmapCluster,
   TeamMemberCard,
   PartnershipCard,
 } from '../components/ecosystem';
@@ -85,58 +85,54 @@ function ReadToken() {
 
   const roadmapData = [
     {
-      quarter: 'Q4',
-      year: '2024',
+      period: 'Q4 2024',
       status: 'completed' as const,
-      title: 'Platform Launch',
-      milestones: [
-        'x402 payment protocol integration',
-        'Supabase database setup',
-        'Basic content creation and monetization',
-        '$READ token launch',
+      coreItem: 'Platform Launch',
+      satellites: [
+        { label: 'x402 Integration' },
+        { label: '$READ Token' },
+        { label: 'Content Monetization' },
+        { label: 'Database Setup' },
       ],
     },
     {
-      quarter: 'Q1',
-      year: '2025',
+      period: 'Q1 2025',
       status: 'in-progress' as const,
-      title: 'Ecosystem Expansion',
-      milestones: [
-        'Enhanced analytics dashboard',
-        'Author verification system',
-        'Mobile-responsive improvements',
-        'CoinGecko & Jupiter listings',
+      coreItem: 'Ecosystem Growth',
+      satellites: [
+        { label: 'Analytics Dashboard', expandable: true, details: ['Author earnings tracking', 'Reader engagement metrics', 'Content performance insights'] },
+        { label: 'Exchange Listings' },
+        { label: 'Mobile Optimization' },
+        { label: 'Author Verification', expandable: true, details: ['Identity verification system', 'Verified creator badges', 'Trust score algorithm'] },
       ],
     },
     {
-      quarter: 'Q2',
-      year: '2025',
+      period: 'Q2 2025',
       status: 'planned' as const,
-      title: 'Governance & Staking',
-      milestones: [
-        'DAO governance implementation',
-        'Token staking rewards program',
-        'Revenue sharing mechanism',
-        'Premium content tiers',
+      coreItem: 'Token Utility',
+      satellites: [
+        { label: 'DAO Governance', expandable: true, details: ['Proposal voting system', 'Community treasury', 'Protocol upgrades'] },
+        { label: 'Staking Rewards' },
+        { label: 'Revenue Sharing' },
+        { label: 'Premium Tiers' },
       ],
     },
     {
-      quarter: 'Q3',
-      year: '2025',
+      period: 'Q3 2025',
       status: 'planned' as const,
-      title: 'Platform Maturity',
-      milestones: [
-        'Multi-chain support',
-        'Creator NFTs and collectibles',
-        'Advanced recommendation engine',
-        'Mobile apps (iOS/Android)',
+      coreItem: 'Ecosystem Expansion',
+      satellites: [
+        { label: 'ShillQuest Launch', expandable: true, details: ['Marketing task platform', 'Earn $READ for engagement', 'Brand partnerships'] },
+        { label: 'Multi-chain Support' },
+        { label: 'Creator NFTs' },
+        { label: 'Mobile Apps' },
       ],
     },
   ];
 
   const teamMembers = [
     {
-      name: 'Founder',
+      name: 'Maxim',
       role: 'Founder & Developer',
       bio: 'Building the future of decentralized content economy.',
       social: {
@@ -156,11 +152,13 @@ function ReadToken() {
   ];
 
   const partnerships = [
-    { name: 'Base', category: 'Layer 2', description: "Built on Coinbase's secure and scalable L2 network", link: 'https://base.org' },
-    { name: 'Supabase', category: 'Infrastructure', description: 'PostgreSQL database and storage backend', link: 'https://supabase.com' },
-    { name: 'RainbowKit', category: 'Wallet', description: 'Best-in-class wallet connection experience', link: 'https://rainbowkit.com' },
-    { name: 'CoinGecko', category: 'Listing', description: 'Token price tracking and market data', link: 'https://www.coingecko.com/en/coins/readia-io' },
-    { name: 'Jupiter', category: 'DEX', description: 'Decentralized exchange for token swaps', link: `https://jup.ag/tokens/${CONTRACT_ADDRESS}` },
+    { name: 'x402', category: 'x402 Foundation', description: "Promoting and supporting x402 projects", link: 'https://www.x402.org/' },
+    { name: 'SKALE', category: 'Infrastructure', description: 'The most advanced x402 network', link: 'https://www.skale.space/', tba: true },
+    { name: 'SoHo', category: 'Credit', description: 'Credit system provider', link: '', tba: true },
+    { name: 'CoinGecko', category: 'Listing', description: 'Exchange listing and audit', link: 'https://www.coingecko.com/en/coins/readia-io' },
+    { name: 'Jupiter', category: 'Listing', description: 'Decentralized exchange listing', link: `https://jup.ag/tokens/${CONTRACT_ADDRESS}` },
+    { name: 'Coinbase', category: 'Facilitator', description: 'x402 transaction facilitator', link: `https://www.coinbase.com/developer-platform/products/x402` },
+    { name: 'Corbits', category: 'Infrastructure', description: 'x402 subscription model provider', link: `https://corbits.dev/`, tba: true }
   ];
 
   return (
@@ -355,9 +353,9 @@ function ReadToken() {
         <div className="section-inner">
           <h2>Roadmap</h2>
           <p className="section-subtitle">Our journey to building the future of decentralized content</p>
-          <div className="roadmap-timeline">
+          <div className="roadmap-clusters">
             {roadmapData.map((item, index) => (
-              <RoadmapItem key={index} {...item} />
+              <RoadmapCluster key={index} {...item} />
             ))}
           </div>
         </div>
@@ -367,8 +365,11 @@ function ReadToken() {
       <section className="ecosystem-section partnerships-section">
         <div className="section-inner">
           <h2>Partners & Integrations</h2>
-          <div className="partnerships-grid">
-            {partnerships.map((partner, index) => (
+          <p className="section-subtitle">Organizations powering the Readia ecosystem</p>
+        </div>
+        <div className="partnerships-carousel">
+          <div className="partnerships-track">
+            {[...partnerships, ...partnerships].map((partner, index) => (
               <PartnershipCard key={index} {...partner} />
             ))}
           </div>
@@ -379,6 +380,7 @@ function ReadToken() {
       <section className="ecosystem-section team-section">
         <div className="section-inner">
           <h2>Team</h2>
+          <p className="section-subtitle">The people behind Readia</p>
           <div className="team-grid">
             {teamMembers.map((member, index) => (
               <TeamMemberCard key={index} {...member} />

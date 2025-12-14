@@ -800,144 +800,289 @@
 }
 
 /* ========================================
-   6. ROADMAP SECTION
+   6. ROADMAP SECTION - Bubble Clusters
    ======================================== */
-.roadmap-timeline {
-  max-width: 700px;
-  margin: 0 auto;
-  position: relative;
-}
-
-.roadmap-item {
+.roadmap-clusters {
   display: grid;
-  grid-template-columns: 24px 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
-  margin-bottom: 32px;
-  position: relative;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
-.roadmap-item:last-child {
-  margin-bottom: 0;
-}
-
-.roadmap-timeline-marker {
-  position: relative;
+.roadmap-cluster {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 16px;
 }
 
-.roadmap-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--border-medium);
-  border: 3px solid var(--bg-primary);
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-}
-
-.roadmap-item--completed .roadmap-dot {
-  background: #16a34a;
-}
-
-.roadmap-item--in-progress .roadmap-dot {
-  background: #f59e0b;
-  animation: pulse 2s infinite;
-}
-
-.roadmap-line {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: calc(100% + 32px);
-  background: var(--border-light);
-}
-
-.roadmap-item:last-child .roadmap-line {
-  display: none;
-}
-
-.roadmap-content {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.roadmap-header {
+/* Period label */
+.cluster-period {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 6px;
 }
 
-.roadmap-date {
-  font-weight: 600;
+.cluster-date {
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--text-primary);
-  font-size: 0.9rem;
 }
 
-.roadmap-status {
+.cluster-status {
   padding: 4px 10px;
   border-radius: 20px;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
-.status--completed {
+.cluster-status--completed {
   background: rgba(22, 163, 74, 0.1);
   color: #16a34a;
 }
 
-.status--in-progress {
+.cluster-status--in-progress {
   background: rgba(245, 158, 11, 0.1);
   color: #f59e0b;
 }
 
-.status--planned {
+.cluster-status--planned {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
 
-.roadmap-content h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
+/* Bubble container */
+.cluster-bubbles {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.roadmap-milestones {
+/* Core bubble */
+.cluster-core {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 2;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+}
+
+.roadmap-cluster--completed .cluster-core {
+  border-color: #16a34a;
+  background: rgba(22, 163, 74, 0.05);
+}
+
+.roadmap-cluster--in-progress .cluster-core {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+  animation: corePulse 3s ease-in-out infinite;
+}
+
+@keyframes corePulse {
+  0%, 100% {
+    box-shadow: var(--shadow-md), 0 0 0 0 rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: var(--shadow-md), 0 0 0 8px rgba(245, 158, 11, 0);
+  }
+}
+
+/* Satellite bubbles */
+.cluster-satellite {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: default;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Position satellites around core */
+.cluster-satellite--0 { top: -10px; left: 50%; transform: translateX(-50%); }
+.cluster-satellite--1 { top: 50%; right: -10px; transform: translateY(-50%); }
+.cluster-satellite--2 { bottom: -10px; left: 50%; transform: translateX(-50%); }
+.cluster-satellite--3 { top: 50%; left: -10px; transform: translateY(-50%); }
+
+/* Expandable satellites */
+.cluster-satellite--expandable {
+  cursor: pointer;
+  border-color: var(--border-medium);
+}
+
+.cluster-satellite--expandable:hover {
+  transform: translateX(-50%) scale(1.1);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+  z-index: 3;
+}
+
+.cluster-satellite--1.cluster-satellite--expandable:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.cluster-satellite--3.cluster-satellite--expandable:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.satellite-expand-hint {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Roadmap Modal */
+.roadmap-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.roadmap-modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 400px;
+  width: 100%;
+  position: relative;
+  animation: modalSlideIn 0.2s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.roadmap-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  transition: color 0.2s;
+}
+
+.roadmap-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.roadmap-modal h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 20px 0;
+  padding-right: 32px;
+}
+
+.roadmap-modal-details {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.roadmap-milestones li {
-  padding: 6px 0 6px 24px;
+.roadmap-modal-details li {
+  padding: 10px 0 10px 24px;
   position: relative;
   font-size: 0.9rem;
   color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-light);
 }
 
-.roadmap-milestones li::before {
+.roadmap-modal-details li:last-child {
+  border-bottom: none;
+}
+
+.roadmap-modal-details li::before {
   content: '→';
   position: absolute;
   left: 0;
   color: var(--text-muted);
 }
 
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
+/* Roadmap Responsive */
+@media (max-width: 900px) {
+  .roadmap-clusters {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
   }
-  50% {
-    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+}
+
+@media (max-width: 500px) {
+  .roadmap-clusters {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+
+  .cluster-bubbles {
+    width: 220px;
+    height: 220px;
+  }
+
+  .cluster-core {
+    width: 110px;
+    height: 110px;
+  }
+
+  .cluster-satellite {
+    width: 75px;
+    height: 75px;
   }
 }
 
@@ -1031,11 +1176,7 @@
 /* ========================================
    8. PARTNERSHIPS SECTION
    ======================================== */
-.partnerships-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 20px;
-}
+/* Grid removed - now using carousel */
 
 .partnership-card {
   background: var(--bg-card);
@@ -1108,6 +1249,150 @@
   line-height: 1.4;
 }
 
+/* TBA Partnership Card */
+.partnership-card--tba {
+  position: relative;
+  border-style: dashed;
+  border-color: var(--border-light);
+  cursor: default;
+}
+
+.partnership-card--tba:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-light);
+}
+
+.partnership-card__shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.04) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: partnershipShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+[data-theme="dark"] .partnership-card__shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes partnershipShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.partnership-logo-placeholder--tba {
+  border: 1px dashed var(--border-medium);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.partnership-name--tba {
+  font-family: 'Monaco', 'Courier New', monospace;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+}
+
+.partnership-desc--tba {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.partnership-badge--tba {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Partnership Carousel */
+.partnerships-carousel {
+  overflow: hidden;
+  width: 100%;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 5%,
+    black 95%,
+    transparent
+  );
+}
+
+.partnerships-track {
+  display: flex;
+  gap: 20px;
+  animation: partnershipsScroll 30s linear infinite;
+  width: max-content;
+  padding: 8px 0;
+}
+
+.partnerships-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes partnershipsScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Update partnership-card for carousel */
+.partnerships-track .partnership-card {
+  flex-shrink: 0;
+  width: 220px;
+}
+
+/* Reduced motion support for partnerships carousel */
+@media (prefers-reduced-motion: reduce) {
+  .partnerships-track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .partnerships-carousel {
+    mask-image: none;
+    -webkit-mask-image: none;
+    overflow-x: auto;
+  }
+}
+
 /* ========================================
    9. FOOTER CTA SECTION
    ======================================== */
@@ -1173,11 +1458,7 @@
 /* ========================================
    RESPONSIVE STYLES
    ======================================== */
-@media (max-width: 1024px) {
-  .partnerships-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
+/* Partnerships grid responsive removed - now using carousel */
 
 @media (max-width: 768px) {
   .ecosystem-hero {
@@ -1219,10 +1500,6 @@
     gap: 16px;
   }
 
-  .partnerships-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
 
   .roadmap-item {
     grid-template-columns: 20px 1fr;
@@ -1251,8 +1528,3 @@
   }
 }
 
-@media (max-width: 480px) {
-  .partnerships-grid {
-    grid-template-columns: 1fr;
-  }
-}
