@@ -5,7 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 import XLogo from '../components/XLogo';
 import {
   TokenBenefitCard,
-  RoadmapCluster,
+  RoadmapItem,
   TeamMemberCard,
   PartnershipCard,
 } from '../components/ecosystem';
@@ -83,50 +83,74 @@ function ReadToken() {
     { title: 'For Everyone', description: 'Whether you\'re crypto-native or have never touched a wallet, Readia meets you where you are. Sign up and pay with familiar methods like X OAuth and Apple Pay. Start earning instantly - zero learning curve.', bgIcon: Users },
   ];
 
+  interface Milestone {
+    title: string;
+    expandable?: boolean;
+    description?: string;
+  }
+
   const roadmapData = [
     {
-      period: 'Q4 2024',
+      quarter: 'Q4',
+      year: '2025',
       status: 'completed' as const,
-      coreItem: 'Platform Launch',
-      satellites: [
-        { label: 'x402 Integration' },
-        { label: '$READ Token' },
-        { label: 'Content Monetization' },
-        { label: 'Database Setup' },
-      ],
+      title: 'Platform Launch',
+      milestones: [
+        {
+          title: 'x402 Integration',
+          expandable: true,
+          description: 'Full implementation of the x402 protocol for micropayments. This enables content creators to set prices per article and receive instant payments through the decentralized payment protocol.'
+        },
+        {
+          title: '$READ Token',
+          expandable: true,
+          description: 'Launch of the READ token on Base Sepolia testnet. The token serves as the primary currency for the Readia platform, facilitating seamless transactions between readers and writers.'
+        },
+        {
+          title: 'Content Monetization',
+          expandable: false
+        },
+        {
+          title: 'Database Setup',
+          expandable: false
+        },
+      ] as Milestone[],
     },
     {
-      period: 'Q1 2025',
+      quarter: 'Q1',
+      year: '2026',
       status: 'in-progress' as const,
-      coreItem: 'Ecosystem Growth',
-      satellites: [
-        { label: 'Analytics Dashboard', expandable: true, details: ['Author earnings tracking', 'Reader engagement metrics', 'Content performance insights'] },
-        { label: 'Exchange Listings' },
-        { label: 'Mobile Optimization' },
-        { label: 'Author Verification', expandable: true, details: ['Identity verification system', 'Verified creator badges', 'Trust score algorithm'] },
-      ],
+      title: 'Ecosystem Growth',
+      milestones: [
+        { title: 'Analytics Dashboard', expandable: false },
+        { title: 'Exchange Listings', expandable: false },
+        { title: 'Mobile Optimization', expandable: false },
+        { title: 'Author Verification', expandable: false },
+      ] as Milestone[],
     },
     {
-      period: 'Q2 2025',
+      quarter: 'Q2',
+      year: '2026',
       status: 'planned' as const,
-      coreItem: 'Token Utility',
-      satellites: [
-        { label: 'DAO Governance', expandable: true, details: ['Proposal voting system', 'Community treasury', 'Protocol upgrades'] },
-        { label: 'Staking Rewards' },
-        { label: 'Revenue Sharing' },
-        { label: 'Premium Tiers' },
-      ],
+      title: 'Token Utility',
+      milestones: [
+        { title: 'DAO Governance', expandable: false },
+        { title: 'Staking Rewards', expandable: false },
+        { title: 'Revenue Sharing', expandable: false },
+        { title: 'Premium Tiers', expandable: false },
+      ] as Milestone[],
     },
     {
-      period: 'Q3 2025',
+      quarter: 'Q3',
+      year: '2026',
       status: 'planned' as const,
-      coreItem: 'Ecosystem Expansion',
-      satellites: [
-        { label: 'ShillQuest Launch', expandable: true, details: ['Marketing task platform', 'Earn $READ for engagement', 'Brand partnerships'] },
-        { label: 'Multi-chain Support' },
-        { label: 'Creator NFTs' },
-        { label: 'Mobile Apps' },
-      ],
+      title: 'Ecosystem Expansion',
+      milestones: [
+        { title: 'ShillQuest Launch', expandable: false },
+        { title: 'Multi-chain Support', expandable: false },
+        { title: 'Creator NFTs', expandable: false },
+        { title: 'Mobile Apps', expandable: false },
+      ] as Milestone[],
     },
   ];
 
@@ -134,7 +158,7 @@ function ReadToken() {
     {
       name: 'Maxim',
       role: 'Founder & Developer',
-      bio: 'Building the future of decentralized content economy.',
+      bio: 'Building the future of a decentralized content economy.',
       social: {
         twitter: 'https://x.com/devvinggold',
         github: 'https://github.com/Max-the-dev/Readia.io',
@@ -353,9 +377,9 @@ function ReadToken() {
         <div className="section-inner">
           <h2>Roadmap</h2>
           <p className="section-subtitle">Our journey to building the future of decentralized content</p>
-          <div className="roadmap-clusters">
+          <div className="roadmap-timeline">
             {roadmapData.map((item, index) => (
-              <RoadmapCluster key={index} {...item} />
+              <RoadmapItem key={index} {...item} index={index} />
             ))}
           </div>
         </div>
@@ -392,7 +416,7 @@ function ReadToken() {
       {/* 9. Footer CTA Section */}
       <section className="ecosystem-section footer-cta-section">
         <div className="section-inner">
-          <h2>Ready to Join the Readia?</h2>
+          <h2>Ready to Join Readia?</h2>
           <p>Start creating and earning today.</p>
           <div className="footer-cta-buttons">
             <a
