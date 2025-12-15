@@ -424,7 +424,7 @@ function Footer() {
             <h4>Product</h4>
             <ul>
               <li><Link to="/whitepaper"><FileText size={16} /> Whitepaper</Link></li>
-              <li><Link to="/about"><Info size={16} /> About</Link></li>
+              <li><Link to="/mission"><Info size={16} /> Mission</Link></li>
               <li><Link to="/how-it-works"><BookOpen size={16} /> How it works</Link></li>
               <li><Link to="/pricing"><FileText size={16} /> Pricing</Link></li>
             </ul>
