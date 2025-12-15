@@ -190,7 +190,7 @@ function Home() {
       <div className="hero-grid-section home-hero-grid">
         <section className="hero home-hero" aria-labelledby="home-hero-title">
           <div className="hero-content">
-            <h1 id="home-hero-title">The New Content Economy</h1>
+            <h1 id="home-hero-title">Write & Get Paid. Today.</h1>
             <div className="hero-dynamic" aria-live="polite" aria-atomic="true">
               <div className="typing-text-box">
                 <span className="typing-text">

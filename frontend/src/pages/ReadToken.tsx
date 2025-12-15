@@ -97,22 +97,39 @@ function ReadToken() {
       title: 'Platform Launch',
       milestones: [
         {
-          title: 'x402 Integration',
+          title: 'Core Platform Launch',
           expandable: true,
-          description: 'Full implementation of the x402 protocol for micropayments. This enables content creators to set prices per article and receive instant payments through the decentralized payment protocol.'
+          description: 'Ship MVP with the following features:\n\
+          \n - Wallet management\
+          \n - Publishing tools\
+          \n - x402 payments \
+          \n - Basic search & discovery \
+          \n - Creator dashboards & analytics \
+          \n - Basic content moderation tools\
+          \n - Authentication & data security'
         },
         {
           title: '$READ Token',
           expandable: true,
-          description: 'Launch of the READ token on Base Sepolia testnet. The token serves as the primary currency for the Readia platform, facilitating seamless transactions between readers and writers.'
+          description: 'Launch of $READ token. \
+          With primary focus on generating revenue to support hosting & development costs as well as establishing a base of early supporters.'
         },
         {
-          title: 'Content Monetization',
-          expandable: false
+          title: 'Initial Marketing Push & Partnerships',
+          expandable: true,
+          description: 'Focus on community building and awareness through targeted marketing campaigns and strategic partnerships in order \
+          to secure endorsements and attract investor attention to the project.'
+          
         },
         {
-          title: 'Database Setup',
-          expandable: false
+          title: 'Core Platform Expansion',
+          expandable: true,
+          description: 'Implement additional features based on user feedback, including: \
+          \n\n - Reading history & bookmarks \
+          \n - Enhanced search & filtering options [yellow]\
+          \n - Onramp & Authentication methods to support Web2 user adoption [yellow]\
+          \n - Fix initial bugs and performance issues [yellow]'
+
         },
       ] as Milestone[],
     },
@@ -122,10 +139,22 @@ function ReadToken() {
       status: 'in-progress' as const,
       title: 'Ecosystem Growth',
       milestones: [
-        { title: 'Analytics Dashboard', expandable: false },
-        { title: 'Exchange Listings', expandable: false },
-        { title: 'Mobile Optimization', expandable: false },
-        { title: 'Author Verification', expandable: false },
+        { title: 'ShillQuest MVP', expandable: true, description: 'Launch marketing platform MVP with initial focus on Web3 community adoption. \
+          \n\n - Focus marketing efforts on ShillQuest to accelerate revenue generation \
+          \n - Utilize platform revenue to bootstrap development and $READ utility integration' },
+        { title: '$READ Utility', expandable: true, description: 'Introduce governance features allowing early supporters to benefit from investing in $READ. \
+          \n\n - Holder rewards & buybacks \
+          \n - Pay-with-$READ \
+          \n - Exclusive features & discounts' },
+        { title: 'Mobile Optimization', expandable: true, description: 'Optimize platform for mobile devices to enhance accessibility and user experience on smartphones and tablets.' },
+        { title: 'Platform Features', expandable: true,
+          description: 'Continue building out platform featues for Readia and ShillQuest: \
+          \n\n - (Readia) Advanced discovery & Author profiles \
+          \n - (Readia) LLM writing assistant integration \
+          \n - (ShillQuest) Enhanced analytics and reporting \
+          \n - (ShillQuest) Additional social media integrations (e.g., Instagram, TikTok) \
+          \n - (ShillQuest) Integrated browser extension'
+         },
       ] as Milestone[],
     },
     {
@@ -134,10 +163,10 @@ function ReadToken() {
       status: 'planned' as const,
       title: 'Token Utility',
       milestones: [
-        { title: 'DAO Governance', expandable: false },
-        { title: 'Staking Rewards', expandable: false },
+        { title: 'DAO Governance & Community', expandable: false },
         { title: 'Revenue Sharing', expandable: false },
-        { title: 'Premium Tiers', expandable: false },
+        { title: 'Marketing Campaign', expandable: false },
+        { title: 'Premium Features', expandable: false },
       ] as Milestone[],
     },
     {
@@ -146,9 +175,9 @@ function ReadToken() {
       status: 'planned' as const,
       title: 'Ecosystem Expansion',
       milestones: [
-        { title: 'ShillQuest Launch', expandable: false },
-        { title: 'Multi-chain Support', expandable: false },
-        { title: 'Creator NFTs', expandable: false },
+        { title: 'New Platform Launch', expandable: false },
+        { title: 'Additional Chain Support', expandable: false },
+        { title: 'Partner Integrations', expandable: false },
         { title: 'Mobile Apps', expandable: false },
       ] as Milestone[],
     },

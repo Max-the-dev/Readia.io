@@ -968,10 +968,12 @@
 .roadmap-content {
   position: relative;
   transition: transform 0.3s ease-out;
+  z-index: 1;
 }
 
 .roadmap-content--slid {
   transform: translateX(-60px);
+  z-index: 101;
 }
 
 /* Refined card overlay when expanded */
@@ -984,7 +986,7 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 16px;
-  z-index: 50;
+  z-index: 1;
   pointer-events: none;
   animation: fadeIn 0.3s ease;
 }
@@ -997,7 +999,7 @@
   right: 0;
   bottom: 0;
   background: transparent;
-  z-index: 100;
+  z-index: 99;
   cursor: pointer;
 }
 
@@ -1010,26 +1012,29 @@
 .milestone-modal {
   position: absolute;
   right: -380px;
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 350px;
-  height: 100%;
+  max-height: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: 12px;
-  padding: 24px;
+  padding: 56px 24px 24px 24px;
   box-shadow: var(--shadow-lg);
-  z-index: 101;
+  z-index: 102;
   animation: slideInFromRight 0.3s ease-out forwards;
   overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
 }
 
 @keyframes slideInFromRight {
   from {
-    transform: translateX(0);
+    transform: translateY(-50%) translateX(0);
     opacity: 0;
   }
   to {
-    transform: translateX(-60px);
+    transform: translateY(-50%) translateX(-60px);
     opacity: 1;
   }
 }
@@ -1055,19 +1060,88 @@
   color: var(--text-primary);
 }
 
-.milestone-modal h4 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 16px 0;
-  padding-right: 32px;
+/* Milestone content wrapper */
+.milestone-content {
+  /* Content naturally sized, parent modal handles positioning */
 }
 
-.milestone-description {
+/* Paragraph styling */
+.milestone-paragraph {
   font-size: 0.95rem;
   color: var(--text-secondary);
   line-height: 1.7;
-  margin: 0;
+  margin: 0 0 16px 0;
+}
+
+.milestone-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* List styling */
+.milestone-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.milestone-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  transition: background 0.2s ease;
+}
+
+.milestone-list-item:hover {
+  background: var(--bg-secondary);
+}
+
+/* Bullet styling - colored dot based on status */
+.milestone-bullet {
+  width: 6px;
+  height: 6px;
+  min-width: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  margin-top: 7px;
+}
+
+/* Status-based bullet colors */
+.roadmap-item--completed .milestone-bullet {
+  background: #16a34a;
+}
+
+.roadmap-item--in-progress .milestone-bullet {
+  background: #f59e0b;
+}
+
+.roadmap-item--planned .milestone-bullet {
+  background: var(--border-medium);
+}
+
+/* Custom bullet colors override status colors */
+.milestone-bullet--yellow {
+  background: #eab308 !important;
+}
+
+/* Mobile adjustments for milestone modal */
+@media (max-width: 768px) {
+  .milestone-modal {
+    padding: 48px 20px 20px 20px;
+  }
+
+  .milestone-list-item {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
 }
 
 @keyframes pulseGreen {

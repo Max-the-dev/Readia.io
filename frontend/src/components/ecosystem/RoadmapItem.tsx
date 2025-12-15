@@ -19,6 +19,58 @@ interface RoadmapItemProps {
 function RoadmapItem({ quarter, year, status, title, milestones, index }: RoadmapItemProps) {
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
 
+  const parseDescription = (description: string) => {
+    const sections: Array<{type: 'paragraph' | 'list', content: Array<string | {text: string, color: string}>}> = [];
+
+    // Split by double newlines first to separate major sections
+    const parts = description.split(/\n\n+/);
+
+    parts.forEach(part => {
+      // Split each part by single newlines and clean up
+      const lines = part.split('\n').map(l => l.trim()).filter(l => l);
+
+      // Separate intro lines from bullet lines
+      const introLines: string[] = [];
+      const bulletLines: Array<string | {text: string, color: string}> = [];
+
+      lines.forEach(line => {
+        if (line.startsWith('-')) {
+          const bulletText = line.substring(1).trim();
+
+          // Check for color markers
+          if (bulletText.includes('[yellow]')) {
+            bulletLines.push({
+              text: bulletText.replace('[yellow]', '').trim(),
+              color: 'yellow'
+            });
+          } else {
+            bulletLines.push(bulletText);
+          }
+        } else if (line) {
+          introLines.push(line);
+        }
+      });
+
+      // Add intro paragraph if exists
+      if (introLines.length > 0) {
+        sections.push({
+          type: 'paragraph',
+          content: introLines
+        });
+      }
+
+      // Add bullet list if exists
+      if (bulletLines.length > 0) {
+        sections.push({
+          type: 'list',
+          content: bulletLines
+        });
+      }
+    });
+
+    return sections;
+  };
+
   const handleMilestoneClick = (idx: number, milestone: Milestone) => {
     if (milestone.expandable) {
       setExpandedMilestone(idx);
@@ -63,10 +115,30 @@ function RoadmapItem({ quarter, year, status, title, milestones, index }: Roadma
             <button className="milestone-modal-close" onClick={handleCloseModal}>
               <X size={20} />
             </button>
-            <h4>{milestones[expandedMilestone].title}</h4>
-            <p className="milestone-description">
-              {milestones[expandedMilestone].description}
-            </p>
+            <div className="milestone-content">
+              {parseDescription(milestones[expandedMilestone].description).map((section, idx) => (
+                section.type === 'paragraph' ? (
+                  <p key={idx} className="milestone-paragraph">
+                    {section.content.join(' ')}
+                  </p>
+                ) : (
+                  <ul key={idx} className="milestone-list">
+                    {section.content.map((item, itemIdx) => {
+                      const isObject = typeof item === 'object' && item !== null;
+                      const text = isObject ? item.text : item;
+                      const color = isObject ? item.color : undefined;
+
+                      return (
+                        <li key={itemIdx} className="milestone-list-item">
+                          <span className={`milestone-bullet ${color ? `milestone-bullet--${color}` : ''}`} />
+                          {text}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )
+              ))}
+            </div>
           </div>
         )}
       </div>
