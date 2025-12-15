@@ -1,7 +1,7 @@
 import { Users, Target, Zap, Shield, Globe, Heart, Twitter } from 'lucide-react';
 import XLogo from '../components/XLogo';
 
-function About() {
+function Mission() {
   return (
     <div className="about-page">
       <div className="container">
@@ -194,4 +194,4 @@ function About() {
   );
 }
 
-export default About;
+export default Mission;

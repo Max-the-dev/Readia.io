@@ -12,7 +12,7 @@ import {
 
 const CONTRACT_ADDRESS = 'C8wvVNuRPm237bQqqcfRxas77GTK3RzzoBCkWgrGpump';
 
-function ReadToken() {
+function Ecosystem() {
   const [marketCap, setMarketCap] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
@@ -215,7 +215,7 @@ function ReadToken() {
   ];
 
   return (
-    <div className="read-token-page">
+    <div className="ecosystem-page">
       {/* 1. Hero Section */}
       <section className="ecosystem-hero">
         <div className="hero-content">
@@ -466,4 +466,4 @@ function ReadToken() {
   );
 }
 
-export default ReadToken;
+export default Ecosystem;

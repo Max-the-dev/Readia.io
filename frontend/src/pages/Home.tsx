@@ -270,7 +270,7 @@ function Home() {
             >
               Buy $READ
             </a>
-            <Link to="/read-token" className="token-learn-btn">
+            <Link to="/about" className="token-learn-btn">
               Learn More
             </Link>
           </div>
