@@ -107,7 +107,7 @@ function Home({ setPage }: HomeProps) {
             </p>
             <div className="hero-meta">
               <span className="hero-powered-label">Powered by</span>
-              <a href="https://readia.io" target="_blank" rel="noopener noreferrer" className="hero-powered-brand">Readia.io</a>
+              <a href="https://readia.io/about" target="_blank" rel="noopener noreferrer" className="hero-powered-brand">Readia.io</a>
             </div>
           </div>
         </section>
