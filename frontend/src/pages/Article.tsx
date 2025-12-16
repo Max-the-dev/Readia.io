@@ -7,6 +7,7 @@ import { x402PaymentService, type SupportedNetwork } from '../services/x402Payme
 import { useAccount, useWalletClient } from 'wagmi';
 import { useAppKitProvider } from '@reown/appkit/react';
 import LikeButton from '../components/LikeButton';
+import FavoriteButton from '../components/FavoriteButton';
 import { sanitizeHTML } from '../utils/sanitize';
 import AppKitConnectButton from '../components/AppKitConnectButton';
 import { createSolanaTransactionSigner } from '../utils/solanaSigner';
@@ -366,6 +367,11 @@ function Article() {
         setPaymentError('');
         setShowPaymentToast(true);
         setTimeout(() => setShowPaymentToast(false), 3000);
+
+        // Record to reading history
+        apiService.recordHistory(article.id).catch(err => {
+          console.error('Failed to record history:', err);
+        });
       } else {
         const errorMessage = paymentResult.error || 'Payment verification failed';
         console.error('x402 payment failed:', errorMessage, paymentResult.rawResponse);
@@ -464,13 +470,19 @@ function Article() {
               <div className="publish-date">
                 <span>{new Date(article.publishDate).toLocaleDateString()}</span>
               </div>
-              <LikeButton 
-                articleId={article.id} 
-                userAddress={address} 
-                initialLikes={article.likes}
-                className="article-header-like-button"
-                onLikeChange={handleLikeChange}
-              />
+              <div className="article-actions">
+                <FavoriteButton
+                  articleId={article.id}
+                  className="article-header-favorite-button"
+                />
+                <LikeButton
+                  articleId={article.id}
+                  userAddress={address}
+                  initialLikes={article.likes}
+                  className="article-header-like-button"
+                  onLikeChange={handleLikeChange}
+                />
+              </div>
             </div>
             {article.categories && article.categories.length > 0 && (
               <div className="article-categories">

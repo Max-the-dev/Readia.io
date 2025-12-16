@@ -48,9 +48,17 @@
   font-size: 0.8rem;
 }
 
-.article-header .like-button {
-  padding: 10px 16px;
-  font-size: 0.9rem;
+.article-header .like-button,
+.article-header .favorite-button {
+  padding: 8px 12px;
+  font-size: 0.875rem;
+}
+
+/* Container for favorite and like buttons in article header */
+.article-header .article-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .article-categories {

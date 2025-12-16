@@ -14,7 +14,10 @@ import {
   articleIdSchema,
   draftIdSchema,
   likeRequestSchema,
-  deleteRequestSchema
+  deleteRequestSchema,
+  historyRecordSchema,
+  favoriteRequestSchema,
+  historyQuerySchema
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
 import { facilitator } from '@coinbase/x402';
@@ -453,6 +456,46 @@ function estimateReadTime(content: string): string {
     const referrer = req.get('referer') || '';
     return referrer.includes('/x402-test');
   };
+
+// GET /api/x402 - x402 Discovery endpoint for x402scan listing
+router.get('/x402', async (req: Request, res: Response) => {
+  const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'base';
+
+  const paymentRequirement = {
+    scheme: 'exact',
+    network,
+    maxAmountRequired: '10000', // $0.01 symbolic
+    resource: `${req.protocol}://${req.get('host')}/api/x402`,
+    description: 'Readia.io - The New Content Economy',
+    mimeType: 'application/json',
+    payTo: PLATFORM_EVM_ADDRESS,
+    maxTimeoutSeconds: 900,
+    asset: resolveAsset(network as SupportedX402Network),
+    outputSchema: {
+      input: { type: 'http', method: 'GET', discoverable: true }
+    },
+    extra: {
+      name: 'USD Coin',
+      version: '2',
+      title: 'Readia.io Platform',
+      category: 'content',
+      tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
+      serviceName: 'Readia.io',
+      serviceDescription: 'Readia.io - The New Content Economy',
+      pricing: {
+        currency: 'USD',
+        amount: '0.01',
+        display: '$0.01'
+      }
+    }
+  };
+
+  return res.status(402).json({
+    x402Version: 1,
+    error: 'Payment required',
+    accepts: [paymentRequirement]
+  });
+});
 
 // GET /api/articles - Get all articles or articles by author
 router.get('/articles', readLimiter, validate(getArticlesQuerySchema, 'query'), async (req: Request, res: Response) => {
@@ -2439,5 +2482,210 @@ async function resolveSolanaAtaOwner(ataAddress: string, network: SupportedX402N
     return null;
   }
 }
+
+// ============================================
+// USER HISTORY & FAVORITES (AUTHENTICATED)
+// ============================================
+
+async function enforceHistoryCap(wallet: string, client = pgPool) {
+  await client.query(
+    `
+    DELETE FROM user_reads
+    WHERE wallet_address = $1
+      AND id IN (
+        SELECT id FROM user_reads
+        WHERE wallet_address = $1
+        ORDER BY last_read_at DESC, id DESC
+        OFFSET 20
+      )
+    `,
+    [wallet]
+  );
+}
+
+async function enforceFavoritesCap(wallet: string, client = pgPool) {
+  await client.query(
+    `
+    DELETE FROM user_favorites
+    WHERE wallet_address = $1
+      AND id IN (
+        SELECT id FROM user_favorites
+        WHERE wallet_address = $1
+        ORDER BY created_at DESC, id DESC
+        OFFSET 20
+      )
+    `,
+    [wallet]
+  );
+}
+
+router.post('/users/me/history', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { articleId } = historyRecordSchema.parse(req.body);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const article = await db.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, error: 'ARTICLE_NOT_FOUND' });
+    }
+
+    await pgPool.query(
+      `
+      INSERT INTO user_reads (wallet_address, article_id)
+      VALUES ($1, $2)
+      ON CONFLICT (wallet_address, article_id)
+      DO UPDATE SET
+        last_read_at = NOW(),
+        read_count = user_reads.read_count + 1
+      `,
+      [walletAddress, articleId]
+    );
+
+    await enforceHistoryCap(walletAddress);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error recording history:', error);
+    return res.status(500).json({ success: false, error: 'Failed to record history' });
+  }
+});
+
+router.get('/users/me/history', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { limit } = historyQuerySchema.parse(req.query);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const { rows } = await pgPool.query(
+      `
+      SELECT
+        ur.article_id AS id,
+        a.title,
+        a.preview,
+        a.categories,
+        a.author_address AS "authorAddress",
+        a.publish_date AS "publishDate",
+        ur.last_read_at AS "lastReadAt"
+      FROM user_reads ur
+      JOIN articles a ON a.id = ur.article_id
+      WHERE ur.wallet_address = $1
+      ORDER BY ur.last_read_at DESC
+      LIMIT $2
+      `,
+      [walletAddress, limit || 20]
+    );
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch history' });
+  }
+});
+
+router.post('/users/me/favorites', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { articleId, favorite } = favoriteRequestSchema.parse(req.body);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const article = await db.getArticleById(articleId);
+    if (!article) {
+      return res.status(404).json({ success: false, error: 'ARTICLE_NOT_FOUND' });
+    }
+
+    if (favorite) {
+      await pgPool.query(
+        `
+        INSERT INTO user_favorites (wallet_address, article_id)
+        VALUES ($1, $2)
+        ON CONFLICT (wallet_address, article_id) DO NOTHING
+        `,
+        [walletAddress, articleId]
+      );
+      await enforceFavoritesCap(walletAddress);
+    } else {
+      await pgPool.query(
+        `DELETE FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
+        [walletAddress, articleId]
+      );
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating favorite:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update favorite' });
+  }
+});
+
+// Check if a specific article is favorited (must be before general /favorites route)
+router.get('/users/me/favorites/:articleId/status', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const articleId = parseInt(req.params.articleId, 10);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    if (isNaN(articleId)) {
+      return res.status(400).json({ success: false, error: 'Invalid article ID' });
+    }
+
+    const { rows } = await pgPool.query(
+      `SELECT 1 FROM user_favorites WHERE wallet_address = $1 AND article_id = $2`,
+      [walletAddress, articleId]
+    );
+
+    return res.json({ success: true, data: { isFavorited: rows.length > 0 } });
+  } catch (error) {
+    console.error('Error checking favorite status:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check favorite status' });
+  }
+});
+
+router.get('/users/me/favorites', readLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { limit } = historyQuerySchema.parse(req.query);
+    const walletAddress = req.auth?.address;
+
+    if (!walletAddress) {
+      return res.status(401).json({ success: false, error: 'AUTH_REQUIRED' });
+    }
+
+    const { rows } = await pgPool.query(
+      `
+      SELECT
+        uf.article_id AS id,
+        a.title,
+        a.preview,
+        a.categories,
+        a.author_address AS "authorAddress",
+        a.publish_date AS "publishDate",
+        uf.created_at AS "favoritedAt"
+      FROM user_favorites uf
+      JOIN articles a ON a.id = uf.article_id
+      WHERE uf.wallet_address = $1
+      ORDER BY uf.created_at DESC
+      LIMIT $2
+      `,
+      [walletAddress, limit || 20]
+    );
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    return res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
+  }
+});
 
 export default router;

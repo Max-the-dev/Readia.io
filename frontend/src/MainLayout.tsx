@@ -9,7 +9,7 @@ import Write from './pages/Write';
 import Dashboard from './pages/Dashboard';
 import Article from './pages/Article';
 import EditArticle from './pages/EditArticle';
-import About from './pages/About';
+import Mission from './pages/Mission';
 import HowItWorks from './pages/HowItWorks';
 import Pricing from './pages/Pricing';
 import Resources from './pages/Resources';
@@ -18,7 +18,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Contact from './pages/Contact';
 import X402Test from './pages/X402Test';
-import ReadToken from './pages/ReadToken';
+import Ecosystem from './pages/Ecosystem';
 import Explore from './pages/Explore';
 import Whitepaper from './pages/Whitepaper';
 import NotFound from './pages/NotFound';
@@ -31,6 +31,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/dashboard': 'Readia Dashboard',
   '/whitepaper': 'Readia Whitepaper',
   '/about': 'About Readia',
+  '/mission': 'Readia Mission',
   '/how-it-works': 'How Readia Works',
   '/pricing': 'Readia Pricing',
   '/resources': 'Readia Resources',
@@ -39,7 +40,6 @@ const ROUTE_TITLES: Record<string, string> = {
   '/terms': 'Readia Terms of Service',
   '/contact': 'Contact Readia',
   '/x402-test': 'Readia x402 Test',
-  '/read-token': 'Readia Token Information',
   '/explore': 'Explore Readia',
 };
 
@@ -78,7 +78,8 @@ function MainLayout() {
           <Route path="/edit/:id" element={<EditArticle />} />
           <Route path="/article/:id" element={<Article />} />
           <Route path="/whitepaper" element={<Whitepaper />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/about" element={<Ecosystem />} />
+          <Route path="/mission" element={<Mission />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/resources" element={<Resources />} />
@@ -87,7 +88,6 @@ function MainLayout() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/x402-test" element={<X402Test />} />
-          <Route path="/read-token" element={<ReadToken />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
