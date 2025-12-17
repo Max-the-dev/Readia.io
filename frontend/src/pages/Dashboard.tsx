@@ -493,7 +493,9 @@ function Dashboard() {
   const secondaryWalletExists = Boolean(author?.secondaryPayoutAddress && author?.secondaryPayoutNetwork);
   const complementaryNetworkFamily: NetworkFamily = primaryNetworkFamily === 'solana' ? 'base' : 'solana';
   const secondaryNetworkApiValue: SupportedAuthorNetwork =
-    complementaryNetworkFamily === 'solana' ? 'solana' : 'base';
+    complementaryNetworkFamily === 'solana'
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
+      : 'eip155:8453';  // Base mainnet
   const secondaryDisplayFamily: NetworkFamily = secondaryWalletExists
     ? getNetworkFamily(author?.secondaryPayoutNetwork)
     : complementaryNetworkFamily;
@@ -1390,7 +1392,7 @@ function Dashboard() {
                   ) : (
                     <div className="wallet-card__placeholder">
                       <WalletMinimal size={20} />
-                      <span>Add a Solana payout address</span>
+                      <span>Add a {getNetworkLabel(complementaryNetworkFamily)} payout address</span>
                     </div>
                   )}
                 </article>

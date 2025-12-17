@@ -46,38 +46,23 @@ async function hydrateCache(): Promise<void> {
 
   const payload = (await response.json()) as SupportedResponse;
 
-  console.log('📋 CDP Facilitator supported kinds:', JSON.stringify(payload.kinds, null, 2));
-
   // Handle both v1 (array) and v2 (object keyed by version) response formats
   let allKinds: SupportedKind[];
 
   if (Array.isArray(payload.kinds)) {
-    // v1 format: kinds is an array
     allKinds = payload.kinds;
-    console.log('📦 Using v1 format (kinds is array)');
   } else {
     // v2 format: kinds is an object keyed by version number {"1": [...], "2": [...]}
-    // Prefer version "2" kinds, fall back to all versions
     const kindsObj = payload.kinds as Record<string, SupportedKind[]>;
-    if (kindsObj['2']) {
-      allKinds = kindsObj['2'];
-      console.log('📦 Using v2 format (kinds["2"])');
-    } else {
-      // Flatten all versions if "2" not present
-      allKinds = Object.values(kindsObj).flat();
-      console.log('📦 Using v2 format (flattened all versions)');
-    }
+    allKinds = kindsObj['2'] || Object.values(kindsObj).flat();
   }
 
   feePayerCache = allKinds.reduce<Record<string, string>>((acc, kind) => {
     if (kind.extra?.feePayer) {
       acc[kind.network] = kind.extra.feePayer;
-      console.log(`  ✅ Cached feePayer for ${kind.network}: ${kind.extra.feePayer}`);
     }
     return acc;
   }, {});
-
-  console.log('📦 Fee payer cache keys:', Object.keys(feePayerCache));
 }
 
 export async function ensureFacilitatorSupportLoaded(): Promise<void> {
