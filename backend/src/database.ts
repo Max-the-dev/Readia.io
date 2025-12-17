@@ -63,7 +63,7 @@ class Database {
     const secondaryWallet = sortedWallets.find(wallet => !wallet.isPrimary) || null;
     const rowPrimaryNetwork = (row.primary_payout_network ||
       primaryWallet?.network ||
-      'base') as SupportedAuthorNetwork;
+      'eip155:8453') as SupportedAuthorNetwork;  // Base mainnet (CAIP-2)
     const rowSecondaryNetwork = (row.secondary_payout_network ||
       secondaryWallet?.network ||
       undefined) as SupportedAuthorNetwork | undefined;
@@ -217,7 +217,7 @@ class Database {
 
   async createArticle(article: Omit<Article, 'id'>): Promise<Article> {
     const normalizedAuthorAddress = normalizeFlexibleAddress(article.authorAddress);
-    const primaryNetwork = article.authorPrimaryNetwork || 'base';
+    const primaryNetwork = article.authorPrimaryNetwork || 'eip155:8453';  // Base mainnet (CAIP-2)
 
     const { data, error } = await supabase
       .from('articles')

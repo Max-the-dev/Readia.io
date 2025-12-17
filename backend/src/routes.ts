@@ -318,7 +318,7 @@ function buildPayoutProfile(article: Article, authorOverride?: Author | null): P
   const primaryNetwork = (
     authorOverride?.primaryPayoutNetwork ||
     article.authorPrimaryNetwork ||
-    'base'
+    'eip155:8453'  // Base mainnet (CAIP-2)
   ) as SupportedX402Network;
 
   return {
@@ -1322,6 +1322,8 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     let verification;
     try {
       verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
+      // DEBUG: Log full verification response to diagnose Solana failures
+      console.log('[x402] Full verification response:', JSON.stringify(verification, null, 2));
     } catch (error: any) {
       let responseBody;
       if (error?.response?.text) {
