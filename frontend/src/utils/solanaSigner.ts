@@ -123,7 +123,9 @@ function buildSignatureDictionary(
       : signedTransaction.signatures.length
   );
 
-  const entries = signerAddresses.map((address) => {
+  const entries: [Address<string>, Uint8Array][] = [];
+
+  for (const address of signerAddresses) {
     // Find the actual position of this signer in the transaction message
     const signerIndex = messageAccountKeys.findIndex(
       (key) => key.toLowerCase() === address.toLowerCase()
@@ -132,24 +134,28 @@ function buildSignatureDictionary(
     console.log(`  Looking for ${address} → found at index ${signerIndex}`);
 
     if (signerIndex === -1) {
-      console.warn(`[SolanaSigner] Signer ${address} not found in message accounts, trying position 0`);
-      // Fallback: if not found, this might be a partial signer scenario
-      const signatureBytes = extractSignatureBytes(signedTransaction, 0);
-      if (!signatureBytes) {
-        throw new Error(`Missing signature for signer ${address}`);
-      }
-      console.log(`  Extracted signature from position 0:`, signatureBytes.slice(0, 8), '...');
-      return [address, signatureBytes] as const;
+      console.warn(`[SolanaSigner] Signer ${address} not found in message accounts, skipping`);
+      continue;
     }
 
     const signatureBytes = extractSignatureBytes(signedTransaction, signerIndex);
     if (!signatureBytes) {
-      throw new Error(`Missing signature for signer ${address} at index ${signerIndex}`);
+      console.warn(`[SolanaSigner] No signature bytes at position ${signerIndex} for ${address}, skipping`);
+      continue;
     }
-    console.log(`  Extracted signature from position ${signerIndex}:`, signatureBytes.slice(0, 8), '...');
-    return [address, signatureBytes] as const;
-  });
 
+    // Check if signature is all zeros (not signed by this wallet)
+    const isEmptySignature = signatureBytes.every((byte) => byte === 0);
+    if (isEmptySignature) {
+      console.log(`  Signature at position ${signerIndex} is all zeros (fee payer?), skipping`);
+      continue;
+    }
+
+    console.log(`  Extracted valid signature from position ${signerIndex}:`, signatureBytes.slice(0, 8), '...');
+    entries.push([address as Address<string>, signatureBytes]);
+  }
+
+  console.log(`  Returning ${entries.length} signature(s)`);
   return Object.freeze(Object.fromEntries(entries));
 }
 
