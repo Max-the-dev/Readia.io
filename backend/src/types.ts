@@ -1,6 +1,11 @@
 // Backend types for Readia.io
 
-export type SupportedAuthorNetwork = 'base' | 'base-sepolia' | 'solana' | 'solana-devnet';
+// CAIP-2 network identifiers
+export type SupportedAuthorNetwork =
+  | 'eip155:8453'      // Base mainnet
+  | 'eip155:84532'     // Base Sepolia
+  | 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
+  | 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'; // Solana devnet
 
 export interface Article {
   id: number;

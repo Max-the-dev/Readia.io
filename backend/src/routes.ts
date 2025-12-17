@@ -20,9 +20,11 @@ import {
   historyQuerySchema
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
-import { facilitator } from '@coinbase/x402';
-import { useFacilitator } from 'x402/verify';
-import { PaymentPayload, PaymentPayloadSchema, PaymentRequirements } from 'x402/types';
+// x402 v2 imports
+import { HTTPFacilitatorClient } from '@x402/core/server';
+import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
+// @ts-ignore - CDP SDK has type issues in v0.x
+import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import {
   normalizeAddress,
   normalizeSolanaAddress,
@@ -31,7 +33,7 @@ import {
   tryNormalizeSolanaAddress,
   tryNormalizeAddress,
 } from './utils/address';
-import { settleAuthorization } from './settlementService';
+// settlementService removed in v2 - using facilitatorClient.settle() directly
 import { getFacilitatorFeePayer } from './facilitatorSupport';
 import { getCACertificates } from 'tls';
 import { success } from 'zod';
@@ -42,34 +44,122 @@ const db = new Database();
 const isProduction = process.env.NODE_ENV === 'production';
 const enableRateLimiting = process.env.ENABLE_RATE_LIMITING === 'true';
 
-// Use CDP facilitator - auto-detects CDP_API_KEY_ID and CDP_API_KEY_SECRET from env
-const { verify: verifyWithFacilitator, settle: settleWithFacilitator } = useFacilitator(facilitator);
+// CDP Facilitator Client for x402 v2
+const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
 
-type SupportedX402Network = 'base' | 'base-sepolia' | 'solana' | 'solana-devnet';
+const facilitatorClient = new HTTPFacilitatorClient({
+  url: CDP_FACILITATOR_URL,
+  createAuthHeaders: async () => {
+    const generateAuthForPath = async (path: string) => {
+      const token = await generateJwt({
+        apiKeyId: process.env.CDP_API_KEY_ID!,
+        apiKeySecret: process.env.CDP_API_KEY_SECRET!,
+        requestMethod: 'POST',
+        requestHost: 'api.cdp.coinbase.com',
+        requestPath: `/platform/v2/x402/${path}`,
+        expiresIn: 120
+      });
+      return { 'Authorization': `Bearer ${token}` };
+    };
+
+    return {
+      verify: await generateAuthForPath('verify'),
+      settle: await generateAuthForPath('settle'),
+      supported: await generateAuthForPath('supported')  // For querying supported networks/schemes
+    };
+  }
+});
+
+/**
+ * Debug logging helper for settlement - replicates logs from old settlementService.ts
+ */
+function logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): void {
+  console.log('🔧 SETTLEMENT DEBUG:');
+  console.log('\n========== CDP SETTLEMENT REQUEST ==========');
+
+  // v2: scheme and network are in the 'accepted' field
+  const scheme = paymentPayload.accepted?.scheme || 'unknown';
+  const network = paymentPayload.accepted?.network || 'unknown';
+  console.log('🔧 Network:', network);
+  console.log('📋 Scheme:', scheme);
+
+  const payloadData = paymentPayload.payload as Record<string, unknown>;
+  const hasAuthorization = payloadData && typeof payloadData === 'object' && 'authorization' in payloadData;
+  const hasTransaction = payloadData && typeof payloadData === 'object' && 'transaction' in payloadData;
+
+  if (hasAuthorization) {
+    const authorization = payloadData.authorization as Record<string, unknown>;
+    console.log('\n--- AUTHORIZATION DETAILS ---');
+    console.log('From (payer):', authorization.from);
+    console.log('To (recipient):', authorization.to);
+    console.log('Value (micro USDC):', authorization.value);
+    console.log('Nonce:', authorization.nonce);
+
+    console.log('\n--- TIME WINDOW ---');
+    const validAfter = parseInt(authorization.validAfter as string, 10);
+    const validBefore = parseInt(authorization.validBefore as string, 10);
+    const windowSeconds = validBefore - validAfter;
+    const maxTimeout = paymentRequirements.maxTimeoutSeconds || 0;
+    const sdkPaddingSeconds = 600; // x402 client backdates validAfter by 10 minutes
+    const allowedWindow = maxTimeout + sdkPaddingSeconds;
+
+    console.log('ValidAfter:', validAfter, new Date(validAfter * 1000).toISOString());
+    console.log('ValidBefore:', validBefore, new Date(validBefore * 1000).toISOString());
+    console.log('Window Duration:', windowSeconds, 'seconds');
+    console.log('Allowed Duration (incl. SDK padding):', allowedWindow, 'seconds');
+    console.log('VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
+
+    console.log('\n--- SIGNATURE ---');
+    console.log('Signature:', payloadData.signature);
+  } else if (hasTransaction) {
+    console.log('\n--- TRANSACTION DETAILS (SVM) ---');
+    const transaction = payloadData.transaction as string;
+    console.log('Transaction (base64, first 120 chars):', transaction.slice(0, 120) + (transaction.length > 120 ? '...' : ''));
+    console.log('Transaction Length:', transaction.length);
+    console.log('Skipping EVM-specific authorization window validation for SVM payload.');
+  }
+
+  console.log('\n--- PAYMENT REQUIREMENTS ---');
+  console.log('Amount:', paymentRequirements.amount);  // v2: renamed from maxAmountRequired
+  console.log('Asset (USDC):', paymentRequirements.asset);
+  console.log('PayTo:', paymentRequirements.payTo);
+
+  console.log('\n========== CALLING CDP SETTLE ==========\n');
+}
+
+// CAIP-2 network identifiers for x402 v2
+type SupportedX402Network =
+  | 'eip155:8453'      // Base mainnet
+  | 'eip155:84532'     // Base Sepolia
+  | 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
+  | 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'; // Solana devnet
 
 const SUPPORTED_X402_NETWORKS: SupportedX402Network[] = [
-  'base',
-  'base-sepolia',
-  'solana',
-  'solana-devnet',
+  'eip155:8453',
+  'eip155:84532',
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+  'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
 ];
 
-const X402_EVM_NETWORKS: SupportedX402Network[] = ['base', 'base-sepolia'];
-const X402_SOLANA_NETWORKS: SupportedX402Network[] = ['solana', 'solana-devnet'];
+// Network type helpers (prefix-based for CAIP-2)
+const isEvmNetwork = (n: string): boolean => n.startsWith('eip155:');
+const isSolanaNetwork = (n: string): boolean => n.startsWith('solana:');
 type NetworkGroup = 'evm' | 'solana';
 
 const DEFAULT_X402_NETWORK: SupportedX402Network =
   SUPPORTED_X402_NETWORKS.includes((process.env.X402_NETWORK || '') as SupportedX402Network)
     ? (process.env.X402_NETWORK as SupportedX402Network)
-    : 'base-sepolia';
+    : 'eip155:84532'; // Base Sepolia
 
-const DEFAULT_EVM_PAYOUT_NETWORK: SupportedPayoutNetwork =
-  DEFAULT_X402_NETWORK === 'base' || DEFAULT_X402_NETWORK === 'base-sepolia'
-    ? (DEFAULT_X402_NETWORK as SupportedPayoutNetwork)
-    : 'base';
+const DEFAULT_EVM_PAYOUT_NETWORK: SupportedX402Network =
+  isEvmNetwork(DEFAULT_X402_NETWORK)
+    ? DEFAULT_X402_NETWORK
+    : 'eip155:8453'; // Base mainnet
 
-const DEFAULT_SOLANA_PAYOUT_NETWORK: SupportedPayoutNetwork =
-  DEFAULT_X402_NETWORK === 'solana-devnet' ? 'solana-devnet' : 'solana';
+const DEFAULT_SOLANA_PAYOUT_NETWORK: SupportedX402Network =
+  DEFAULT_X402_NETWORK === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
+    ? 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'  // Solana devnet
+    : 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Solana mainnet
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (value: string): boolean => UUID_REGEX.test(value);
@@ -212,8 +302,8 @@ const PLATFORM_SOLANA_ADDRESS = process.env.X402_PLATFORM_SOL_ADDRESS
   ? normalizeSolanaAddress(process.env.X402_PLATFORM_SOL_ADDRESS)
   : null;
 
-const getNetworkGroup = (network?: SupportedX402Network | null): NetworkGroup =>
-  network && X402_SOLANA_NETWORKS.includes(network) ? 'solana' : 'evm';
+const getNetworkGroup = (network?: SupportedX402Network | string | null): NetworkGroup =>
+  network && isSolanaNetwork(network) ? 'solana' : 'evm';
 
 // Select the correct payout address for the requested network, preferring the author’s
 // primary method and falling back to the secondary slot when it matches.
@@ -265,18 +355,21 @@ function resolvePayTo(payoutProfile: PayoutProfile, network: SupportedX402Networ
 
 // Choose the right USDC contract/mint for the network. Base(*) use ERC-20 addresses,
 // Solana networks use the SPL USDC mint (with env overrides if provided).
-function resolveAsset(network: SupportedX402Network): string {
-  if (network === 'base') {
+function resolveAsset(network: SupportedX402Network | string): string {
+  // Base mainnet
+  if (network === 'eip155:8453') {
     return process.env.X402_MAINNET_USDC_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
   }
-  if (network === 'base-sepolia') {
+  // Base Sepolia
+  if (network === 'eip155:84532') {
     return process.env.X402_TESTNET_USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
   }
-  return network === 'solana' ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
+  // Solana mainnet vs devnet
+  return network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
 }
 
 function normalizeRecipientForNetwork(address: string, network: SupportedX402Network | string): string {
-  return X402_SOLANA_NETWORKS.includes(network as SupportedX402Network)
+  return isSolanaNetwork(network)
     ? normalizeSolanaAddress(address)
     : normalizeAddress(address);
 }
@@ -287,13 +380,11 @@ function normalizeRecipientForNetwork(address: string, network: SupportedX402Net
 async function buildPaymentRequirement(
   article: Article,
   payoutProfile: PayoutProfile,
-  req: Request,
   network: SupportedX402Network
 ): Promise<PaymentRequirements> {
   const priceInCents = Math.round(article.price * 100);
   const priceInMicroUSDC = (priceInCents * 10000).toString();
-  const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${article.id}/purchase?network=${network}`;
-  const displayAssetName = network === 'base' ? 'USD Coin' : 'USDC';
+  const displayAssetName = network === 'eip155:8453' ? 'USD Coin' : 'USDC';
 
   const payTo = resolvePayTo(payoutProfile, network);
   const asset = resolveAsset(network);
@@ -308,16 +399,14 @@ async function buildPaymentRequirement(
     }
   }
 
+  // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
   return {
     scheme: 'exact',
     network,
-    maxAmountRequired: priceInMicroUSDC,
-    resource: resourceUrl,
-    description: `Purchase access to: ${article.title}`,
-    mimeType: 'application/json',
+    asset,
+    amount: priceInMicroUSDC,  // v2: renamed from maxAmountRequired
     payTo,
     maxTimeoutSeconds: 900,
-    asset,
     extra: {
       name: displayAssetName,
       version: '2',
@@ -355,7 +444,7 @@ async function ensureAuthorRecord(address: string, networkHint?: SupportedPayout
   let primaryNetwork: SupportedPayoutNetwork | undefined = networkHint;
 
   if (networkHint) {
-    normalizedAddress = SOLANA_NETWORKS.includes(networkHint)
+    normalizedAddress = isSolanaNetwork(networkHint)
       ? normalizeSolanaAddress(address)
       : normalizeAddress(address);
   } else {
@@ -459,21 +548,17 @@ function estimateReadTime(content: string): string {
 
 // GET /api/x402 - x402 Discovery endpoint for x402scan listing
 router.get('/x402', async (req: Request, res: Response) => {
-  const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'base';
+  const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'eip155:8453';
+  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
 
-  const paymentRequirement = {
+  // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
+  const paymentRequirement: PaymentRequirements = {
     scheme: 'exact',
     network,
-    maxAmountRequired: '10000', // $0.01 symbolic
-    resource: `${req.protocol}://${req.get('host')}/api/x402`,
-    description: 'Readia.io - The New Content Economy',
-    mimeType: 'application/json',
+    asset: resolveAsset(network as SupportedX402Network),
+    amount: '10000',  // v2: renamed from maxAmountRequired ($0.01 symbolic)
     payTo: PLATFORM_EVM_ADDRESS,
     maxTimeoutSeconds: 900,
-    asset: resolveAsset(network as SupportedX402Network),
-    outputSchema: {
-      input: { type: 'http', method: 'GET', discoverable: true }
-    },
     extra: {
       name: 'USD Coin',
       version: '2',
@@ -490,11 +575,19 @@ router.get('/x402', async (req: Request, res: Response) => {
     }
   };
 
-  return res.status(402).json({
-    x402Version: 1,
+  // v2 PaymentRequired response with top-level resource
+  const paymentRequired = {
+    x402Version: 2,
     error: 'Payment required',
+    resource: {
+      url: resourceUrl,
+      description: 'Readia.io - The New Content Economy',
+      mimeType: 'application/json'
+    },
     accepts: [paymentRequirement]
-  });
+  };
+  res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+  return res.status(402).json(paymentRequired);
 });
 
 // GET /api/articles - Get all articles or articles by author
@@ -842,9 +935,13 @@ router.get('/public/authors/:identifier', readLimiter, async (req: Request, res:
   }
 });
 
-const SUPPORTED_PAYOUT_NETWORKS = ['base', 'base-sepolia', 'solana', 'solana-devnet'] as const;
+const SUPPORTED_PAYOUT_NETWORKS = [
+  'eip155:8453',      // Base mainnet
+  'eip155:84532',     // Base Sepolia
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',  // Solana mainnet
+  'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',  // Solana devnet
+] as const;
 type SupportedPayoutNetwork = (typeof SUPPORTED_PAYOUT_NETWORKS)[number];
-const SOLANA_NETWORKS: SupportedPayoutNetwork[] = ['solana', 'solana-devnet'];
 
 // POST /api/authors/:address/payout-methods - Add or update secondary payout method
 router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -868,7 +965,7 @@ router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async
 
     let normalizedPayoutAddress: string;
     try {
-      if (SOLANA_NETWORKS.includes(network)) {
+      if (isSolanaNetwork(network)) {
         normalizedPayoutAddress = normalizeSolanaAddress(payoutAddress);
       } else {
         normalizedPayoutAddress = normalizeAddress(payoutAddress);
@@ -928,8 +1025,17 @@ router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async
       data: updatedAuthor,
       message: 'Secondary payout method saved'
     } satisfies ApiResponse<Author>);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating payout method:', error);
+
+    // Handle unique constraint violation - use generic message for privacy
+    if (error?.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to add this wallet. Please try a different address.'
+      } satisfies ApiResponse<never>);
+    }
+
     return res.status(500).json({
       success: false,
       error: 'Failed to update payout method'
@@ -1140,7 +1246,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     const payoutProfile = buildPayoutProfile(article, authorRecord);
     let paymentRequirement: PaymentRequirements;
     try {
-      paymentRequirement = await buildPaymentRequirement(article, payoutProfile, req, networkPreference);
+      paymentRequirement = await buildPaymentRequirement(article, payoutProfile, networkPreference);
     } catch (error) {
       if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
         return res.status(400).json({
@@ -1150,20 +1256,29 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       }
       throw error;
     }
-    const paymentHeader = req.headers['x-payment'];
+    const paymentHeader = req.headers['payment-signature'];  // v2: renamed from x-payment
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${article.id}/purchase?network=${networkPreference}`;
 
     if (!paymentHeader) {
-      return res.status(402).json({
-        x402Version: 1,
-        error: 'X-PAYMENT header is required',
+      // v2 PaymentRequired response with top-level resource
+      const paymentRequired = {
+        x402Version: 2,
+        error: 'Payment required',
+        resource: {
+          url: resourceUrl,
+          description: `Purchase access to: ${article.title}`,
+          mimeType: 'application/json'
+        },
         accepts: [paymentRequirement]
-      });
+      };
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
     }
 
     let paymentPayload: PaymentPayload;
     try {
       const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
-      paymentPayload = PaymentPayloadSchema.parse(JSON.parse(decoded));
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;
     } catch (error) {
       console.error('Invalid x402 payment header:', error);
       return res.status(400).json({
@@ -1175,10 +1290,11 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     // Basic guard to ensure amounts align before calling facilitator
     console.log(`[x402] Purchase request for article ${articleId} on ${paymentRequirement.network} → payTo ${paymentRequirement.payTo}, asset ${paymentRequirement.asset}`);
     console.log('[x402] Received payment payload:', JSON.stringify(paymentPayload, null, 2));
-    const requiredAmount = BigInt(paymentRequirement.maxAmountRequired);
-    const authorization = paymentPayload.payload.authorization;
+    const requiredAmount = BigInt(paymentRequirement.amount);  // v2: renamed from maxAmountRequired
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
     const providedAmount = authorization && typeof authorization.value !== 'undefined'
-      ? BigInt(authorization.value)
+      ? BigInt(authorization.value as string)
       : requiredAmount;
 
     if (providedAmount < requiredAmount) {
@@ -1188,8 +1304,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    // Verify payment with facilitator (CDP when configured, public otherwise)
-    const rawPayload: unknown = paymentPayload.payload;
+    // Verify payment with facilitator
     const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
     const transactionValue = hasTransaction ? (rawPayload as { transaction: string }).transaction : undefined;
 
@@ -1197,8 +1312,8 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       articleId,
       paymentRequirement,
       payloadPreview: {
-        scheme: paymentPayload.scheme,
-        network: paymentPayload.network,
+        scheme: paymentPayload.accepted.scheme,  // v2: scheme is in accepted
+        network: paymentPayload.accepted.network,  // v2: network is in accepted
         hasTransaction,
         transactionLength: transactionValue?.length,
       }
@@ -1206,7 +1321,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     let verification;
     try {
-      verification = await verifyWithFacilitator(paymentPayload, paymentRequirement);
+      verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
     } catch (error: any) {
       let responseBody;
       if (error?.response?.text) {
@@ -1253,7 +1368,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       );
     } else {
       paymentRecipient = normalizeRecipientForNetwork(
-        paymentPayload.payload.authorization.to as string,
+        (authorization?.to as string) || '',
         paymentRequirement.network
       );
     }
@@ -1272,10 +1387,8 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     let payerAddress =
       tryNormalizeFlexibleAddress(verification.payer) ||
       tryNormalizeFlexibleAddress(
-        typeof paymentPayload.payload.authorization.from === 'string'
-          ? paymentPayload.payload.authorization.from
-          : ''
-    );
+        typeof authorization?.from === 'string' ? authorization.from : ''
+      );
 
     if (
       payerAddress &&
@@ -1300,21 +1413,22 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
   }
 
-    // Settle authorization using CDP settle()
-    const settlement = await settleAuthorization(paymentPayload, paymentRequirement);
+    // Settle authorization using CDP facilitator
+    logSettlementDebug(paymentPayload, paymentRequirement);
+    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
    
 
-    // Type guard: check if it's an error response
-    if ('error' in settlement) {
+    // v2: Check settlement success
+    if (!settlement.success) {
       return res.status(500).json({
         success: false,
-        error: 'Payment settlement failed. Please try again.', 
-        details: settlement.error
+        error: 'Payment settlement failed. Please try again.',
+        details: settlement.errorReason || 'Unknown settlement error'
       });
     }
 
-    // Settlement succeeded => Grant access regardless of txHash
-    const txHash = settlement.txHash;
+    // Settlement succeeded => Grant access
+    const txHash = settlement.transaction;  // v2: renamed from txHash
     
     // Record payment with txHash
     await recordArticlePurchase(articleId);
@@ -1348,12 +1462,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
   }
 });
 
-// Donate endpoint 
+// Donate endpoint
 // POST /api/donate - Donate to Readia.io platform
 router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
   try {
     const { amount } = req.body;
-    const paymentHeader = req.headers['x-payment'];
+    const paymentHeader = req.headers['payment-signature'];  // v2: renamed from x-payment
 
     // Validate donation amount
     if (!amount || typeof amount !== 'number' || amount < 0.01 || amount > 100) {
@@ -1366,7 +1480,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     const amountInMicroUSDC = Math.floor(amount * 1_000_000);
     const networkPreference = resolveNetworkPreference(req);
     const payTo =
-      networkPreference === 'solana' || networkPreference === 'solana-devnet'
+      isSolanaNetwork(networkPreference)
         ? PLATFORM_SOLANA_ADDRESS
         : PLATFORM_EVM_ADDRESS;
 
@@ -1392,25 +1506,16 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       feePayer = normalizeSolanaAddress(rawFeePayer);
     }
 
+    // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
       network: networkPreference,
-      maxAmountRequired: amountInMicroUSDC.toString(),
-      resource: `${req.protocol}://${req.get('host')}/api/donate?network=${networkPreference}`,
-      description: `Donation to Readia.io platform - $${amount}`,
-      mimeType: 'application/json',
+      asset,
+      amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
       payTo,
       maxTimeoutSeconds: 900,
-      asset,
-      outputSchema: {
-        input: {
-          type: 'http',
-          method: 'POST',
-          discoverable: true
-        }
-      },
       extra: {
-        name: networkPreference === 'base' ? 'USD Coin' : 'USDC',
+        name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Donate $${amount} to Readia.io`,
         category: 'donation',
@@ -1427,13 +1532,21 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     };
 
     // If no payment header, return 402 with requirements
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/donate?network=${networkPreference}`;
     if (!paymentHeader) {
-      return res.status(402).json({
-        x402Version: 1,
+      // v2 PaymentRequired response with top-level resource
+      const paymentRequired = {
+        x402Version: 2,
         error: 'Payment required',
-        price: `$${amount.toFixed(2)}`,
+        resource: {
+          url: resourceUrl,
+          description: `Donation to Readia.io platform - $${amount}`,
+          mimeType: 'application/json'
+        },
         accepts: [paymentRequirement]
-      });
+      };
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
     }
 
     // Payment header provided - verify it
@@ -1443,7 +1556,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     let paymentPayload: PaymentPayload;
     try {
       const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
-      paymentPayload = PaymentPayloadSchema.parse(JSON.parse(decoded));
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;  // v2: direct parse
     } catch (error) {
       console.error('Invalid x402 payment header:', error);
       return res.status(400).json({
@@ -1453,7 +1566,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     console.log('🔍 Verifying donation payment with CDP facilitator...');
-    const verification = await verifyWithFacilitator(paymentPayload, paymentRequirement);
+    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
     
     if (!verification.isValid) {
       return res.status(400).json({
@@ -1463,12 +1576,16 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
       paymentRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
     } else {
       paymentRecipient = normalizeRecipientForNetwork(
-        paymentPayload.payload.authorization.to as string,
+        (authorization?.to as string) || '',
         networkPreference
       );
     }
@@ -1483,24 +1600,23 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     const payerAddress =
       tryNormalizeFlexibleAddress(verification.payer) ||
       tryNormalizeFlexibleAddress(
-        typeof paymentPayload.payload.authorization.from === 'string'
-          ? paymentPayload.payload.authorization.from
-          : ''
+        typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    console.log('🔧 Settling donation via CDP facilitator...');
-    const settlement = await settleAuthorization(paymentPayload, paymentRequirement);
+    logSettlementDebug(paymentPayload, paymentRequirement);
+    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
 
-    if ('error' in settlement) {
-      console.error('❌ Donation settlement failed:', settlement.error);
+    // v2: Check settlement success
+    if (!settlement.success) {
+      console.error('❌ Donation settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Donation settlement failed. Please try again.',
-        details: settlement.error
+        details: settlement.errorReason || 'Unknown settlement error'
       });
     }
 
-    const txHash = settlement.txHash;
+    const txHash = settlement.transaction;  // v2: renamed from txHash
 
     console.log(`✅ Donation successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
     if (txHash) {
@@ -1531,7 +1647,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
   try {
     const articleId = parseInt(req.params.id);
     const { amount } = req.body;
-    const paymentHeader = req.headers['x-payment'];
+    const paymentHeader = req.headers['payment-signature'];  // v2: renamed from x-payment
 
     // Validate tip amount
     if (!amount || typeof amount !== 'number' || amount < 0.01 || amount > 100) {
@@ -1579,25 +1695,16 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       feePayer = normalizeSolanaAddress(rawFeePayer);
     }
 
+    // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
     const paymentRequirement: PaymentRequirements = {
       scheme: 'exact',
       network: networkPreference,
-      maxAmountRequired: amountInMicroUSDC.toString(),
-      resource: `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${networkPreference}`,
-      description: `Tip for article: ${article.title}`,
-      mimeType: 'application/json',
+      asset,
+      amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
       payTo,
       maxTimeoutSeconds: 900,
-      asset,
-      outputSchema: {
-        input: {
-          type: 'http',
-          method: 'POST',
-          discoverable: true
-        }
-      },
       extra: {
-        name: networkPreference === 'base' ? 'USD Coin' : 'USDC',
+        name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Tip $${amount} to author`,
         category: 'tip',
@@ -1614,13 +1721,21 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     };
 
     // If no payment header, return 402 with requirements
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${networkPreference}`;
     if (!paymentHeader) {
-      return res.status(402).json({
-        x402Version: 1,
+      // v2 PaymentRequired response with top-level resource
+      const paymentRequired = {
+        x402Version: 2,
         error: 'Payment required',
-        price: `$${amount.toFixed(2)}`,
+        resource: {
+          url: resourceUrl,
+          description: `Tip for article: ${article.title}`,
+          mimeType: 'application/json'
+        },
         accepts: [paymentRequirement]
-      });
+      };
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
     }
 
     // Payment header provided - verify it
@@ -1630,7 +1745,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     let paymentPayload: PaymentPayload;
     try {
       const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
-      paymentPayload = PaymentPayloadSchema.parse(JSON.parse(decoded));
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;  // v2: direct parse
     } catch (error) {
       console.error('Invalid x402 payment header:', error);
       return res.status(400).json({
@@ -1640,8 +1755,8 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     console.log('🔍 Verifying tip payment with CDP facilitator...');
-    const verification = await verifyWithFacilitator(paymentPayload, paymentRequirement);
-    
+    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
+
     if (!verification.isValid) {
       return res.status(400).json({
         success: false,
@@ -1650,12 +1765,16 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
       paymentRecipient = normalizeRecipientForNetwork(payTo, networkPreference);
     } else {
       paymentRecipient = normalizeRecipientForNetwork(
-        paymentPayload.payload.authorization.to as string,
+        (authorization?.to as string) || '',
         networkPreference
       );
     }
@@ -1670,24 +1789,23 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     const payerAddress =
       tryNormalizeFlexibleAddress(verification.payer) ||
       tryNormalizeFlexibleAddress(
-        typeof paymentPayload.payload.authorization.from === 'string'
-          ? paymentPayload.payload.authorization.from
-          : ''
+        typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    console.log('🔧 Settling tip via CDP facilitator...');
-    const settlement = await settleAuthorization(paymentPayload, paymentRequirement);
+    logSettlementDebug(paymentPayload, paymentRequirement);
+    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
 
-    if ('error' in settlement) {
-      console.error('❌ Tip settlement failed:', settlement.error);
+    // v2: Check settlement success
+    if (!settlement.success) {
+      console.error('❌ Tip settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Tip settlement failed. Please try again.',
-        details: settlement.error
+        details: settlement.errorReason || 'Unknown settlement error'
       });
     }
 
-    const txHash = settlement.txHash;
+    const txHash = settlement.transaction;  // v2: renamed from txHash
 
     console.log(`✅ Tip successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
     if (txHash) {
@@ -2436,9 +2554,9 @@ async function incrementAuthorLifetimeStats(
   }
 }
 
-async function resolveSolanaAtaOwner(ataAddress: string, network: SupportedX402Network): Promise<string | null> {
+async function resolveSolanaAtaOwner(ataAddress: string, network: SupportedX402Network | string): Promise<string | null> {
   const rpcUrl =
-    network === 'solana'
+    network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
       ? process.env.SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com'
       : process.env.SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 

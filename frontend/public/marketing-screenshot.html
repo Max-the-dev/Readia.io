@@ -61,7 +61,8 @@
       background-color: var(--bg-secondary);
       color: var(--text-primary);
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     /* ==============================================
@@ -185,6 +186,432 @@
         font-size: 1.25rem;
       }
     }
+
+    /* ==============================================
+       ANIMATED DEXSCREENER BANNER
+       1500px × 500px Section
+       ============================================== */
+    .dex-banner-section {
+      position: relative;
+      width: 1500px;
+      height: 500px;
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Floating data labels (subtle background accents) */
+    .dex-data-labels {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .dex-data-label {
+      position: absolute;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+      animation: dexDataFloat 12s ease-in-out infinite;
+    }
+
+    /* Text labels - evenly distributed with angles */
+    .dex-data-label-1 {
+      top: 15%;
+      left: 8%;
+      opacity: 0.4;
+      animation-delay: 0s;
+      --rotate-angle: -5deg;
+    }
+
+    .dex-data-label-2 {
+      top: 8%;
+      left: 40%;
+      opacity: 0.45;
+      animation-delay: 1.5s;
+      --rotate-angle: 3deg;
+    }
+
+    .dex-data-label-3 {
+      top: 18%;
+      right: 10%;
+      opacity: 0.42;
+      animation-delay: 3s;
+      --rotate-angle: -8deg;
+    }
+
+    .dex-data-label-6 {
+      bottom: 18%;
+      left: 14%;
+      opacity: 0.38;
+      animation-delay: 7.5s;
+      font-size: 13px;
+      --rotate-angle: 2deg;
+    }
+
+    .dex-data-label-7 {
+      bottom: 10%;
+      left: 55%;
+      opacity: 0.45;
+      animation-delay: 9s;
+      --rotate-angle: -4deg;
+    }
+
+    .dex-data-label-8 {
+      bottom: 12%;
+      right: 12%;
+      opacity: 0.42;
+      animation-delay: 10.5s;
+      --rotate-angle: 6deg;
+    }
+
+    /* Emoji labels - evenly distributed with angles */
+    .dex-data-label-9 {
+      top: 25%;
+      left: 25%;
+      opacity: 0.5;
+      animation-delay: 1s;
+      font-size: 20px;
+      --rotate-angle: -12deg;
+    }
+
+    .dex-data-label-10 {
+      top: 50%;
+      left: 12%;
+      opacity: 0.5;
+      animation-delay: 3.5s;
+      font-size: 20px;
+      --rotate-angle: 8deg;
+    }
+
+    .dex-data-label-11 {
+      top: 70%;
+      right: 20%;
+      opacity: 0.5;
+      animation-delay: 5.5s;
+      font-size: 20px;
+      --rotate-angle: -10deg;
+    }
+
+    .dex-data-label-12 {
+      top: 30%;
+      right: 25%;
+      opacity: 0.5;
+      animation-delay: 8s;
+      font-size: 20px;
+      --rotate-angle: 15deg;
+    }
+
+    .dex-data-label-13 {
+      top: 54%;
+      left: 28%;
+      opacity: 0.42;
+      animation-delay: 2s;
+      --rotate-angle: -6deg;
+    }
+
+    @keyframes dexDataFloat {
+      0%, 100% {
+        transform: translateY(0) rotate(var(--rotate-angle, 0deg));
+      }
+      50% {
+        transform: translateY(-30px) rotate(var(--rotate-angle, 0deg));
+      }
+    }
+
+    /* Central token container */
+    .dex-token-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dex-token-glow {
+      position: absolute;
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle,
+        rgba(16, 185, 129, 0.25) 0%,
+        rgba(16, 185, 129, 0.08) 40%,
+        transparent 70%
+      );
+      animation: dexTokenPulse 3s ease-in-out infinite;
+      filter: blur(20px);
+      display: none;
+    }
+
+    .dex-token-symbol {
+      font-family: 'Inter', sans-serif;
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      color: #ffffff;
+      position: relative;
+      z-index: 1;
+      animation: dexTokenGlow 2s ease-in-out infinite alternate;
+    }
+
+    .dex-token-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #888888;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes dexTokenPulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+      }
+      50% {
+        transform: scale(1.15);
+        opacity: 1;
+      }
+    }
+
+    @keyframes dexTokenGlow {
+      0% {
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+      }
+      100% {
+        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.4));
+      }
+    }
+
+    /* Product icons (orbital arrangement) */
+    .dex-products {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 5;
+    }
+
+    .dex-product {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      left: 50%;
+      top: 50%;
+      margin-left: -30px;
+      margin-top: -30px;
+      animation: dexProductReveal 1s ease-out forwards;
+    }
+
+    .dex-product-1 {
+      animation: dexProductReveal 1s ease-out forwards, dexOrbit1 20s linear infinite;
+      animation-delay: 0.2s, 1.2s;
+    }
+
+    .dex-product-2 {
+      animation: dexProductReveal 1s ease-out forwards, dexOrbit2 20s linear infinite;
+      animation-delay: 0.4s, 1.4s;
+    }
+
+    .dex-product-3 {
+      animation: dexProductReveal 1s ease-out forwards, dexOrbit3 20s linear infinite;
+      animation-delay: 0.6s, 1.6s;
+    }
+
+    .dex-product-4 {
+      animation: dexProductReveal 1s ease-out forwards, dexOrbit4 20s linear infinite;
+      animation-delay: 0.8s, 1.8s;
+    }
+
+    /* Small colored orbs */
+    .dex-orb {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      opacity: 0.5;
+      filter: blur(2px);
+    }
+
+    .dex-orb-green {
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+    }
+
+    .dex-orb-blue {
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+
+    .dex-orb-purple {
+      background: #8b5cf6;
+      box-shadow: 0 0 10px #8b5cf6;
+    }
+
+    .dex-orb-orange {
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+
+
+    @keyframes dexProductReveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.5) translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    /* Organic floating animations - orbs float through center area */
+    @keyframes dexOrbit1 {
+      0% {
+        transform: translate(200px, -130px);
+      }
+      25% {
+        transform: translate(-40px, 50px);
+      }
+      50% {
+        transform: translate(-180px, -100px);
+      }
+      75% {
+        transform: translate(70px, 140px);
+      }
+      100% {
+        transform: translate(200px, -130px);
+      }
+    }
+
+    @keyframes dexOrbit2 {
+      0% {
+        transform: translate(-220px, 120px);
+      }
+      25% {
+        transform: translate(80px, -70px);
+      }
+      50% {
+        transform: translate(190px, 130px);
+      }
+      75% {
+        transform: translate(-100px, -50px);
+      }
+      100% {
+        transform: translate(-220px, 120px);
+      }
+    }
+
+    @keyframes dexOrbit3 {
+      0% {
+        transform: translate(-160px, -150px);
+      }
+      25% {
+        transform: translate(120px, 80px);
+      }
+      50% {
+        transform: translate(210px, -110px);
+      }
+      75% {
+        transform: translate(-70px, 100px);
+      }
+      100% {
+        transform: translate(-160px, -150px);
+      }
+    }
+
+    @keyframes dexOrbit4 {
+      0% {
+        transform: translate(180px, 140px);
+      }
+      25% {
+        transform: translate(-130px, -80px);
+      }
+      50% {
+        transform: translate(-200px, 120px);
+      }
+      75% {
+        transform: translate(50px, -120px);
+      }
+      100% {
+        transform: translate(180px, 140px);
+      }
+    }
+
+    /* Particle system */
+    .dex-particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .dex-particle {
+      filter: drop-shadow(0 0 4px currentColor);
+    }
+
+    .dex-connection-line {
+      animation: dexLinePulse 4s ease-in-out infinite;
+    }
+
+    .dex-line-1 {
+      animation-delay: 0s;
+    }
+
+    .dex-line-2 {
+      animation-delay: 1s;
+    }
+
+    .dex-line-3 {
+      animation-delay: 2s;
+    }
+
+    .dex-line-4 {
+      animation-delay: 3s;
+    }
+
+    @keyframes dexLinePulse {
+      0%, 100% {
+        opacity: 0.05;
+      }
+      50% {
+        opacity: 0.15;
+      }
+    }
+
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      .dex-data-label,
+      .dex-token-glow,
+      .dex-token-symbol,
+      .dex-product,
+      .dex-connection-line,
+      .dex-particle {
+        animation: none;
+      }
+
+      .dex-product {
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body>
@@ -205,6 +632,89 @@
         <p class="tagline tagline-b tagline-hidden">Instant payouts. Zero middlemen.</p>
       </div>
     </div>
+  </section>
+
+  <!-- ==============================================
+       ANIMATED DEXSCREENER BANNER SECTION
+       1500px × 500px for GIF recording
+       ============================================== -->
+  <section id="animated-banner" class="dex-banner-section">
+    <!-- Floating data labels (subtle background accents) -->
+    <div class="dex-data-labels">
+      <div class="dex-data-label dex-data-label-1">$READ</div>
+      <div class="dex-data-label dex-data-label-2">Readia</div>
+      <div class="dex-data-label dex-data-label-3">ShillQuest</div>
+      <div class="dex-data-label dex-data-label-6">error (402)</div>
+      <div class="dex-data-label dex-data-label-7">Base</div>
+      <div class="dex-data-label dex-data-label-8">Solana</div>
+      <div class="dex-data-label dex-data-label-9">💰</div>
+      <div class="dex-data-label dex-data-label-10">🚀</div>
+      <div class="dex-data-label dex-data-label-11">💎</div>
+      <div class="dex-data-label dex-data-label-12">📈</div>
+      <div class="dex-data-label dex-data-label-13">DAO</div>
+    </div>
+
+    <!-- Central focal point: $READ token -->
+    <div class="dex-token-container">
+      <div class="dex-token-glow"></div>
+      <!-- Powered by badge -->
+      <div class="hero-meta">
+        <span class="hero-powered-label">Powered by</span>
+        <span class="hero-powered-brand">Coinbase x402</span>
+      </div>
+      <div class="dex-token-symbol">Readia.io</div>
+      <div class="dex-token-label">The New Content Economy</div>
+    </div>
+
+    <!-- Orbiting colored orbs (replacing icons) -->
+    <div class="dex-products">
+      <!-- Orb 1: Articles (Green) -->
+      <div class="dex-product dex-product-1">
+        <div class="dex-orb dex-orb-green"></div>
+      </div>
+
+      <!-- Orb 2: ShillQuest (Blue) -->
+      <div class="dex-product dex-product-2">
+        <div class="dex-orb dex-orb-blue"></div>
+      </div>
+
+      <!-- Orb 3: Newsletter (Purple) -->
+      <div class="dex-product dex-product-3">
+        <div class="dex-orb dex-orb-purple"></div>
+      </div>
+
+      <!-- Orb 4: Live Feed (Orange) -->
+      <div class="dex-product dex-product-4">
+        <div class="dex-orb dex-orb-orange"></div>
+      </div>
+    </div>
+
+
+    <!-- Connection particles/lines (COMMENTED OUT - to restore, uncomment this section) -->
+    <!--
+    <svg class="dex-particles" viewBox="0 0 1500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle class="dex-particle dex-particle-1" r="3" fill="#10b981">
+        <animateMotion dur="4s" repeatCount="indefinite" path="M 300,150 Q 500,200 750,250" />
+      </circle>
+
+      <circle class="dex-particle dex-particle-2" r="3" fill="#3b82f6">
+        <animateMotion dur="4s" repeatCount="indefinite" begin="1s" path="M 1200,150 Q 1000,200 750,250" />
+      </circle>
+
+      <circle class="dex-particle dex-particle-3" r="3" fill="#8b5cf6">
+        <animateMotion dur="4s" repeatCount="indefinite" begin="2s" path="M 300,350 Q 500,300 750,250" />
+      </circle>
+
+      <circle class="dex-particle dex-particle-4" r="3" fill="#10b981">
+        <animateMotion dur="4s" repeatCount="indefinite" begin="3s" path="M 1200,350 Q 1000,300 750,250" />
+      </circle>
+
+      <line x1="300" y1="150" x2="750" y2="250" stroke="#10b981" stroke-width="1" class="dex-connection-line dex-line-1"/>
+      <line x1="1200" y1="150" x2="750" y2="250" stroke="#3b82f6" stroke-width="1" class="dex-connection-line dex-line-2"/>
+      <line x1="300" y1="350" x2="750" y2="250" stroke="#8b5cf6" stroke-width="1" class="dex-connection-line dex-line-3"/>
+      <line x1="1200" y1="350" x2="750" y2="250" stroke="#10b981" stroke-width="1" class="dex-connection-line dex-line-4"/>
+    </svg>
+    -->
   </section>
 
   <!--

@@ -493,7 +493,9 @@ function Dashboard() {
   const secondaryWalletExists = Boolean(author?.secondaryPayoutAddress && author?.secondaryPayoutNetwork);
   const complementaryNetworkFamily: NetworkFamily = primaryNetworkFamily === 'solana' ? 'base' : 'solana';
   const secondaryNetworkApiValue: SupportedAuthorNetwork =
-    complementaryNetworkFamily === 'solana' ? 'solana' : 'base';
+    complementaryNetworkFamily === 'solana'
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
+      : 'eip155:8453';  // Base mainnet
   const secondaryDisplayFamily: NetworkFamily = secondaryWalletExists
     ? getNetworkFamily(author?.secondaryPayoutNetwork)
     : complementaryNetworkFamily;
@@ -555,7 +557,7 @@ function Dashboard() {
         setAuthor(response.data);
         reconcileWalletSession(response.data);
         setSecondaryAddressInput('');
-        setPayoutStatus({ type: 'success', message: 'Secondary wallet saved.' });
+        setPayoutStatus({ type: 'success', message: secondaryWalletExists ? 'Secondary wallet updated.' : 'Secondary wallet added.' });
       } else {
         setPayoutStatus({ type: 'error', message: response.error || 'Failed to save payout method.' });
       }
@@ -1390,7 +1392,7 @@ function Dashboard() {
                   ) : (
                     <div className="wallet-card__placeholder">
                       <WalletMinimal size={20} />
-                      <span>Add a Solana payout address</span>
+                      <span>Add a {getNetworkLabel(complementaryNetworkFamily)} payout address</span>
                     </div>
                   )}
                 </article>
@@ -1400,7 +1402,7 @@ function Dashboard() {
                   <div className="wallet-lab__form-head">
                     <WalletMinimal size={18} />
                   <div>
-                    <h4>Add a {getNetworkLabel(complementaryNetworkFamily)} wallet</h4>
+                    <h4>{secondaryWalletExists ? 'Update' : 'Add a'} {getNetworkLabel(complementaryNetworkFamily)} wallet</h4>
                     <p>More networks coming soon</p>
                   </div>
                 </div>

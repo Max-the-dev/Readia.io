@@ -46,25 +46,25 @@ const X402Test: React.FC = () => {
   const SUPPORTED_NETWORKS: Record<string, { label: string; supported: SupportedNetwork; family: 'evm' | 'solana'; explorerUrl: (hash: string) => string }> = {
     'eip155:8453': {
       label: 'Base Mainnet',
-      supported: 'base',
+      supported: 'eip155:8453',
       family: 'evm',
       explorerUrl: (hash: string) => `https://basescan.org/tx/${hash}`,
     },
     'eip155:84532': {
       label: 'Base Sepolia',
-      supported: 'base-sepolia',
+      supported: 'eip155:84532',
       family: 'evm',
       explorerUrl: (hash: string) => `https://sepolia.basescan.org/tx/${hash}`,
     },
     'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': {
       label: 'Solana Mainnet',
-      supported: 'solana',
+      supported: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
       family: 'solana',
       explorerUrl: (hash: string) => `https://solscan.io/tx/${hash}`,
     },
     'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1': {
       label: 'Solana Devnet',
-      supported: 'solana-devnet',
+      supported: 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
       family: 'solana',
       explorerUrl: (hash: string) => `https://solscan.io/tx/${hash}?cluster=devnet`,
     },
@@ -96,7 +96,7 @@ const X402Test: React.FC = () => {
       : isEvmNetwork && fallbackChainId
         ? `Chain ${fallbackChainId}`
         : 'Unknown';
-  const preferredNetwork: SupportedNetwork = currentNetworkInfo?.supported ?? 'base';
+  const preferredNetwork: SupportedNetwork = currentNetworkInfo?.supported ?? 'eip155:84532';
   const isSupportedNetwork = Boolean(currentNetworkInfo);
 
   const explorerUrlBuilder = currentNetworkInfo?.explorerUrl;
@@ -123,10 +123,13 @@ const X402Test: React.FC = () => {
 
         const requirement = response.paymentRequired.accept;
         const amountDisplay = requirement
-          ? `$${(parseInt(requirement.maxAmountRequired, 10) / 1_000_000).toFixed(2)} (${requirement.maxAmountRequired} micro USDC)`
+          ? `$${(parseInt(requirement.amount, 10) / 1_000_000).toFixed(2)} (${requirement.amount} micro USDC)`
           : 'Unknown';
 
         const prettyJson = JSON.stringify(response.paymentRequired.raw, null, 2);
+
+        // v2: description is now in resource, not in PaymentRequirements
+        const resourceDescription = response.paymentRequired.raw?.resource?.description || 'N/A';
 
         const result = `✅ Payment Requirements Received
 
@@ -134,7 +137,7 @@ const X402Test: React.FC = () => {
 👤 Pay To (Author): ${requirement?.payTo}
 🌐 Network: ${requirement?.network}
 🪙 Asset: USDC (${requirement?.asset})
-📝 Description: ${requirement?.description}
+📝 Description: ${resourceDescription}
 
 Raw Response:
 ${prettyJson}
@@ -227,7 +230,7 @@ Encoded Header:
 🔧 Settling payment via CDP facilitator...
    From: ${address}
    To: ${currentPaymentReq.to}
-   Amount: ${currentPaymentReq.accept?.maxAmountRequired} micro USDC
+   Amount: ${currentPaymentReq.accept?.amount} micro USDC
    ${
      txHash
        ? `Transaction Hash: ${txHash}`

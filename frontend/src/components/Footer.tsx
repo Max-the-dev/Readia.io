@@ -36,17 +36,17 @@ function Footer() {
   const {caipNetworkId} = useAppKitNetwork();
     const detectSolanaNetwork = (caip?: string, solanaSigner?: any): SupportedNetwork => {
     // First try CAIP detection (when Solana is active network)
-    if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana';
-    if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
+    if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
 
     // If CAIP is not Solana (e.g., Base wallet is active), check if Solana signer exists
     // If Solana wallet is connected behind the scenes, default to mainnet
     if (solanaSigner?.address) {
-      return 'solana'; // Default to mainnet for production
+      return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Default to mainnet for production
     }
 
     // Final fallback: mainnet (changed from devnet for production safety)
-    return 'solana';
+    return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
   };
   const resolvedSolanaNetwork = useMemo(
     () => detectSolanaNetwork(caipNetworkId, solanaSigner),
@@ -303,11 +303,11 @@ function Footer() {
 
   const getExplorerUrl = (hash?: string, network?: SupportedNetwork) => {
     if (!hash || !network) return null;
-    if (network.includes('solana')) {
-      const clusterParam = network === 'solana' ? '' : '?cluster=devnet';
+    if (network.startsWith('solana:')) {
+      const clusterParam = network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' ? '' : '?cluster=devnet';
       return `https://solscan.io/tx/${hash}${clusterParam}`;
     }
-    const isMainnet = network === 'base';
+    const isMainnet = network === 'eip155:8453';
     const baseUrl = isMainnet ? 'https://basescan.org' : 'https://sepolia.basescan.org';
     return `${baseUrl}/tx/${hash}`;
   };
@@ -319,9 +319,9 @@ function Footer() {
 
   // Dynamic chain detection to build correct payload
   const getNetworkFromChain = (chainId?: number): SupportedNetwork => {
-    if (chainId === 8453) return 'base';          // Base mainnet
-    if (chainId === 84532) return 'base-sepolia'; // Base Sepolia
-    return 'base-sepolia'; // Default to testnet for safety
+    if (chainId === 8453) return 'eip155:8453';      // Base mainnet
+    if (chainId === 84532) return 'eip155:84532';   // Base Sepolia
+    return 'eip155:84532'; // Default to testnet for safety
   };
 
   // Donation using x402 payment flow with Base + Solana support

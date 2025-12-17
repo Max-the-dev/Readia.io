@@ -82,19 +82,20 @@ function Article() {
   // Dynamic chain detection to build correct payload
   const { chain } = useAccount();
   const {caipNetworkId} = useAppKitNetwork();
+  // v2: Return CAIP-2 format network identifiers
   const detectSolanaNetwork = (caip?: string, solanaSigner?: any): SupportedNetwork => {
   // First try CAIP detection (when Solana is active network)
-  if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana';
-  if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana-devnet';
+  if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+  if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
 
   // If CAIP is not Solana (e.g., Base wallet is active), check if Solana signer exists
   // If Solana wallet is connected behind the scenes, default to mainnet
   if (solanaSigner?.address) {
-    return 'solana'; // Default to mainnet for production
+    return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Default to mainnet for production
   }
 
   // Final fallback: mainnet (changed from devnet for production safety)
-  return 'solana';
+  return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
 };
   const resolvedSolanaNetwork = useMemo(
     () => detectSolanaNetwork(caipNetworkId, solanaSigner),
@@ -319,10 +320,11 @@ function Article() {
     );
   }
 
+  // v2: Return CAIP-2 format network identifiers
   const getNetworkFromChain = (chainId?: number): SupportedNetwork => {
-    if (chainId === 8453) return 'base';
-    if (chainId === 84532) return 'base-sepolia';
-    return 'base-sepolia';
+    if (chainId === 8453) return 'eip155:8453';
+    if (chainId === 84532) return 'eip155:84532';
+    return 'eip155:84532';  // Default to Base Sepolia
   };
   const authorNetworkLabel = formatSupportedNetworks(authorNetworks);
 

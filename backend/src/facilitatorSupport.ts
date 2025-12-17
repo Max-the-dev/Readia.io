@@ -7,7 +7,17 @@ type SupportedKind = {
   extra?: { feePayer?: string; [key: string]: unknown };
 };
 
-type SupportedResponse = { kinds: SupportedKind[] };
+// v2 response format: kinds is an object keyed by version number
+type SupportedResponseV2 = {
+  kinds: Record<string, SupportedKind[]>;
+  signers?: Record<string, string[]>;
+  extensions?: string[];
+};
+
+// v1 response format: kinds is an array (backwards compatibility)
+type SupportedResponseV1 = { kinds: SupportedKind[] };
+
+type SupportedResponse = SupportedResponseV1 | SupportedResponseV2;
 
 const requestHost = 'api.cdp.coinbase.com';
 const supportedPath = '/platform/v2/x402/supported';
@@ -36,7 +46,18 @@ async function hydrateCache(): Promise<void> {
 
   const payload = (await response.json()) as SupportedResponse;
 
-  feePayerCache = payload.kinds.reduce<Record<string, string>>((acc, kind) => {
+  // Handle both v1 (array) and v2 (object keyed by version) response formats
+  let allKinds: SupportedKind[];
+
+  if (Array.isArray(payload.kinds)) {
+    allKinds = payload.kinds;
+  } else {
+    // v2 format: kinds is an object keyed by version number {"1": [...], "2": [...]}
+    const kindsObj = payload.kinds as Record<string, SupportedKind[]>;
+    allKinds = kindsObj['2'] || Object.values(kindsObj).flat();
+  }
+
+  feePayerCache = allKinds.reduce<Record<string, string>>((acc, kind) => {
     if (kind.extra?.feePayer) {
       acc[kind.network] = kind.extra.feePayer;
     }
@@ -57,5 +78,9 @@ export async function ensureFacilitatorSupportLoaded(): Promise<void> {
 
 export async function getFacilitatorFeePayer(network: string): Promise<string | undefined> {
   await ensureFacilitatorSupportLoaded();
-  return feePayerCache?.[network];
+  const feePayer = feePayerCache?.[network];
+  if (!feePayer) {
+    console.log(`⚠️ No feePayer found for network "${network}". Available keys:`, Object.keys(feePayerCache || {}));
+  }
+  return feePayer;
 }
