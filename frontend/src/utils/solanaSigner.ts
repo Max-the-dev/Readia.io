@@ -110,15 +110,55 @@ function buildSignatureDictionary(
 ): SignatureDictionary {
   const signerAddresses = Object.keys(transaction.signatures) as Address<string>[];
 
-  const entries = signerAddresses.map((address, index) => {
-    const signatureBytes = extractSignatureBytes(signedTransaction, index);
-    if (!signatureBytes) {
-      throw new Error(`Missing signature for signer ${address}`);
+  // Get the actual account keys from the transaction message to find correct signature positions
+  const messageAccountKeys = getMessageAccountKeys(signedTransaction);
+
+  // DEBUG: Log what we're working with
+  console.log('[SolanaSigner] Building signature dictionary:');
+  console.log('  signerAddresses:', signerAddresses);
+  console.log('  messageAccountKeys:', messageAccountKeys);
+  console.log('  signedTransaction signatures count:',
+    signedTransaction instanceof VersionedTransaction
+      ? signedTransaction.signatures.length
+      : signedTransaction.signatures.length
+  );
+
+  const entries = signerAddresses.map((address) => {
+    // Find the actual position of this signer in the transaction message
+    const signerIndex = messageAccountKeys.findIndex(
+      (key) => key.toLowerCase() === address.toLowerCase()
+    );
+
+    console.log(`  Looking for ${address} → found at index ${signerIndex}`);
+
+    if (signerIndex === -1) {
+      console.warn(`[SolanaSigner] Signer ${address} not found in message accounts, trying position 0`);
+      // Fallback: if not found, this might be a partial signer scenario
+      const signatureBytes = extractSignatureBytes(signedTransaction, 0);
+      if (!signatureBytes) {
+        throw new Error(`Missing signature for signer ${address}`);
+      }
+      console.log(`  Extracted signature from position 0:`, signatureBytes.slice(0, 8), '...');
+      return [address, signatureBytes] as const;
     }
+
+    const signatureBytes = extractSignatureBytes(signedTransaction, signerIndex);
+    if (!signatureBytes) {
+      throw new Error(`Missing signature for signer ${address} at index ${signerIndex}`);
+    }
+    console.log(`  Extracted signature from position ${signerIndex}:`, signatureBytes.slice(0, 8), '...');
     return [address, signatureBytes] as const;
   });
 
   return Object.freeze(Object.fromEntries(entries));
+}
+
+function getMessageAccountKeys(transaction: Web3Transaction): string[] {
+  if (transaction instanceof VersionedTransaction) {
+    return transaction.message.staticAccountKeys.map((key) => key.toBase58());
+  }
+  // LegacyTransaction
+  return transaction.message.accountKeys.map((key) => key.toBase58());
 }
 
 function extractSignatureBytes(transaction: Web3Transaction, index: number): Uint8Array | null {
