@@ -56,21 +56,32 @@ const SESSION_EXPIRY_DAYS = parseInt(process.env.SESSION_EXPIRY_DAYS || '7', 10)
 const NONCE_EXPIRY_MINUTES = parseInt(process.env.AUTH_NONCE_EXPIRY_MINUTES || '5', 10);
 const NONCE_TTL_MS = NONCE_EXPIRY_MINUTES * 60 * 1000;
 
-const SUPPORTED_NETWORKS: SupportedAuthorNetwork[] = ['base', 'base-sepolia', 'solana', 'solana-devnet'];
-const SOLANA_NETWORKS: SupportedAuthorNetwork[] = ['solana', 'solana-devnet'];
+// CAIP-2 network identifiers
+const SUPPORTED_NETWORKS: SupportedAuthorNetwork[] = [
+  'eip155:8453',      // Base mainnet
+  'eip155:84532',     // Base Sepolia
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',  // Solana mainnet
+  'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',  // Solana devnet
+];
+
+// Network type helpers (prefix-based for CAIP-2)
+const isEvmNetwork = (n: string): boolean => n.startsWith('eip155:');
+const isSolanaNetwork = (n: string): boolean => n.startsWith('solana:');
 
 const DEFAULT_X402_NETWORK: SupportedAuthorNetwork =
   SUPPORTED_NETWORKS.includes((process.env.X402_NETWORK || '') as SupportedAuthorNetwork)
     ? (process.env.X402_NETWORK as SupportedAuthorNetwork)
-    : 'base-sepolia';
+    : 'eip155:84532'; // Base Sepolia
 
 const DEFAULT_EVM_PAYOUT_NETWORK: SupportedAuthorNetwork =
-  DEFAULT_X402_NETWORK === 'base' || DEFAULT_X402_NETWORK === 'base-sepolia'
+  isEvmNetwork(DEFAULT_X402_NETWORK)
     ? DEFAULT_X402_NETWORK
-    : 'base';
+    : 'eip155:8453'; // Base mainnet
 
 const DEFAULT_SOLANA_PAYOUT_NETWORK: SupportedAuthorNetwork =
-  DEFAULT_X402_NETWORK === 'solana-devnet' ? 'solana-devnet' : 'solana';
+  DEFAULT_X402_NETWORK === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
+    ? 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'  // Solana devnet
+    : 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Solana mainnet
 
 const SIWE_DOMAIN = deriveDomain();
 const SIWE_URI = process.env.SIWE_URI || process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
@@ -107,22 +118,22 @@ function deriveDomain(): string {
   }
 }
 
-function getNetworkGroup(network: SupportedAuthorNetwork): NetworkGroup {
-  return SOLANA_NETWORKS.includes(network) ? 'solana' : 'evm';
+function getNetworkGroup(network: SupportedAuthorNetwork | string): NetworkGroup {
+  return isSolanaNetwork(network) ? 'solana' : 'evm';
 }
 
-function normalizeForNetwork(address: string, network: SupportedAuthorNetwork): string {
-  return SOLANA_NETWORKS.includes(network)
+function normalizeForNetwork(address: string, network: SupportedAuthorNetwork | string): string {
+  return isSolanaNetwork(network)
     ? normalizeSolanaAddress(address)
     : normalizeAddress(address);
 }
 
 function mapChainIdToNetwork(chainId?: number): SupportedAuthorNetwork {
   if (chainId === 8453) {
-    return 'base';
+    return 'eip155:8453'; // Base mainnet
   }
   if (chainId === 84532) {
-    return 'base-sepolia';
+    return 'eip155:84532'; // Base Sepolia
   }
   return DEFAULT_EVM_PAYOUT_NETWORK;
 }
@@ -217,7 +228,7 @@ authRouter.post('/nonce', nonceLimiter, async (req: Request, res: Response) => {
       : DEFAULT_EVM_PAYOUT_NETWORK;
 
     let normalizedAddress: string;
-    if (SOLANA_NETWORKS.includes(resolvedNetwork)) {
+    if (isSolanaNetwork(resolvedNetwork)) {
       const maybeSol = tryNormalizeSolanaAddress(address);
       if (!maybeSol) {
         return res.status(400).json({ success: false, error: 'Invalid Solana address' });
