@@ -7,6 +7,32 @@ import { ExactSvmScheme } from '@x402/svm';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
 
+/**
+ * Recursively sanitizes strings in an object to be ASCII-safe for btoa encoding.
+ * Replaces common Unicode characters with ASCII equivalents and removes remaining non-ASCII.
+ * This fixes the "btoa Latin1" error when article titles contain Unicode (em dashes, smart quotes, etc.)
+ */
+function sanitizeForBase64<T>(obj: T): T {
+  if (typeof obj === 'string') {
+    return obj
+      .replace(/[\u2018\u2019]/g, "'")   // Smart single quotes → '
+      .replace(/[\u201C\u201D]/g, '"')   // Smart double quotes → "
+      .replace(/[\u2013\u2014]/g, '-')   // En dash, em dash → -
+      .replace(/\u2026/g, '...')         // Ellipsis → ...
+      .replace(/[\u00A0]/g, ' ')         // Non-breaking space → space
+      .replace(/[^\x00-\x7F]/g, '') as T; // Remove any remaining non-ASCII
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForBase64) as T;
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, sanitizeForBase64(v)])
+    ) as T;
+  }
+  return obj;
+}
+
 
 export interface PaymentRequirement {
   price: string;
@@ -188,9 +214,13 @@ class X402PaymentService {
     // Create the v2 HTTP client with appropriate signers
     const httpClient = this.createX402HttpClient(context);
 
-    // Pass the full 402 response (PaymentRequired) to create the v2 PaymentPayload
+    // Sanitize the 402 response to remove Unicode characters that break btoa encoding
+    // This handles article titles with em dashes, smart quotes, etc.
+    const sanitizedRaw = sanitizeForBase64(requirement.raw);
+
+    // Pass the sanitized 402 response (PaymentRequired) to create the v2 PaymentPayload
     // SDK will: copy resource, select accepted from accepts[], build signed payload
-    const paymentPayload = await httpClient.createPaymentPayload(requirement.raw as PaymentRequired);
+    const paymentPayload = await httpClient.createPaymentPayload(sanitizedRaw as PaymentRequired);
 
     // Encode to PAYMENT-SIGNATURE header format
     const headers = httpClient.encodePaymentSignatureHeader(paymentPayload);
