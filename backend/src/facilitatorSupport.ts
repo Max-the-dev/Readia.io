@@ -36,12 +36,17 @@ async function hydrateCache(): Promise<void> {
 
   const payload = (await response.json()) as SupportedResponse;
 
+  console.log('📋 CDP Facilitator supported kinds:', JSON.stringify(payload.kinds, null, 2));
+
   feePayerCache = payload.kinds.reduce<Record<string, string>>((acc, kind) => {
     if (kind.extra?.feePayer) {
       acc[kind.network] = kind.extra.feePayer;
+      console.log(`  ✅ Cached feePayer for ${kind.network}: ${kind.extra.feePayer}`);
     }
     return acc;
   }, {});
+
+  console.log('📦 Fee payer cache keys:', Object.keys(feePayerCache));
 }
 
 export async function ensureFacilitatorSupportLoaded(): Promise<void> {
@@ -57,5 +62,9 @@ export async function ensureFacilitatorSupportLoaded(): Promise<void> {
 
 export async function getFacilitatorFeePayer(network: string): Promise<string | undefined> {
   await ensureFacilitatorSupportLoaded();
-  return feePayerCache?.[network];
+  const feePayer = feePayerCache?.[network];
+  if (!feePayer) {
+    console.log(`⚠️ No feePayer found for network "${network}". Available keys:`, Object.keys(feePayerCache || {}));
+  }
+  return feePayer;
 }
