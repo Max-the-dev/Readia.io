@@ -557,7 +557,7 @@ function Dashboard() {
         setAuthor(response.data);
         reconcileWalletSession(response.data);
         setSecondaryAddressInput('');
-        setPayoutStatus({ type: 'success', message: 'Secondary wallet saved.' });
+        setPayoutStatus({ type: 'success', message: secondaryWalletExists ? 'Secondary wallet updated.' : 'Secondary wallet added.' });
       } else {
         setPayoutStatus({ type: 'error', message: response.error || 'Failed to save payout method.' });
       }
@@ -1402,7 +1402,7 @@ function Dashboard() {
                   <div className="wallet-lab__form-head">
                     <WalletMinimal size={18} />
                   <div>
-                    <h4>Add a {getNetworkLabel(complementaryNetworkFamily)} wallet</h4>
+                    <h4>{secondaryWalletExists ? 'Update' : 'Add a'} {getNetworkLabel(complementaryNetworkFamily)} wallet</h4>
                     <p>More networks coming soon</p>
                   </div>
                 </div>

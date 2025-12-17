@@ -1025,8 +1025,17 @@ router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async
       data: updatedAuthor,
       message: 'Secondary payout method saved'
     } satisfies ApiResponse<Author>);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating payout method:', error);
+
+    // Handle unique constraint violation - use generic message for privacy
+    if (error?.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to add this wallet. Please try a different address.'
+      } satisfies ApiResponse<never>);
+    }
+
     return res.status(500).json({
       success: false,
       error: 'Failed to update payout method'
