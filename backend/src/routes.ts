@@ -1319,41 +1319,9 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       }
     }, null, 2));
 
-    // DEBUG: Local Solana simulation before CDP verify
-    const isSolanaPayment = paymentRequirement.network.startsWith('solana:');
-    if (isSolanaPayment && transactionValue) {
-      const solanaRpcUrl = paymentRequirement.network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
-        ? (process.env.SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com')
-        : (process.env.SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com');
-
-      try {
-        const simResponse = await fetch(solanaRpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'simulateTransaction',
-            params: [
-              transactionValue,
-              {
-                encoding: 'base64',
-                commitment: 'confirmed',
-                replaceRecentBlockhash: true,
-              }
-            ]
-          })
-        });
-        const simResult = await simResponse.json();
-        console.log('[x402] LOCAL Solana simulation result:', JSON.stringify(simResult, null, 2));
-
-        if (simResult.result?.err) {
-          console.error('[x402] LOCAL simulation FAILED:', JSON.stringify(simResult.result.err, null, 2));
-          console.error('[x402] Program logs:', simResult.result?.logs?.join('\n'));
-        }
-      } catch (simError) {
-        console.error('[x402] Local simulation request failed:', simError);
-      }
+    // DEBUG: Log raw transaction for offline simulation with scripts/simulate-solana-tx.ts
+    if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
+      console.log('[x402] RAW_SOLANA_TX:', transactionValue);
     }
 
     let verification;
