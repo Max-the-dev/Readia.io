@@ -75,21 +75,32 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 function normalizeCaipNetwork(caipNetworkId?: string, fallback?: SupportedAuthorNetwork): SupportedAuthorNetwork {
   if (!caipNetworkId) {
-    return fallback || 'base-sepolia';
+    return fallback || 'eip155:84532';
   }
 
+  // Solana networks
+  if (caipNetworkId.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) {
+    return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+  }
+  if (caipNetworkId.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) {
+    return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
+  }
+  // Legacy solana detection (in case caipNetworkId is partial)
   if (caipNetworkId.includes('solana')) {
-    return caipNetworkId.includes('devnet') ? 'solana-devnet' : 'solana';
+    return caipNetworkId.includes('devnet')
+      ? 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'
+      : 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
   }
 
-  if (caipNetworkId.includes('8453')) {
-    return 'base';
+  // EVM networks
+  if (caipNetworkId.includes('8453') && !caipNetworkId.includes('84532')) {
+    return 'eip155:8453';
   }
   if (caipNetworkId.includes('84532')) {
-    return 'base-sepolia';
+    return 'eip155:84532';
   }
 
-  return fallback || 'base-sepolia';
+  return fallback || 'eip155:84532';
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
@@ -175,7 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       const networkHint = normalizeCaipNetwork(
         caipNetworkId,
-        isEvmAddress ? 'base-sepolia' : 'solana'
+        isEvmAddress ? 'eip155:84532' : 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
       );
 
       const nonceRes = await fetch(`${API_BASE_URL}/auth/nonce`, {

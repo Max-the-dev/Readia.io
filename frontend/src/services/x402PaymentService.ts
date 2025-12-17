@@ -1,10 +1,11 @@
-// x402 Payment Service for handling micropayments
+// x402 Payment Service for handling micropayments (v2)
 import { apiService } from './api';
-import { createPaymentHeader as createEncodedPaymentHeader } from 'x402/client';
-import type { X402Config } from 'x402/types/config';
+import { x402Client, x402HTTPClient } from '@x402/core/client';
+import type { PaymentPayload, PaymentRequired, PaymentRequirements } from '@x402/core/types';
+import { ExactEvmScheme } from '@x402/evm';
+import { ExactSvmScheme } from '@x402/svm';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
-import type { X402Config } from 'x402/types/config';
 
 
 export interface PaymentRequirement {
@@ -16,17 +17,14 @@ export interface PaymentRequirement {
   raw: any;
 }
 
+// v2 PaymentAccept (PaymentRequirements) - resource/description/mimeType moved to top-level
 export interface PaymentAccept {
   scheme: string;
   network: string;
-  maxAmountRequired: string;
-  resource: string;
-  description: string;
-  mimeType: string;
+  amount: string;  // v2: renamed from maxAmountRequired
   payTo: string;
   maxTimeoutSeconds?: number;
   asset?: string;
-  outputSchema?: Record<string, unknown>;
   extra?: Record<string, unknown>;
 }
 
@@ -39,7 +37,12 @@ export interface PaymentResponse {
   rawResponse?: any;
 }
 
-export type SupportedNetwork = 'base' | 'base-sepolia' | 'solana' | 'solana-devnet';
+// v2: CAIP-2 network identifiers
+export type SupportedNetwork =
+  | 'eip155:8453'      // Base mainnet
+  | 'eip155:84532'     // Base Sepolia
+  | 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
+  | 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'; // Solana devnet
 
 export interface PaymentExecutionContext {
   network: SupportedNetwork;
@@ -49,18 +52,38 @@ export interface PaymentExecutionContext {
 
 class X402PaymentService {
   private facilitatorUrl = import.meta.env.VITE_X402_FACILITATOR_URL || 'https://x402.org/facilitator';
-  private network: SupportedNetwork = (import.meta.env.VITE_X402_NETWORK === 'base' ? 'base' : 'base-sepolia');
-  private readonly X402_VERSION = 1;
+  private network: SupportedNetwork = (import.meta.env.VITE_X402_NETWORK === 'base' ? 'eip155:8453' : 'eip155:84532');
+  private readonly X402_VERSION = 2;
   private readonly apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
-  private getSolanaRpcUrl(network: SupportedNetwork): string | undefined {
-    if (network === 'solana') {
+  private getSolanaRpcUrl(network: string): string | undefined {
+    if (network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
       return import.meta.env.VITE_SOLANA_MAINNET_RPC_URL;
     }
-    if (network === 'solana-devnet') {
+    if (network === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1') {
       return import.meta.env.VITE_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
     }
     return undefined;
+  }
+
+  /**
+   * Creates an x402HTTPClient configured for the given payment context
+   */
+  private createX402HttpClient(context: PaymentExecutionContext): x402HTTPClient {
+    const baseClient = new x402Client();
+
+    // Register EVM scheme if wallet client available
+    if (context.evmWalletClient) {
+      baseClient.register('eip155:*', new ExactEvmScheme(context.evmWalletClient));
+    }
+
+    // Register SVM scheme if Solana signer available
+    if (context.solanaSigner) {
+      const rpcUrl = this.getSolanaRpcUrl(context.network);
+      baseClient.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+    }
+
+    return new x402HTTPClient(baseClient);
   }
 
   private buildRequestUrl(endpoint: string, networkOverride?: SupportedNetwork): string {
@@ -93,7 +116,7 @@ class X402PaymentService {
       };
 
       if (encodedPaymentHeader) {
-        headers['X-PAYMENT'] = encodedPaymentHeader;
+        headers['PAYMENT-SIGNATURE'] = encodedPaymentHeader;  // v2: renamed from X-PAYMENT
       }
 
       const response = await fetch(this.buildRequestUrl(endpoint, networkOverride), {
@@ -105,8 +128,8 @@ class X402PaymentService {
         const paymentData = await response.json();
         const paymentSpec: PaymentAccept | undefined = paymentData.accepts?.[0];
         const priceInUsd = paymentData.price
-          || (paymentSpec?.maxAmountRequired
-            ? `$${(parseInt(paymentSpec.maxAmountRequired, 10) / 1_000_000).toFixed(2)}`
+          || (paymentSpec?.amount  // v2: renamed from maxAmountRequired
+            ? `$${(parseInt(paymentSpec.amount, 10) / 1_000_000).toFixed(2)}`
             : 'Unknown');
 
         return {
@@ -139,44 +162,45 @@ class X402PaymentService {
     }
   }
 
+  /**
+   * Creates a v2 PaymentPayload and encodes it for the PAYMENT-SIGNATURE header
+   * v2 structure: { x402Version, resource, accepted, payload }
+   */
   private async createPaymentHeaderFromRequirements(
     requirement: PaymentRequirement,
     context: PaymentExecutionContext
   ): Promise<string> {
-    if (!requirement.accept) {
-      throw new Error('No x402 payment option returned by facilitator');
+    if (!requirement.raw) {
+      throw new Error('No x402 payment data returned by server');
     }
 
-    const requirementNetwork = (requirement.accept.network || context.network) as SupportedNetwork;
-    const isSolana = requirementNetwork.startsWith('solana');
+    const requirementNetwork = requirement.accept?.network || context.network;
+    const isSolana = requirementNetwork.startsWith('solana:');
 
-    if (isSolana) {
-      if (!context.solanaSigner) {
-        throw new Error('Please connect a Solana wallet to continue');
-      }
-      const rpcUrl = this.getSolanaRpcUrl(requirementNetwork);
-      const x402Config: X402Config | undefined = rpcUrl ? { svmConfig: { rpcUrl } } : undefined;
-
-      const encodedHeader = await createEncodedPaymentHeader(
-        context.solanaSigner,
-        this.X402_VERSION,
-        requirement.accept,
-        x402Config
-      );
-      console.log('🔐 Encoded x402 payment header (Solana):', encodedHeader);
-      return encodedHeader;
+    // Validate wallet availability
+    if (isSolana && !context.solanaSigner) {
+      throw new Error('Please connect a Solana wallet to continue');
     }
-
-    if (!context.evmWalletClient) {
+    if (!isSolana && !context.evmWalletClient) {
       throw new Error('Please connect a Base-compatible wallet to continue');
     }
 
-    const encodedHeader = await createEncodedPaymentHeader(
-      context.evmWalletClient,
-      this.X402_VERSION,
-      requirement.accept
-    );
-    console.log('🔐 Encoded x402 payment header:', encodedHeader);
+    // Create the v2 HTTP client with appropriate signers
+    const httpClient = this.createX402HttpClient(context);
+
+    // Pass the full 402 response (PaymentRequired) to create the v2 PaymentPayload
+    // SDK will: copy resource, select accepted from accepts[], build signed payload
+    const paymentPayload = await httpClient.createPaymentPayload(requirement.raw as PaymentRequired);
+
+    // Encode to PAYMENT-SIGNATURE header format
+    const headers = httpClient.encodePaymentSignatureHeader(paymentPayload);
+    const encodedHeader = headers['payment-signature'] || headers['PAYMENT-SIGNATURE'];
+
+    if (!encodedHeader) {
+      throw new Error('Failed to encode payment signature header');
+    }
+
+    console.log('🔐 Encoded x402 v2 payment header:', encodedHeader.substring(0, 100) + '...');
     return encodedHeader;
   }
 
@@ -197,7 +221,7 @@ class X402PaymentService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-PAYMENT': encodedHeader
+            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
           }
         });
 
@@ -268,7 +292,7 @@ class X402PaymentService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-PAYMENT': encodedHeader
+            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
           },
           body: JSON.stringify({ amount })
         });
@@ -340,7 +364,7 @@ class X402PaymentService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-PAYMENT': encodedHeader
+            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
           },
           body: JSON.stringify({ amount })
         });
