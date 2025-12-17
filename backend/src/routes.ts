@@ -1557,7 +1557,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     console.log('🔍 Verifying donation payment with CDP facilitator...');
-    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);  // v2: use facilitatorClient
+    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
     
     if (!verification.isValid) {
       return res.status(400).json({
@@ -1746,7 +1746,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     console.log('🔍 Verifying tip payment with CDP facilitator...');
-    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);  // v2: use facilitatorClient
+    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
       return res.status(400).json({

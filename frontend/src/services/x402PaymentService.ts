@@ -99,8 +99,20 @@ class X402PaymentService {
     const baseClient = new x402Client();
 
     // Register EVM scheme if wallet client available
-    if (context.evmWalletClient) {
-      baseClient.register('eip155:*', new ExactEvmScheme(context.evmWalletClient));
+    // Note: WalletClient from wagmi has account.address, but ExactEvmScheme expects signer.address
+    if (context.evmWalletClient && context.evmWalletClient.account) {
+      const evmSigner = {
+        address: context.evmWalletClient.account.address,
+        signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
+          context.evmWalletClient!.signTypedData({
+            account: context.evmWalletClient!.account!,
+            domain: params.domain as any,
+            types: params.types as any,
+            primaryType: params.primaryType as any,
+            message: params.message as any,
+          }),
+      };
+      baseClient.register('eip155:*', new ExactEvmScheme(evmSigner));
     }
 
     // Register SVM scheme if Solana signer available
