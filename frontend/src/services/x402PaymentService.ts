@@ -118,6 +118,10 @@ class X402PaymentService {
     // Register SVM scheme if Solana signer available
     if (context.solanaSigner) {
       const rpcUrl = this.getSolanaRpcUrl(context.network);
+      console.log('[X402_DEBUG] Creating ExactSvmScheme:', {
+        contextNetwork: context.network,
+        rpcUrl: rpcUrl || 'SDK_FALLBACK'
+      });
       baseClient.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
     }
 
@@ -211,6 +215,13 @@ class X402PaymentService {
     if (!requirement.raw) {
       throw new Error('No x402 payment data returned by server');
     }
+
+    console.log('[X402_DEBUG] Payment requirements:', {
+      contextNetwork: context.network,
+      requirementNetwork: requirement.accept?.network,
+      rawAcceptsNetwork: requirement.raw?.accepts?.[0]?.network,
+      networkMatch: context.network === requirement.accept?.network
+    });
 
     const requirementNetwork = requirement.accept?.network || context.network;
     const isSolana = requirementNetwork.startsWith('solana:');
