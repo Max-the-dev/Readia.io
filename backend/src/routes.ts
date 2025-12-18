@@ -1472,6 +1472,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
     if (!verification.isValid) {
+      console.log('[x402] Verify failure payload:', JSON.stringify(verification, null, 2));
       return res.status(400).json({
         success: false,
         error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
@@ -1685,6 +1686,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
     
     if (!verification.isValid) {
+      console.log('[x402] Verify failure payload (donation):', JSON.stringify(verification, null, 2));
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
@@ -1868,6 +1870,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
+      console.log('[x402] Verify failure payload (tip):', JSON.stringify(verification, null, 2));
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
