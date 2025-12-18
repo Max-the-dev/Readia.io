@@ -3,10 +3,10 @@ import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
-import routes from './routes';
+import routes, { initializeResourceServer } from './routes';
 import authRouter from './auth';
 
-// feePayer helper function
+// feePayer helper function (legacy - keeping for debugging)
 import { ensureFacilitatorSupportLoaded } from './facilitatorSupport';
 
 
@@ -144,11 +144,19 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Warming the fee payer into cache at boot time
+// Warming the fee payer into cache at boot time (legacy - keeping for debugging)
 ensureFacilitatorSupportLoaded()
-  .then(() => console.log('✅ Facilitator fee payer cache warm'))
+  .then(() => console.log('✅ Legacy facilitator fee payer cache warm'))
   .catch(error => {
-    console.error('⚠️ Failed to warm facilitator cache:', error);
+    console.error('⚠️ Failed to warm legacy facilitator cache:', error);
+  });
+
+// Initialize x402 v2 Resource Server (fetches /supported and caches fee payers per network)
+initializeResourceServer()
+  .then(() => console.log('✅ x402 Resource Server initialized'))
+  .catch(error => {
+    console.error('❌ Failed to initialize x402 Resource Server:', error);
+    process.exit(1);  // Critical - exit if we can't initialize payment processing
   });
 
 // Authentication routes must load before protected API routes
