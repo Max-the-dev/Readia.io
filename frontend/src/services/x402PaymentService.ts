@@ -268,42 +268,89 @@ class X402PaymentService {
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
     try {
-      const initialResponse = await this.attemptPayment(`/articles/${articleId}/purchase`, undefined, context.network);
+      const url = this.buildRequestUrl(`/articles/${articleId}/purchase`, context.network);
 
-      if (initialResponse.paymentRequired && initialResponse.paymentRequired.accept) {
-        const encodedHeader = await this.createPaymentHeaderFromRequirements(
-          initialResponse.paymentRequired,
-          context
-        );
+      // Step 1: Create client (matches test script)
+      const client = new x402Client();
 
-        const response = await fetch(this.buildRequestUrl(`/articles/${articleId}/purchase`, context.network), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
-          }
-        });
+      // Step 2: Register schemes (matches test script)
+      if (context.solanaSigner) {
+        registerExactSvmScheme(client, { signer: context.solanaSigner });
+      }
+      if (context.evmWalletClient && context.evmWalletClient.account) {
+        const evmSigner = {
+          address: context.evmWalletClient.account.address,
+          signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
+            context.evmWalletClient!.signTypedData({
+              account: context.evmWalletClient!.account!,
+              domain: params.domain as any,
+              types: params.types as any,
+              primaryType: params.primaryType as any,
+              message: params.message as any,
+            }),
+        };
+        registerExactEvmScheme(client, { signer: evmSigner });
+      }
 
-        const result = await response.json();
+      // Step 3: Create httpClient (matches test script)
+      const httpClient = new x402HTTPClient(client);
 
-        if (response.ok && result.success) {
-          return {
-            success: true,
-            receipt: result.data?.receipt || result.receipt || 'Payment processed',
-            encodedHeader,
-            rawResponse: result
-          };
+      // Step 4: Initial request (matches test script)
+      const initialResponse = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      // Step 5: Check for 402 (matches test script)
+      if (initialResponse.status !== 402) {
+        const body = await initialResponse.json();
+        if (initialResponse.ok && body.success) {
+          return { success: true, receipt: body.data?.receipt || 'Already purchased' };
         }
+        return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
+      }
 
+      // Step 6: Get response body (matches test script)
+      const responseBody = await initialResponse.json();
+
+      // Step 7: Parse with SDK helper (matches test script)
+      const paymentRequired = httpClient.getPaymentRequiredResponse(
+        (name) => initialResponse.headers.get(name),
+        responseBody
+      );
+
+      // Step 8: Create payment payload (matches test script)
+      const paymentPayload = await client.createPaymentPayload(paymentRequired);
+
+      // Step 9: Encode header (matches test script)
+      const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+
+      // Step 10: Payment request (matches test script)
+      const paymentResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...paymentHeaders,
+        },
+      });
+
+      // Step 11: Handle result
+      const result = await paymentResponse.json();
+
+      if (paymentResponse.ok && result.success) {
         return {
-          success: false,
-          error: result?.error || `Payment failed with status ${response.status}`,
-          encodedHeader,
+          success: true,
+          receipt: result.data?.receipt || result.receipt || 'Payment processed',
           rawResponse: result
         };
       }
 
-      return initialResponse;
+      return {
+        success: false,
+        error: result?.error || `Payment failed with status ${paymentResponse.status}`,
+        rawResponse: result
+      };
+
     } catch (error) {
       console.error('Article purchase failed:', error);
       return {
