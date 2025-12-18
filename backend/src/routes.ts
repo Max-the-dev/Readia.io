@@ -377,6 +377,40 @@ function normalizeRecipientForNetwork(address: string, network: SupportedX402Net
 /**
  * Builds the PaymentRequirements object for purchases, choosing the correct payout address and asset per network.
  */
+/**
+ * Build the `extra` object for PaymentRequirements.
+ * SVM (Solana) only needs `feePayer` - minimal extra to avoid CDP parsing issues.
+ * EVM (Base) needs `name` and `version` for EIP-712 signing, plus we include display metadata.
+ */
+function buildPaymentExtra(
+  network: SupportedX402Network,
+  feePayer: string | undefined,
+  evmMetadata: {
+    name: string;
+    version: string;
+    title: string;
+    category: string;
+    tags: string[];
+    serviceName: string;
+    serviceDescription: string;
+    gasLimit?: string;
+    pricing: { currency: string; amount: string; display: string };
+  }
+): Record<string, unknown> {
+  const isSolana = getNetworkGroup(network) === 'solana';
+
+  if (isSolana) {
+    // SVM only needs feePayer - keep it minimal per CDP guidance
+    return { feePayer };
+  }
+
+  // EVM gets full metadata for display and EIP-712 domain
+  return {
+    ...evmMetadata,
+    ...(feePayer ? { feePayer } : {}),
+  };
+}
+
 async function buildPaymentRequirement(
   article: Article,
   payoutProfile: PayoutProfile,
@@ -407,7 +441,7 @@ async function buildPaymentRequirement(
     amount: priceInMicroUSDC,  // v2: renamed from maxAmountRequired
     payTo,
     maxTimeoutSeconds: 900,
-    extra: {
+    extra: buildPaymentExtra(network, feePayer, {
       name: displayAssetName,
       version: '2',
       title: `Purchase: ${article.title}`,
@@ -416,13 +450,12 @@ async function buildPaymentRequirement(
       serviceName: 'Readia.io Article Access',
       serviceDescription: `Unlock full access to "${article.title}" by ${article.authorAddress.slice(0, 6)}...${article.authorAddress.slice(-4)}`,
       gasLimit: '1000000',
-      ...(feePayer ? { feePayer } : {}),
       pricing: {
         currency: displayAssetName,
         amount: article.price.toString(),
         display: `$${article.price.toFixed(2)}`
       }
-    }
+    })
   };
 }
 
@@ -1525,7 +1558,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
       payTo,
       maxTimeoutSeconds: 900,
-      extra: {
+      extra: buildPaymentExtra(networkPreference as SupportedX402Network, feePayer, {
         name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Donate $${amount} to Readia.io`,
@@ -1533,13 +1566,12 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         tags: ['donation', 'platform-support'],
         serviceName: 'Readia.io Platform Donation',
         serviceDescription: `Support Readia.io platform with a $${amount} donation`,
-        ...(feePayer ? { feePayer } : {}),
         pricing: {
           currency: 'USD',
           amount: amount.toString(),
           display: `$${amount.toFixed(2)}`
         }
-      }
+      })
     };
 
     // If no payment header, return 402 with requirements
@@ -1714,7 +1746,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
       payTo,
       maxTimeoutSeconds: 900,
-      extra: {
+      extra: buildPaymentExtra(networkPreference as SupportedX402Network, feePayer, {
         name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
         version: '2',
         title: `Tip $${amount} to author`,
@@ -1722,13 +1754,12 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         tags: ['tip', 'author-support', 'article'],
         serviceName: 'Readia.io Article Tip',
         serviceDescription: `Tip the author of "${article.title}" with $${amount}`,
-        ...(feePayer ? { feePayer } : {}),
         pricing: {
           currency: 'USD',
           amount: amount.toString(),
           display: `$${amount.toFixed(2)}`
         }
-      }
+      })
     };
 
     // If no payment header, return 402 with requirements
