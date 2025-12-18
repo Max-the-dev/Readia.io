@@ -123,7 +123,8 @@ function buildSignatureDictionary(
   // Log raw transaction bytes to compare with backend
   if (signedTransaction instanceof VersionedTransaction) {
     const serialized = signedTransaction.serialize();
-    console.log('[SolanaSigner] Raw TX base64 (first 200 chars):', Buffer.from(serialized).toString('base64').slice(0, 200));
+    const base64 = btoa(String.fromCharCode(...serialized));
+    console.log('[SolanaSigner] Raw TX base64 (first 200 chars):', base64.slice(0, 200));
   }
 
   // Get number of signatures in signed transaction
