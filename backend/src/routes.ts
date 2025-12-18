@@ -1447,6 +1447,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       console.log(`[x402] Verify: ${verification.isValid ? '✅' : '❌'} ${verification.invalidReason || ''}`);
     } catch (error: any) {
       let responseBody;
+      let correlationId: string | undefined;
       if (error?.response?.text) {
         try {
           responseBody = await error.response.text();
@@ -1454,10 +1455,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
           responseBody = `Failed to read response body: ${bodyError}`;
         }
       }
-      const correlationId =
-        (error?.response?.headers?.get && error.response.headers.get('correlation-id')) ||
-        error?.response?.headers?.get?.('x-correlation-id') ||
-        error?.response?.headers?.get?.('Correlation-Context');
+      if (error?.response?.headers?.get) {
+        correlationId =
+          error.response.headers.get('correlation-id') ||
+          error.response.headers.get('x-correlation-id') ||
+          error.response.headers.get('Correlation-Context');
+      }
 
       console.error('[x402] Facilitator verify failed:', {
         message: error?.message,
@@ -1465,6 +1468,9 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
         correlationId,
         body: responseBody,
       });
+      if (correlationId) {
+        console.log('[x402] CDP correlation-id:', correlationId);
+      }
 
       return res.status(502).json({
         success: false,
