@@ -120,6 +120,12 @@ function buildSignatureDictionary(
     console.log(`    [${i}] ${key}`);
   });
 
+  // Log raw transaction bytes to compare with backend
+  if (signedTransaction instanceof VersionedTransaction) {
+    const serialized = signedTransaction.serialize();
+    console.log('[SolanaSigner] Raw TX base64 (first 200 chars):', Buffer.from(serialized).toString('base64').slice(0, 200));
+  }
+
   // Get number of signatures in signed transaction
   const numSignatures = signedTransaction instanceof VersionedTransaction
     ? signedTransaction.signatures.length

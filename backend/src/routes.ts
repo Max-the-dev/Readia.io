@@ -247,8 +247,11 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
     console.log(`[SOLANA_DEBUG] ====== TRANSACTION ANALYSIS ======`);
     console.log(`  Network: ${req.network}`);
     console.log(`  Version: ${versioned ? 'V0' : 'Legacy'}`);
+    console.log(`  Raw header bytes: [${msg[off]}, ${msg[off+1]}, ${msg[off+2]}, ${msg[off+3]}]`);
     console.log(`  Header: ${numRequiredSigs} required sigs, ${numReadonlySigned} readonly-signed, ${numReadonlyUnsigned} readonly-unsigned`);
-    console.log(`  Total accounts: ${numAccts}`);
+    console.log(`  Total accounts (from header byte): ${numAccts}`);
+    console.log(`  TX length: ${tx.length} bytes, msg length: ${msg.length} bytes`);
+    console.log(`  Raw TX base64 (first 200 chars): ${base64Tx.slice(0, 200)}`);
     console.log(``);
 
     console.log(`[SOLANA_DEBUG] SIGNATURES (${numSigs} slots):`);
