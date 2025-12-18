@@ -1430,8 +1430,14 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     console.log(`[x402] Article ${articleId} | ${paymentRequirement.network} | ${hasTransaction ? 'SVM' : 'EVM'}`);
 
+    // Compare 402 response vs payload.accepted structure
+    console.log('[x402] STRUCTURE COMPARE:');
+    console.log('  402 requirement:', JSON.stringify(paymentRequirement));
+    console.log('  payload.accepted:', JSON.stringify(paymentPayload.accepted));
+
     // Solana debug: decode TX structure before CDP verify
     if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
+      console.log('[x402] RAW_SOLANA_TX:', transactionValue);
       debugSolanaTx(transactionValue, paymentRequirement);
     }
 
