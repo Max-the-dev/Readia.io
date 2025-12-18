@@ -52,11 +52,11 @@ const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
 const facilitatorClient = new HTTPFacilitatorClient({
   url: CDP_FACILITATOR_URL,
   createAuthHeaders: async () => {
-    const generateAuthForPath = async (path: string) => {
+    const generateAuthForPath = async (path: string, method: 'GET' | 'POST' = 'POST') => {
       const token = await generateJwt({
         apiKeyId: process.env.CDP_API_KEY_ID!,
         apiKeySecret: process.env.CDP_API_KEY_SECRET!,
-        requestMethod: 'POST',
+        requestMethod: method,
         requestHost: 'api.cdp.coinbase.com',
         requestPath: `/platform/v2/x402/${path}`,
         expiresIn: 120
@@ -65,9 +65,9 @@ const facilitatorClient = new HTTPFacilitatorClient({
     };
 
     return {
-      verify: await generateAuthForPath('verify'),
-      settle: await generateAuthForPath('settle'),
-      supported: await generateAuthForPath('supported')  // For querying supported networks/schemes
+      verify: await generateAuthForPath('verify', 'POST'),
+      settle: await generateAuthForPath('settle', 'POST'),
+      supported: await generateAuthForPath('supported', 'GET')  // /supported uses GET
     };
   }
 });
