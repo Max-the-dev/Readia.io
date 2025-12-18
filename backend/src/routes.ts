@@ -1322,6 +1322,10 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     // DEBUG: Log raw transaction for offline simulation with scripts/simulate-solana-tx.ts
     if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
       console.log('[x402] RAW_SOLANA_TX:', transactionValue);
+      // Log data needed for CDP verify script
+      console.log('[x402] CDP_VERIFY_DATA:');
+      console.log('  PAYMENT_HEADER:', paymentHeader);
+      console.log('  PAYMENT_REQUIREMENT:', JSON.stringify(paymentRequirement));
     }
 
     let verification;
