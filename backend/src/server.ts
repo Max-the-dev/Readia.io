@@ -116,20 +116,16 @@ if (PUBLIC_API_HOST) {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// x402 Payment Middleware Configuration
-const facilitatorUrl = process.env.CDP_API_KEY_ID
-  ? `https://facilitator.cdp.coinbase.com` // CDP facilitator
-  : process.env.X402_FACILITATOR_URL || 'https://x402.org/facilitator'; // Public fallback
+// x402 v2 Configuration
+const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
+const hasCdpCredentials = !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET);
 
-const network = process.env.X402_NETWORK || 'base-sepolia';
-
-console.log(`🔗 x402 Facilitator: ${facilitatorUrl}`);
-console.log(`🌐 Network: ${network}`);
-// Line 27
-if (process.env.CDP_API_KEY_ID) {
-  console.log(`✅ Using Coinbase CDP Facilitator`);
+console.log(`🔗 x402 Facilitator: ${CDP_FACILITATOR_URL}`);
+console.log(`🌐 Supported networks: eip155:8453, eip155:84532, solana:mainnet, solana:devnet`);
+if (hasCdpCredentials) {
+  console.log(`✅ CDP credentials configured`);
 } else {
-  console.log(`⚠️  Using public facilitator (testnet mode)`);
+  console.log(`⚠️  CDP credentials missing - payments will fail`);
 }
 
 // Health check endpoint
@@ -137,10 +133,12 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     message: 'Readia.io backend is running!',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    facilitator: facilitatorUrl,
-    network: network,
-    cdpEnabled: !!process.env.CDP_API_KEY_ID
+    version: '2.0.0',
+    x402: {
+      facilitator: CDP_FACILITATOR_URL,
+      networks: ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'],
+      cdpConfigured: hasCdpCredentials
+    }
   });
 });
 

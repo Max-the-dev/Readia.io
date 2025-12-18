@@ -20,6 +20,8 @@ import {
   historyQuerySchema
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
+// Solana simulation for debugging
+import { Connection, VersionedTransaction } from '@solana/web3.js';
 // x402 v2 imports
 import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
 import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
@@ -231,6 +233,53 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
     console.log(`  Expected: payTo=${req.payTo?.slice(0,12)}.. asset=${req.asset?.slice(0,12)}.. feePayer=${(req.extra?.feePayer as string)?.slice(0,12) || '?'}..`);
   } catch (e) {
     console.log(`[SOLANA_DEBUG] Failed to decode: ${e}`);
+  }
+}
+
+/**
+ * Simulate transaction on Solana RPC to get actual error details
+ */
+async function simulateSolanaTransaction(
+  base64Tx: string,
+  network: string
+): Promise<{ success: boolean; error?: string; logs?: string[] }> {
+  try {
+    // Map CAIP-2 network to RPC URL
+    const rpcUrl = network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      ? (process.env.SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com')
+      : (process.env.SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com');
+
+    console.log(`[SOLANA_SIM] Simulating on ${network} via ${rpcUrl.slice(0, 40)}...`);
+
+    const connection = new Connection(rpcUrl, 'confirmed');
+    const txBuffer = Buffer.from(base64Tx, 'base64');
+    const tx = VersionedTransaction.deserialize(txBuffer);
+
+    const simulation = await connection.simulateTransaction(tx, {
+      sigVerify: false,  // Skip signature verification for simulation
+      replaceRecentBlockhash: true  // Use fresh blockhash
+    });
+
+    if (simulation.value.err) {
+      console.log(`[SOLANA_SIM] ❌ Simulation FAILED:`);
+      console.log(`  Error: ${JSON.stringify(simulation.value.err)}`);
+      if (simulation.value.logs) {
+        console.log(`  Logs:`);
+        simulation.value.logs.forEach(log => console.log(`    ${log}`));
+      }
+      return {
+        success: false,
+        error: JSON.stringify(simulation.value.err),
+        logs: simulation.value.logs || []
+      };
+    }
+
+    console.log(`[SOLANA_SIM] ✅ Simulation SUCCESS`);
+    return { success: true, logs: simulation.value.logs || [] };
+
+  } catch (e: any) {
+    console.log(`[SOLANA_SIM] Exception during simulation: ${e.message}`);
+    return { success: false, error: e.message };
   }
 }
 
@@ -1427,6 +1476,13 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
     if (!verification.isValid) {
       console.log('[x402] Verify failure payload:', JSON.stringify(verification, null, 2));
+
+      // If Solana transaction failed, run local simulation to get actual error
+      if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
+        console.log('[x402] Running local Solana simulation to diagnose failure...');
+        await simulateSolanaTransaction(transactionValue, paymentRequirement.network);
+      }
+
       return res.status(400).json({
         success: false,
         error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
@@ -1603,20 +1659,33 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const transactionValue = rawPayload.transaction as string | undefined;
+
+    // Debug Solana TX before verification
+    if (networkPreference.startsWith('solana:') && transactionValue) {
+      debugSolanaTx(transactionValue, paymentRequirement);
+    }
+
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
       console.log('[x402] Verify failure payload (donation):', JSON.stringify(verification, null, 2));
+
+      // If Solana transaction failed, run local simulation to get actual error
+      if (networkPreference.startsWith('solana:') && transactionValue) {
+        console.log('[x402] Running local Solana simulation to diagnose failure...');
+        await simulateSolanaTransaction(transactionValue, networkPreference);
+      }
+
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
         details: verification.invalidReason
       });
     }
-
-    // v2: Access authorization from payload with type safety
-    const rawPayload = paymentPayload.payload as Record<string, unknown>;
-    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
@@ -1753,20 +1822,33 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const transactionValue = rawPayload.transaction as string | undefined;
+
+    // Debug Solana TX before verification
+    if (networkPreference.startsWith('solana:') && transactionValue) {
+      debugSolanaTx(transactionValue, paymentRequirement);
+    }
+
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
       console.log('[x402] Verify failure payload (tip):', JSON.stringify(verification, null, 2));
+
+      // If Solana transaction failed, run local simulation to get actual error
+      if (networkPreference.startsWith('solana:') && transactionValue) {
+        console.log('[x402] Running local Solana simulation to diagnose failure...');
+        await simulateSolanaTransaction(transactionValue, networkPreference);
+      }
+
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
         details: verification.invalidReason
       });
     }
-
-    // v2: Access authorization from payload with type safety
-    const rawPayload = paymentPayload.payload as Record<string, unknown>;
-    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
