@@ -296,6 +296,7 @@ async function verifyCDP(paymentPayloadB64: string, paymentRequirementJson: stri
     });
 
     const requestBody = {
+      x402Version: paymentPayload.x402Version,
       paymentPayload,
       paymentRequirements: paymentRequirement,
     };
