@@ -256,18 +256,32 @@ async function simulateSolanaTransaction(
     const txBuffer = Buffer.from(base64Tx, 'base64');
     const tx = VersionedTransaction.deserialize(txBuffer);
 
+    // Test with ORIGINAL blockhash first (what CDP sees)
     const simulation = await connection.simulateTransaction(tx, {
-      sigVerify: false,  // Skip signature verification for simulation
-      replaceRecentBlockhash: true  // Use fresh blockhash
+      sigVerify: false,
+      replaceRecentBlockhash: false  // Use actual blockhash from TX
     });
 
     if (simulation.value.err) {
-      console.log(`[SOLANA_SIM] ❌ Simulation FAILED:`);
+      console.log(`[SOLANA_SIM] ❌ Simulation FAILED (original blockhash):`);
       console.log(`  Error: ${JSON.stringify(simulation.value.err)}`);
       if (simulation.value.logs) {
         console.log(`  Logs:`);
         simulation.value.logs.forEach(log => console.log(`    ${log}`));
       }
+
+      // Retry with fresh blockhash to isolate the issue
+      console.log('[SOLANA_SIM] Retrying with fresh blockhash...');
+      const retrySimulation = await connection.simulateTransaction(tx, {
+        sigVerify: false,
+        replaceRecentBlockhash: true
+      });
+      if (!retrySimulation.value.err) {
+        console.log('[SOLANA_SIM] ⚠️ BLOCKHASH ISSUE CONFIRMED: TX valid but blockhash stale/invalid');
+      } else {
+        console.log('[SOLANA_SIM] ❌ Still fails with fresh blockhash - not a blockhash issue');
+      }
+
       return {
         success: false,
         error: JSON.stringify(simulation.value.err),
@@ -275,7 +289,7 @@ async function simulateSolanaTransaction(
       };
     }
 
-    console.log(`[SOLANA_SIM] ✅ Simulation SUCCESS`);
+    console.log(`[SOLANA_SIM] ✅ Simulation SUCCESS (original blockhash valid)`);
     return { success: true, logs: simulation.value.logs || [] };
 
   } catch (e: any) {

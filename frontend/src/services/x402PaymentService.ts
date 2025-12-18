@@ -2,8 +2,9 @@
 import { apiService } from './api';
 import { x402Client, x402HTTPClient } from '@x402/core/client';
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from '@x402/core/types';
-import { ExactEvmScheme } from '@x402/evm';
-import { ExactSvmScheme } from '@x402/svm';
+// v2: Use official helper functions for scheme registration
+import { registerExactEvmScheme } from '@x402/evm/exact/client';
+import { registerExactSvmScheme } from '@x402/svm/exact/client';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
 
@@ -82,24 +83,14 @@ class X402PaymentService {
   private readonly X402_VERSION = 2;
   private readonly apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
-  private getSolanaRpcUrl(network: string): string | undefined {
-    if (network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
-      return import.meta.env.VITE_SOLANA_MAINNET_RPC_URL;
-    }
-    if (network === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1') {
-      return import.meta.env.VITE_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
-    }
-    return undefined;
-  }
-
   /**
    * Creates an x402HTTPClient configured for the given payment context
+   * v2: Uses official registerExact*Scheme helpers instead of manual registration
    */
   private createX402HttpClient(context: PaymentExecutionContext): x402HTTPClient {
     const baseClient = new x402Client();
 
-    // Register EVM scheme if wallet client available
-    // Note: WalletClient from wagmi has account.address, but ExactEvmScheme expects signer.address
+    // v2: Register EVM scheme using official helper
     if (context.evmWalletClient && context.evmWalletClient.account) {
       const evmSigner = {
         address: context.evmWalletClient.account.address,
@@ -112,17 +103,13 @@ class X402PaymentService {
             message: params.message as any,
           }),
       };
-      baseClient.register('eip155:*', new ExactEvmScheme(evmSigner));
+      registerExactEvmScheme(baseClient, { signer: evmSigner });
     }
 
-    // Register SVM scheme if Solana signer available
+    // v2: Register SVM scheme using official helper (no custom RPC - let SDK use defaults)
     if (context.solanaSigner) {
-      const rpcUrl = this.getSolanaRpcUrl(context.network);
-      console.log('[X402_DEBUG] Creating ExactSvmScheme:', {
-        contextNetwork: context.network,
-        rpcUrl: rpcUrl || 'SDK_FALLBACK'
-      });
-      baseClient.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+      console.log('[X402_DEBUG] Registering SVM scheme via official helper');
+      registerExactSvmScheme(baseClient, { signer: context.solanaSigner });
     }
 
     return new x402HTTPClient(baseClient);
