@@ -250,6 +250,12 @@ class X402PaymentService {
     // SDK will: copy resource, select accepted from accepts[], build signed payload
     const paymentPayload = await httpClient.createPaymentPayload(sanitizedRaw as PaymentRequired);
 
+    // DEBUG: Log the transaction AFTER SDK creates it, BEFORE encoding
+    const txBase64 = (paymentPayload as any).payload?.transaction;
+    if (txBase64) {
+      console.log('[X402_DEBUG] Transaction in paymentPayload (first 200 chars):', txBase64.slice(0, 200));
+    }
+
     // Encode to PAYMENT-SIGNATURE header format
     const headers = httpClient.encodePaymentSignatureHeader(paymentPayload);
     const encodedHeader = headers['payment-signature'] || headers['PAYMENT-SIGNATURE'];
