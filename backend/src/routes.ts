@@ -178,7 +178,8 @@ function base58Encode(bytes: Buffer | Uint8Array): string {
 }
 
 /**
- * Debug Solana TX structure before CDP verify - shows accounts and transfer details
+ * Debug Solana TX structure before CDP verify - VERBOSE VERSION
+ * Shows full addresses, signature details, and transfer info
  */
 function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
   try {
@@ -189,9 +190,27 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
 
     const versioned = (msg[0] & 0x80) !== 0;
     const off = versioned ? 1 : 0;
+
+    // Parse message header
+    const numRequiredSigs = msg[off];
+    const numReadonlySigned = msg[off + 1];
+    const numReadonlyUnsigned = msg[off + 2];
     const numAccts = msg[off + 3];
 
-    // Extract accounts
+    // Extract signatures and check which are filled
+    const signatures: { index: number; filled: boolean; preview: string }[] = [];
+    for (let i = 0; i < numSigs; i++) {
+      const sigStart = 1 + i * 64;
+      const sigBytes = tx.slice(sigStart, sigStart + 64);
+      const isEmpty = sigBytes.every((b: number) => b === 0);
+      signatures.push({
+        index: i,
+        filled: !isEmpty,
+        preview: isEmpty ? '(empty)' : base58Encode(sigBytes).slice(0, 16) + '...'
+      });
+    }
+
+    // Extract accounts (FULL addresses)
     const accts: string[] = [];
     for (let i = 0; i < numAccts; i++) {
       const start = off + 4 + i * 32;
@@ -214,24 +233,53 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
 
       if (data[0] === 12 && dataLen >= 10) { // TransferChecked
         const amt = Buffer.from(data.slice(1, 9)).readBigUInt64LE();
-        transferInfo = `src:[${acctIdxs[0]}]${accts[acctIdxs[0]]?.slice(0,8)}.. mint:[${acctIdxs[1]}]${accts[acctIdxs[1]]?.slice(0,8)}.. dest:[${acctIdxs[2]}]${accts[acctIdxs[2]]?.slice(0,8)}.. auth:[${acctIdxs[3]}]${accts[acctIdxs[3]]?.slice(0,8)}.. amt:${amt}`;
+        transferInfo = `amount=${amt} (${Number(amt) / 1_000_000} USDC)`;
+        console.log(`[SOLANA_DEBUG] TransferChecked instruction:`);
+        console.log(`    source ATA [${acctIdxs[0]}]: ${accts[acctIdxs[0]]}`);
+        console.log(`    mint       [${acctIdxs[1]}]: ${accts[acctIdxs[1]]}`);
+        console.log(`    dest ATA   [${acctIdxs[2]}]: ${accts[acctIdxs[2]]}`);
+        console.log(`    authority  [${acctIdxs[3]}]: ${accts[acctIdxs[3]]}`);
       }
       instrOff += 3 + numAcctsInstr + dataLen;
     }
 
-    // Label key accounts
-    const labels: string[] = accts.map((a, i) => {
-      let l = `[${i}]${a.slice(0,12)}..`;
-      if (a === req.payTo) l += ' ←RECIPIENT';
-      if (a === req.asset) l += ' ←MINT';
-      if (a === req.extra?.feePayer) l += ' ←FEEPAYER';
-      return l;
-    });
+    // Identify account roles
+    console.log(`[SOLANA_DEBUG] ====== TRANSACTION ANALYSIS ======`);
+    console.log(`  Network: ${req.network}`);
+    console.log(`  Version: ${versioned ? 'V0' : 'Legacy'}`);
+    console.log(`  Header: ${numRequiredSigs} required sigs, ${numReadonlySigned} readonly-signed, ${numReadonlyUnsigned} readonly-unsigned`);
+    console.log(`  Total accounts: ${numAccts}`);
+    console.log(``);
 
-    console.log(`[SOLANA_DEBUG] ${req.network} | ${numAccts} accounts | ${numSigs} sigs`);
-    console.log(`  Accounts: ${labels.join(' | ')}`);
-    console.log(`  Transfer: ${transferInfo}`);
-    console.log(`  Expected: payTo=${req.payTo?.slice(0,12)}.. asset=${req.asset?.slice(0,12)}.. feePayer=${(req.extra?.feePayer as string)?.slice(0,12) || '?'}..`);
+    console.log(`[SOLANA_DEBUG] SIGNATURES (${numSigs} slots):`);
+    signatures.forEach(s => {
+      const acctAddr = accts[s.index] || 'N/A';
+      const role = acctAddr === req.extra?.feePayer ? 'FEEPAYER' :
+                   acctAddr === req.payTo ? 'RECIPIENT' :
+                   s.index === 1 ? 'BUYER?' : '';
+      console.log(`    [${s.index}] ${s.filled ? 'SIGNED' : 'EMPTY '} ${s.preview} → account: ${acctAddr} ${role}`);
+    });
+    console.log(``);
+
+    console.log(`[SOLANA_DEBUG] ALL ACCOUNTS (full addresses):`);
+    accts.forEach((a, i) => {
+      let role = '';
+      if (a === req.payTo) role = '← RECIPIENT (payTo)';
+      else if (a === req.asset) role = '← MINT (asset)';
+      else if (a === req.extra?.feePayer) role = '← FEEPAYER';
+      else if (a === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') role = '← Token Program';
+      else if (a === 'ComputeBudget111111111111111111111111111111') role = '← ComputeBudget';
+      else if (i < numRequiredSigs) role = '← SIGNER';
+      console.log(`    [${i}] ${a} ${role}`);
+    });
+    console.log(``);
+
+    console.log(`[SOLANA_DEBUG] EXPECTED VALUES:`);
+    console.log(`    payTo (recipient): ${req.payTo}`);
+    console.log(`    asset (mint):      ${req.asset}`);
+    console.log(`    feePayer:          ${req.extra?.feePayer || 'NOT SET'}`);
+    console.log(`    Transfer: ${transferInfo}`);
+    console.log(`[SOLANA_DEBUG] ====== END ANALYSIS ======`);
   } catch (e) {
     console.log(`[SOLANA_DEBUG] Failed to decode: ${e}`);
   }

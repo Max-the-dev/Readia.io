@@ -112,21 +112,65 @@ function buildSignatureDictionary(
   const messageAccountKeys = getMessageAccountKeys(signedTransaction);
   const entries: [Address<string>, Uint8Array][] = [];
 
+  // VERBOSE DEBUG LOGGING
+  console.log('[SolanaSigner] ====== SIGNATURE DICTIONARY BUILD ======');
+  console.log('[SolanaSigner] Original transaction.signatures keys:', signerAddresses);
+  console.log('[SolanaSigner] Message account keys (full):');
+  messageAccountKeys.forEach((key, i) => {
+    console.log(`    [${i}] ${key}`);
+  });
+
+  // Get number of signatures in signed transaction
+  const numSignatures = signedTransaction instanceof VersionedTransaction
+    ? signedTransaction.signatures.length
+    : signedTransaction.signatures.length;
+  console.log(`[SolanaSigner] Signed transaction has ${numSignatures} signature slots`);
+
   for (const address of signerAddresses) {
+    console.log(`[SolanaSigner] Processing signer address: ${address}`);
+
     const signerIndex = messageAccountKeys.findIndex(
       (key) => key.toLowerCase() === address.toLowerCase()
     );
+    console.log(`    Found at account index: ${signerIndex} (using toLowerCase comparison)`);
 
-    if (signerIndex === -1) continue;
+    // Also check exact match
+    const exactIndex = messageAccountKeys.findIndex((key) => key === address);
+    if (exactIndex !== signerIndex) {
+      console.log(`    WARNING: Exact match index: ${exactIndex} differs from toLowerCase match!`);
+    }
+
+    if (signerIndex === -1) {
+      console.log(`    SKIPPED: Address not found in message account keys`);
+      continue;
+    }
 
     const signatureBytes = extractSignatureBytes(signedTransaction, signerIndex);
-    if (!signatureBytes) continue;
+    console.log(`    Extracted signature at index ${signerIndex}: ${signatureBytes ? 'found' : 'null'}`);
+
+    if (!signatureBytes) {
+      console.log(`    SKIPPED: No signature bytes at index ${signerIndex}`);
+      continue;
+    }
 
     // Skip empty signatures (fee payer slot)
-    if (signatureBytes.every((byte) => byte === 0)) continue;
+    const isEmpty = signatureBytes.every((byte) => byte === 0);
+    console.log(`    Signature empty? ${isEmpty}`);
 
+    if (isEmpty) {
+      console.log(`    SKIPPED: Empty signature (fee payer slot)`);
+      continue;
+    }
+
+    console.log(`    ADDED: ${address} -> signature[0..8]: ${Array.from(signatureBytes.slice(0, 8)).join(',')}`);
     entries.push([address as Address<string>, signatureBytes]);
   }
+
+  console.log(`[SolanaSigner] Final SignatureDictionary has ${entries.length} entries:`);
+  entries.forEach(([addr, sig]) => {
+    console.log(`    ${addr} -> ${sig.length} bytes`);
+  });
+  console.log('[SolanaSigner] ====== END SIGNATURE BUILD ======');
 
   return Object.freeze(Object.fromEntries(entries));
 }
