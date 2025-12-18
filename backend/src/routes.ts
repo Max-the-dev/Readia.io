@@ -75,6 +75,7 @@ const facilitatorClient = new HTTPFacilitatorClient({
 });
 
 // x402 v2 Resource Server with scheme registrations
+// brooo
 const resourceServer = new x402ResourceServer(facilitatorClient)
   .register('eip155:8453', new ExactEvmScheme())
   .register('eip155:84532', new ExactEvmScheme())
