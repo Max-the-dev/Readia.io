@@ -289,7 +289,7 @@ const upload = multer({
 
 const SOLANA_USDC_MAINNET =
   process.env.X402_SOLANA_MAINNET_USDC_ADDRESS ||
-  'EPjFWdd5AufqSSqeM2qE7c4wAkwcGw7Doe8kJ3e1ecp';
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const SOLANA_USDC_DEVNET =
   process.env.X402_SOLANA_DEVNET_USDC_ADDRESS ||
   '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
