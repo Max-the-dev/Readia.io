@@ -242,7 +242,6 @@ class X402PaymentService {
       throw new Error('Failed to encode payment signature header');
     }
 
-    console.log('🔐 Encoded x402 v2 payment header:', encodedHeader.substring(0, 100) + '...');
     return encodedHeader;
   }
 
@@ -268,7 +267,6 @@ class X402PaymentService {
         });
 
         const result = await response.json();
-        console.log('🔍 Purchase response:', result);
 
         if (response.ok && result.success) {
           return {

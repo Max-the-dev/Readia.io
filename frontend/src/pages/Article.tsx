@@ -337,7 +337,6 @@ function Article() {
     const isSolanaSelected = selectedNetworkFamily === 'solana';
     const selectedNetwork: SupportedNetwork = isSolanaSelected ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
-    console.log('🔧 [PURCHASE] Network:', caipNetworkId, '| Resolved:', resolvedSolanaNetwork, '| Selected:', selectedNetwork);
 
     setIsProcessingPayment(true);
     setPaymentError('');
@@ -399,7 +398,6 @@ function Article() {
     const isSolanaTip = selectedTipNetworkFamily === 'solana';
     const selectedNetwork: SupportedNetwork = isSolanaTip ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
-    console.log('🔧 [TIP] Network:', caipNetworkId, '| Resolved:', resolvedSolanaNetwork, '| Selected:', selectedNetwork);
 
     if (isSolanaTip && !solanaSigner) {
       setTipResult({ success: false, message: 'Please connect a Solana wallet to tip' });

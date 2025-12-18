@@ -127,6 +127,95 @@ function logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements:
   console.log('\n========== CALLING CDP SETTLE ==========\n');
 }
 
+/**
+ * Base58 encoder for Solana addresses
+ */
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+function base58Encode(bytes: Buffer | Uint8Array): string {
+  const digits = [0];
+  for (const byte of bytes) {
+    let carry = byte;
+    for (let i = 0; i < digits.length; i++) {
+      carry += digits[i] << 8;
+      digits[i] = carry % 58;
+      carry = (carry / 58) | 0;
+    }
+    while (carry > 0) {
+      digits.push(carry % 58);
+      carry = (carry / 58) | 0;
+    }
+  }
+  let result = '';
+  for (const byte of bytes) {
+    if (byte === 0) result += '1';
+    else break;
+  }
+  for (let i = digits.length - 1; i >= 0; i--) {
+    result += BASE58_ALPHABET[digits[i]];
+  }
+  return result;
+}
+
+/**
+ * Debug Solana TX structure before CDP verify - shows accounts and transfer details
+ */
+function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
+  try {
+    const tx = Buffer.from(base64Tx, 'base64');
+    const numSigs = tx[0];
+    const msgStart = 1 + numSigs * 64;
+    const msg = tx.slice(msgStart);
+
+    const versioned = (msg[0] & 0x80) !== 0;
+    const off = versioned ? 1 : 0;
+    const numAccts = msg[off + 3];
+
+    // Extract accounts
+    const accts: string[] = [];
+    for (let i = 0; i < numAccts; i++) {
+      const start = off + 4 + i * 32;
+      accts.push(base58Encode(msg.slice(start, start + 32)));
+    }
+
+    // Find transfer instruction (discriminator 12 = TransferChecked)
+    const acctEnd = off + 4 + numAccts * 32;
+    const instrStart = acctEnd + 32; // after blockhash
+    const numInstr = msg[instrStart];
+
+    let transferInfo = '';
+    let instrOff = instrStart + 1;
+    for (let i = 0; i < numInstr; i++) {
+      const progIdx = msg[instrOff];
+      const numAcctsInstr = msg[instrOff + 1];
+      const acctIdxs = Array.from(msg.slice(instrOff + 2, instrOff + 2 + numAcctsInstr));
+      const dataLen = msg[instrOff + 2 + numAcctsInstr];
+      const data = msg.slice(instrOff + 3 + numAcctsInstr, instrOff + 3 + numAcctsInstr + dataLen);
+
+      if (data[0] === 12 && dataLen >= 10) { // TransferChecked
+        const amt = Buffer.from(data.slice(1, 9)).readBigUInt64LE();
+        transferInfo = `src:[${acctIdxs[0]}]${accts[acctIdxs[0]]?.slice(0,8)}.. mint:[${acctIdxs[1]}]${accts[acctIdxs[1]]?.slice(0,8)}.. dest:[${acctIdxs[2]}]${accts[acctIdxs[2]]?.slice(0,8)}.. auth:[${acctIdxs[3]}]${accts[acctIdxs[3]]?.slice(0,8)}.. amt:${amt}`;
+      }
+      instrOff += 3 + numAcctsInstr + dataLen;
+    }
+
+    // Label key accounts
+    const labels: string[] = accts.map((a, i) => {
+      let l = `[${i}]${a.slice(0,12)}..`;
+      if (a === req.payTo) l += ' ←RECIPIENT';
+      if (a === req.asset) l += ' ←MINT';
+      if (a === req.extra?.feePayer) l += ' ←FEEPAYER';
+      return l;
+    });
+
+    console.log(`[SOLANA_DEBUG] ${req.network} | ${numAccts} accounts | ${numSigs} sigs`);
+    console.log(`  Accounts: ${labels.join(' | ')}`);
+    console.log(`  Transfer: ${transferInfo}`);
+    console.log(`  Expected: payTo=${req.payTo?.slice(0,12)}.. asset=${req.asset?.slice(0,12)}.. feePayer=${(req.extra?.feePayer as string)?.slice(0,12) || '?'}..`);
+  } catch (e) {
+    console.log(`[SOLANA_DEBUG] Failed to decode: ${e}`);
+  }
+}
+
 // CAIP-2 network identifiers for x402 v2
 type SupportedX402Network =
   | 'eip155:8453'      // Base mainnet
@@ -1321,9 +1410,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
 
     // Basic guard to ensure amounts align before calling facilitator
-    console.log(`[x402] Purchase request for article ${articleId} on ${paymentRequirement.network} → payTo ${paymentRequirement.payTo}, asset ${paymentRequirement.asset}`);
-    console.log('[x402] Received payment payload:', JSON.stringify(paymentPayload, null, 2));
-    const requiredAmount = BigInt(paymentRequirement.amount);  // v2: renamed from maxAmountRequired
+    const requiredAmount = BigInt(paymentRequirement.amount);
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
     const providedAmount = authorization && typeof authorization.value !== 'undefined'
@@ -1341,31 +1428,17 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
     const transactionValue = hasTransaction ? (rawPayload as { transaction: string }).transaction : undefined;
 
-    console.log('[x402] Verifying payment payload:', JSON.stringify({
-      articleId,
-      paymentRequirement,
-      payloadPreview: {
-        scheme: paymentPayload.accepted.scheme,  // v2: scheme is in accepted
-        network: paymentPayload.accepted.network,  // v2: network is in accepted
-        hasTransaction,
-        transactionLength: transactionValue?.length,
-      }
-    }, null, 2));
+    console.log(`[x402] Article ${articleId} | ${paymentRequirement.network} | ${hasTransaction ? 'SVM' : 'EVM'}`);
 
-    // DEBUG: Log raw transaction for offline simulation with scripts/simulate-solana-tx.ts
+    // Solana debug: decode TX structure before CDP verify
     if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
-      console.log('[x402] RAW_SOLANA_TX:', transactionValue);
-      // Log data needed for CDP verify script
-      console.log('[x402] CDP_VERIFY_DATA:');
-      console.log('  PAYMENT_HEADER:', paymentHeader);
-      console.log('  PAYMENT_REQUIREMENT:', JSON.stringify(paymentRequirement));
+      debugSolanaTx(transactionValue, paymentRequirement);
     }
 
     let verification;
     try {
       verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
-      // DEBUG: Log full verification response to diagnose Solana failures
-      console.log('[x402] Full verification response:', JSON.stringify(verification, null, 2));
+      console.log(`[x402] Verify: ${verification.isValid ? '✅' : '❌'} ${verification.invalidReason || ''}`);
     } catch (error: any) {
       let responseBody;
       if (error?.response?.text) {
@@ -1482,11 +1555,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       purchaseDelta: 1,
     });
 
-    console.log(`✅ Purchase successful: "${article.title}" (ID: ${article.id})`);
-    console.log(`   💰 Amount: $${article.price.toFixed(2)} | 🧾 From: ${payerAddress || 'unknown'} | ✉️ To: ${paymentRequirement.payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`✅ Purchase: Article ${article.id} | $${article.price.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
 
     return res.json({
       success: true,
@@ -1593,8 +1662,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Donation request on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-    console.log(`💰 Processing donation of $${amount} to platform`);
+    console.log(`[x402] Donation | ${networkPreference} | $${amount}`);
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1608,7 +1676,6 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.log('🔍 Verifying donation payment with CDP facilitator...');
     const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
     
     if (!verification.isValid) {
@@ -1661,10 +1728,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Donation successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`✅ Donation: $${amount.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
 
     return res.json({
       success: true,
@@ -1781,8 +1845,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Tip request for article ${articleId} on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-    console.log(`💰 Processing $${amount} tip for article ${articleId} to ${payTo}`);
+    console.log(`[x402] Tip | Article ${articleId} | ${networkPreference} | $${amount}`);
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1796,7 +1859,6 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
-    console.log('🔍 Verifying tip payment with CDP facilitator...');
     const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
@@ -1849,10 +1911,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Tip successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`✅ Tip: Article ${articleId} | $${amount.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
 
     await incrementAuthorLifetimeStats(article.authorAddress, {
       earningsDelta: amount,

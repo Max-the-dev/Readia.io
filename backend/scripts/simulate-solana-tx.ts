@@ -261,26 +261,6 @@ async function simulateTransaction(base64Tx: string, network: string) {
   }
 }
 
-// Parse CLI args
-const args = process.argv.slice(2);
-
-if (args.length === 0) {
-  console.log(`
-Solana Transaction Simulator
-
-Usage:
-  npx ts-node scripts/simulate-solana-tx.ts <base64_transaction> [network]
-
-Arguments:
-  base64_transaction  The base64-encoded transaction (from RAW_SOLANA_TX log)
-  network            'devnet' or 'mainnet' (default: mainnet)
-
-Example:
-  npx ts-node scripts/simulate-solana-tx.ts "AgAAAAAAAA..." mainnet
-`);
-  process.exit(0);
-}
-
 // CDP Verify function
 async function verifyCDP(paymentPayloadB64: string, paymentRequirementJson: string) {
   console.log('\n🔐 Calling CDP Verify Endpoint...\n');
