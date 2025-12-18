@@ -66,6 +66,7 @@ const corsOptions: CorsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],  // v2: renamed from X-PAYMENT
+  exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],  // x402 v2 response headers
 };
 
 app.use(cors(corsOptions));
