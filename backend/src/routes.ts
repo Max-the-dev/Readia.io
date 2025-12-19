@@ -22,7 +22,7 @@ import {
 import { checkForSpam, checkContentQuality } from './spamPrevention';
 // x402 v2 imports
 import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
-import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
+import { PaymentPayload } from '@x402/core/types';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { ExactSvmScheme } from '@x402/svm/exact/server';
 // @ts-ignore - CDP SDK has type issues in v0.x
@@ -244,14 +244,6 @@ const upload = multer({
   }
 });
 
-
-const SOLANA_USDC_MAINNET =
-  process.env.X402_SOLANA_MAINNET_USDC_ADDRESS ||
-  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-const SOLANA_USDC_DEVNET =
-  process.env.X402_SOLANA_DEVNET_USDC_ADDRESS ||
-  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
-
 const PLATFORM_EVM_ADDRESS = normalizeAddress(
   process.env.X402_PLATFORM_EVM_ADDRESS || '0x6945890B1c074414b813C7643aE10117dec1C8e7'
 );
@@ -309,21 +301,6 @@ function resolvePayTo(payoutProfile: PayoutProfile, network: SupportedX402Networ
   }
 
   throw new Error('AUTHOR_NETWORK_UNSUPPORTED');
-}
-
-// Choose the right USDC contract/mint for the network. Base(*) use ERC-20 addresses,
-// Solana networks use the SPL USDC mint (with env overrides if provided).
-function resolveAsset(network: SupportedX402Network | string): string {
-  // Base mainnet
-  if (network === 'eip155:8453') {
-    return process.env.X402_MAINNET_USDC_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-  }
-  // Base Sepolia
-  if (network === 'eip155:84532') {
-    return process.env.X402_TESTNET_USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
-  }
-  // Solana mainnet vs devnet
-  return network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
 }
 
 function normalizeRecipientForNetwork(address: string, network: SupportedX402Network | string): string {
@@ -459,57 +436,28 @@ function estimateReadTime(content: string): string {
 // GET /api/x402 - x402 Discovery endpoint for x402scan listing
 router.get('/x402', async (req: Request, res: Response) => {
   const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'eip155:8453';
-  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
-  const isSolana = isSolanaNetwork(network);
+  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402?network=${network}`;
 
-  // Resolve payTo based on network
-  const payTo = isSolana ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
+  // Resolve payTo based on network (same pattern as purchase endpoint)
+  const payTo = isSolanaNetwork(network) ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
 
-  // Build network-specific extra fields
-  const extra: Record<string, unknown> = {
-    title: 'Readia.io Platform',
-    category: 'content',
-    tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
-    serviceName: 'Readia.io',
-    serviceDescription: 'Readia.io - The New Content Economy',
-    pricing: {
-      currency: 'USD',
-      amount: '0.01',
-      display: '$0.01'
-    }
-  };
-
-  // Add network-specific fields
-  if (isSolana) {
-    const feePayer = resourceServer.getSupportedKind(2, network, 'exact')?.extra?.feePayer;
-    if (feePayer) extra.feePayer = feePayer;
-  } else {
-    extra.name = 'USD Coin';
-    extra.version = '2';
-  }
-
-  // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
-  const paymentRequirement: PaymentRequirements = {
+  // Build payment requirements using SDK (handles feePayer, asset, network-specific extras)
+  const requirements = await resourceServer.buildPaymentRequirements({
     scheme: 'exact',
     network,
-    asset: resolveAsset(network as SupportedX402Network),
-    amount: '10000',  // v2: renamed from maxAmountRequired ($0.01 symbolic)
+    price: 0.01,  // $0.01 symbolic for discovery
     payTo,
-    maxTimeoutSeconds: 900,
-    extra
-  };
+    maxTimeoutSeconds: 900
+  });
+  const paymentRequirement = requirements[0];
 
-  // v2 PaymentRequired response with top-level resource
-  const paymentRequired = {
-    x402Version: 2,
-    error: 'Payment required',
-    resource: {
-      url: resourceUrl,
-      description: 'Readia.io - The New Content Economy',
-      mimeType: 'application/json'
-    },
-    accepts: [paymentRequirement]
-  };
+  // v2 PaymentRequired response using SDK helper
+  const paymentRequired = resourceServer.createPaymentRequiredResponse(
+    [paymentRequirement],
+    { url: resourceUrl, description: 'Readia.io - The New Content Economy', mimeType: 'application/json' },
+    'Payment required'
+  );
+
   res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
   return res.status(402).json(paymentRequired);
 });
