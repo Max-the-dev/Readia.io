@@ -21,8 +21,10 @@ import {
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
 // x402 v2 imports
-import { HTTPFacilitatorClient } from '@x402/core/server';
-import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
+import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
+import { PaymentPayload } from '@x402/core/types';
+import { ExactEvmScheme } from '@x402/evm/exact/server';
+import { ExactSvmScheme } from '@x402/svm/exact/server';
 // @ts-ignore - CDP SDK has type issues in v0.x
 import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import {
@@ -33,10 +35,6 @@ import {
   tryNormalizeSolanaAddress,
   tryNormalizeAddress,
 } from './utils/address';
-// settlementService removed in v2 - using facilitatorClient.settle() directly
-import { getFacilitatorFeePayer } from './facilitatorSupport';
-import { getCACertificates } from 'tls';
-import { success } from 'zod';
 import { requireAuth, requireOwnership, AuthenticatedRequest } from './auth';
 
 const router = express.Router();
@@ -50,11 +48,11 @@ const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
 const facilitatorClient = new HTTPFacilitatorClient({
   url: CDP_FACILITATOR_URL,
   createAuthHeaders: async () => {
-    const generateAuthForPath = async (path: string) => {
+    const generateAuthForPath = async (path: string, method: 'GET' | 'POST' = 'POST') => {
       const token = await generateJwt({
         apiKeyId: process.env.CDP_API_KEY_ID!,
         apiKeySecret: process.env.CDP_API_KEY_SECRET!,
-        requestMethod: 'POST',
+        requestMethod: method,
         requestHost: 'api.cdp.coinbase.com',
         requestPath: `/platform/v2/x402/${path}`,
         expiresIn: 120
@@ -63,68 +61,28 @@ const facilitatorClient = new HTTPFacilitatorClient({
     };
 
     return {
-      verify: await generateAuthForPath('verify'),
-      settle: await generateAuthForPath('settle'),
-      supported: await generateAuthForPath('supported')  // For querying supported networks/schemes
+      verify: await generateAuthForPath('verify', 'POST'),
+      settle: await generateAuthForPath('settle', 'POST'),
+      supported: await generateAuthForPath('supported', 'GET')  // /supported uses GET
     };
   }
 });
 
+// x402 v2 Resource Server with scheme registrations
+// brooo
+const resourceServer = new x402ResourceServer(facilitatorClient)
+  .register('eip155:8453', new ExactEvmScheme())
+  .register('eip155:84532', new ExactEvmScheme())
+  .register('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', new ExactSvmScheme())
+  .register('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', new ExactSvmScheme());
+
 /**
- * Debug logging helper for settlement - replicates logs from old settlementService.ts
+ * Initialize the x402 resource server (fetches /supported from CDP and caches fee payers)
+ * Must be called on app startup before handling payment requests
  */
-function logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): void {
-  console.log('🔧 SETTLEMENT DEBUG:');
-  console.log('\n========== CDP SETTLEMENT REQUEST ==========');
-
-  // v2: scheme and network are in the 'accepted' field
-  const scheme = paymentPayload.accepted?.scheme || 'unknown';
-  const network = paymentPayload.accepted?.network || 'unknown';
-  console.log('🔧 Network:', network);
-  console.log('📋 Scheme:', scheme);
-
-  const payloadData = paymentPayload.payload as Record<string, unknown>;
-  const hasAuthorization = payloadData && typeof payloadData === 'object' && 'authorization' in payloadData;
-  const hasTransaction = payloadData && typeof payloadData === 'object' && 'transaction' in payloadData;
-
-  if (hasAuthorization) {
-    const authorization = payloadData.authorization as Record<string, unknown>;
-    console.log('\n--- AUTHORIZATION DETAILS ---');
-    console.log('From (payer):', authorization.from);
-    console.log('To (recipient):', authorization.to);
-    console.log('Value (micro USDC):', authorization.value);
-    console.log('Nonce:', authorization.nonce);
-
-    console.log('\n--- TIME WINDOW ---');
-    const validAfter = parseInt(authorization.validAfter as string, 10);
-    const validBefore = parseInt(authorization.validBefore as string, 10);
-    const windowSeconds = validBefore - validAfter;
-    const maxTimeout = paymentRequirements.maxTimeoutSeconds || 0;
-    const sdkPaddingSeconds = 600; // x402 client backdates validAfter by 10 minutes
-    const allowedWindow = maxTimeout + sdkPaddingSeconds;
-
-    console.log('ValidAfter:', validAfter, new Date(validAfter * 1000).toISOString());
-    console.log('ValidBefore:', validBefore, new Date(validBefore * 1000).toISOString());
-    console.log('Window Duration:', windowSeconds, 'seconds');
-    console.log('Allowed Duration (incl. SDK padding):', allowedWindow, 'seconds');
-    console.log('VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
-
-    console.log('\n--- SIGNATURE ---');
-    console.log('Signature:', payloadData.signature);
-  } else if (hasTransaction) {
-    console.log('\n--- TRANSACTION DETAILS (SVM) ---');
-    const transaction = payloadData.transaction as string;
-    console.log('Transaction (base64, first 120 chars):', transaction.slice(0, 120) + (transaction.length > 120 ? '...' : ''));
-    console.log('Transaction Length:', transaction.length);
-    console.log('Skipping EVM-specific authorization window validation for SVM payload.');
-  }
-
-  console.log('\n--- PAYMENT REQUIREMENTS ---');
-  console.log('Amount:', paymentRequirements.amount);  // v2: renamed from maxAmountRequired
-  console.log('Asset (USDC):', paymentRequirements.asset);
-  console.log('PayTo:', paymentRequirements.payTo);
-
-  console.log('\n========== CALLING CDP SETTLE ==========\n');
+export async function initializeResourceServer(): Promise<void> {
+  await resourceServer.initialize();
+  console.log('[x402] ✅ Resource server initialized with scheme registrations for all networks');
 }
 
 // CAIP-2 network identifiers for x402 v2
@@ -286,14 +244,6 @@ const upload = multer({
   }
 });
 
-
-const SOLANA_USDC_MAINNET =
-  process.env.X402_SOLANA_MAINNET_USDC_ADDRESS ||
-  'EPjFWdd5AufqSSqeM2qE7c4wAkwcGw7Doe8kJ3e1ecp';
-const SOLANA_USDC_DEVNET =
-  process.env.X402_SOLANA_DEVNET_USDC_ADDRESS ||
-  '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
-
 const PLATFORM_EVM_ADDRESS = normalizeAddress(
   process.env.X402_PLATFORM_EVM_ADDRESS || '0x6945890B1c074414b813C7643aE10117dec1C8e7'
 );
@@ -318,7 +268,7 @@ function buildPayoutProfile(article: Article, authorOverride?: Author | null): P
   const primaryNetwork = (
     authorOverride?.primaryPayoutNetwork ||
     article.authorPrimaryNetwork ||
-    'base'
+    'eip155:8453'  // Base mainnet (CAIP-2)
   ) as SupportedX402Network;
 
   return {
@@ -353,78 +303,15 @@ function resolvePayTo(payoutProfile: PayoutProfile, network: SupportedX402Networ
   throw new Error('AUTHOR_NETWORK_UNSUPPORTED');
 }
 
-// Choose the right USDC contract/mint for the network. Base(*) use ERC-20 addresses,
-// Solana networks use the SPL USDC mint (with env overrides if provided).
-function resolveAsset(network: SupportedX402Network | string): string {
-  // Base mainnet
-  if (network === 'eip155:8453') {
-    return process.env.X402_MAINNET_USDC_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-  }
-  // Base Sepolia
-  if (network === 'eip155:84532') {
-    return process.env.X402_TESTNET_USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
-  }
-  // Solana mainnet vs devnet
-  return network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp' ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
-}
-
 function normalizeRecipientForNetwork(address: string, network: SupportedX402Network | string): string {
   return isSolanaNetwork(network)
     ? normalizeSolanaAddress(address)
     : normalizeAddress(address);
 }
 
-/**
- * Builds the PaymentRequirements object for purchases, choosing the correct payout address and asset per network.
- */
-async function buildPaymentRequirement(
-  article: Article,
-  payoutProfile: PayoutProfile,
-  network: SupportedX402Network
-): Promise<PaymentRequirements> {
-  const priceInCents = Math.round(article.price * 100);
-  const priceInMicroUSDC = (priceInCents * 10000).toString();
-  const displayAssetName = network === 'eip155:8453' ? 'USD Coin' : 'USDC';
-
-  const payTo = resolvePayTo(payoutProfile, network);
-  const asset = resolveAsset(network);
-  let feePayer: string | undefined;
-
-  // use cached CDP feePayer for solana tx
-  if (getNetworkGroup(network) === 'solana') {
-    const rawFeePayer = await getFacilitatorFeePayer(network);
-    feePayer = rawFeePayer ? normalizeSolanaAddress(rawFeePayer) : undefined;
-    if (!feePayer) {
-      throw new Error('FACILITATOR_FEE_PAYER_UNAVAILABLE');
-    }
-  }
-
-  // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
-  return {
-    scheme: 'exact',
-    network,
-    asset,
-    amount: priceInMicroUSDC,  // v2: renamed from maxAmountRequired
-    payTo,
-    maxTimeoutSeconds: 900,
-    extra: {
-      name: displayAssetName,
-      version: '2',
-      title: `Purchase: ${article.title}`,
-      category: article.categories?.[0] || 'content',
-      tags: article.categories || ['article', 'content'],
-      serviceName: 'Readia.io Article Access',
-      serviceDescription: `Unlock full access to "${article.title}" by ${article.authorAddress.slice(0, 6)}...${article.authorAddress.slice(-4)}`,
-      gasLimit: '1000000',
-      ...(feePayer ? { feePayer } : {}),
-      pricing: {
-        currency: displayAssetName,
-        amount: article.price.toString(),
-        display: `$${article.price.toFixed(2)}`
-      }
-    }
-  };
-}
+// NOTE: buildPaymentExtra and buildPaymentRequirement functions removed
+// Payment requirements are now built using resourceServer.buildPaymentRequirements() from @x402/core
+// which handles fee payer, asset, and amount parsing automatically per network
 
 /**
  * normalizes based on the hint: 
@@ -549,43 +436,28 @@ function estimateReadTime(content: string): string {
 // GET /api/x402 - x402 Discovery endpoint for x402scan listing
 router.get('/x402', async (req: Request, res: Response) => {
   const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'eip155:8453';
-  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
+  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402?network=${network}`;
 
-  // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
-  const paymentRequirement: PaymentRequirements = {
+  // Resolve payTo based on network (same pattern as purchase endpoint)
+  const payTo = isSolanaNetwork(network) ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
+
+  // Build payment requirements using SDK (handles feePayer, asset, network-specific extras)
+  const requirements = await resourceServer.buildPaymentRequirements({
     scheme: 'exact',
     network,
-    asset: resolveAsset(network as SupportedX402Network),
-    amount: '10000',  // v2: renamed from maxAmountRequired ($0.01 symbolic)
-    payTo: PLATFORM_EVM_ADDRESS,
-    maxTimeoutSeconds: 900,
-    extra: {
-      name: 'USD Coin',
-      version: '2',
-      title: 'Readia.io Platform',
-      category: 'content',
-      tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
-      serviceName: 'Readia.io',
-      serviceDescription: 'Readia.io - The New Content Economy',
-      pricing: {
-        currency: 'USD',
-        amount: '0.01',
-        display: '$0.01'
-      }
-    }
-  };
+    price: 0.01,  // $0.01 symbolic for discovery
+    payTo,
+    maxTimeoutSeconds: 900
+  });
+  const paymentRequirement = requirements[0];
 
-  // v2 PaymentRequired response with top-level resource
-  const paymentRequired = {
-    x402Version: 2,
-    error: 'Payment required',
-    resource: {
-      url: resourceUrl,
-      description: 'Readia.io - The New Content Economy',
-      mimeType: 'application/json'
-    },
-    accepts: [paymentRequirement]
-  };
+  // v2 PaymentRequired response using SDK helper
+  const paymentRequired = resourceServer.createPaymentRequiredResponse(
+    [paymentRequirement],
+    { url: resourceUrl, description: 'Readia.io - The New Content Economy', mimeType: 'application/json' },
+    'Payment required'
+  );
+
   res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
   return res.status(402).json(paymentRequired);
 });
@@ -1244,9 +1116,11 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     const networkPreference = resolveNetworkPreference(req);
     const authorRecord = await db.getAuthor(article.authorAddress);
     const payoutProfile = buildPayoutProfile(article, authorRecord);
-    let paymentRequirement: PaymentRequirements;
+
+    // Resolve payout address for this network
+    let payTo: string;
     try {
-      paymentRequirement = await buildPaymentRequirement(article, payoutProfile, networkPreference);
+      payTo = resolvePayTo(payoutProfile, networkPreference);
     } catch (error) {
       if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
         return res.status(400).json({
@@ -1256,21 +1130,27 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       }
       throw error;
     }
+
+    // Build payment requirements using SDK (handles fee payer, asset, amount parsing)
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: networkPreference,
+      price: article.price,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+
     const paymentHeader = req.headers['payment-signature'];  // v2: renamed from x-payment
     const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${article.id}/purchase?network=${networkPreference}`;
 
     if (!paymentHeader) {
-      // v2 PaymentRequired response with top-level resource
-      const paymentRequired = {
-        x402Version: 2,
-        error: 'Payment required',
-        resource: {
-          url: resourceUrl,
-          description: `Purchase access to: ${article.title}`,
-          mimeType: 'application/json'
-        },
-        accepts: [paymentRequirement]
-      };
+      // v2 PaymentRequired response using SDK helper
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        { url: resourceUrl, description: `Purchase access to: ${article.title}`, mimeType: 'application/json' },
+        'Payment required'
+      );
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
       return res.status(402).json(paymentRequired);
     }
@@ -1288,9 +1168,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
 
     // Basic guard to ensure amounts align before calling facilitator
-    console.log(`[x402] Purchase request for article ${articleId} on ${paymentRequirement.network} → payTo ${paymentRequirement.payTo}, asset ${paymentRequirement.asset}`);
-    console.log('[x402] Received payment payload:', JSON.stringify(paymentPayload, null, 2));
-    const requiredAmount = BigInt(paymentRequirement.amount);  // v2: renamed from maxAmountRequired
+    const requiredAmount = BigInt(paymentRequirement.amount);
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
     const providedAmount = authorization && typeof authorization.value !== 'undefined'
@@ -1306,24 +1184,14 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     // Verify payment with facilitator
     const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
-    const transactionValue = hasTransaction ? (rawPayload as { transaction: string }).transaction : undefined;
-
-    console.log('[x402] Verifying payment payload:', JSON.stringify({
-      articleId,
-      paymentRequirement,
-      payloadPreview: {
-        scheme: paymentPayload.accepted.scheme,  // v2: scheme is in accepted
-        network: paymentPayload.accepted.network,  // v2: network is in accepted
-        hasTransaction,
-        transactionLength: transactionValue?.length,
-      }
-    }, null, 2));
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     let verification;
     try {
-      verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
+      verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
     } catch (error: any) {
       let responseBody;
+      let correlationId: string | undefined;
       if (error?.response?.text) {
         try {
           responseBody = await error.response.text();
@@ -1331,10 +1199,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
           responseBody = `Failed to read response body: ${bodyError}`;
         }
       }
-      const correlationId =
-        (error?.response?.headers?.get && error.response.headers.get('correlation-id')) ||
-        error?.response?.headers?.get?.('x-correlation-id') ||
-        error?.response?.headers?.get?.('Correlation-Context');
+      if (error?.response?.headers?.get) {
+        correlationId =
+          error.response.headers.get('correlation-id') ||
+          error.response.headers.get('x-correlation-id') ||
+          error.response.headers.get('Correlation-Context');
+      }
 
       console.error('[x402] Facilitator verify failed:', {
         message: error?.message,
@@ -1342,13 +1212,13 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
         correlationId,
         body: responseBody,
       });
-
       return res.status(502).json({
         success: false,
         error: 'Payment verification failed: facilitator error',
       });
     }
     if (!verification.isValid) {
+      console.log(`[x402] ❌ Purchase | Article ${articleId} | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
@@ -1400,11 +1270,11 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       }
     }
 
-    // Early check to query db if already paid for article BEFORE settlement goes out 
+    // Early check to query db if already paid for article BEFORE settlement goes out
     if (payerAddress) {
-      const aldreadyPaid = await checkPaymentStatus(articleId, payerAddress);
-      if (aldreadyPaid) {
-        console.log(`⚠️ Duplicate payment attempt blocked for article ${articleId} by ${payerAddress}`);
+      const alreadyPaid = await checkPaymentStatus(articleId, payerAddress);
+      if (alreadyPaid) {
+        console.warn(`[x402] ⚠️ Purchase | Article ${articleId} | Duplicate blocked | Buyer: ${payerAddress}`);
         return res.status(409).json({
         success: false,
         error: 'You have already purchased this article',
@@ -1413,9 +1283,8 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
     }
   }
 
-    // Settle authorization using CDP facilitator
-    logSettlementDebug(paymentPayload, paymentRequirement);
-    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
+    // Settle authorization using SDK (wraps facilitator with hooks)
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
    
 
     // v2: Check settlement success
@@ -1438,11 +1307,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       purchaseDelta: 1,
     });
 
-    console.log(`✅ Purchase successful: "${article.title}" (ID: ${article.id})`);
-    console.log(`   💰 Amount: $${article.price.toFixed(2)} | 🧾 From: ${payerAddress || 'unknown'} | ✉️ To: ${paymentRequirement.payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`[x402] ✅ Purchase
+  Article: ${article.id}
+  Network: ${paymentRequirement.network} | ${networkType}
+  Price: $${article.price.toFixed(2)}
+  Buyer: ${payerAddress || 'unknown'}
+  Seller: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     return res.json({
       success: true,
@@ -1477,7 +1347,6 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const amountInMicroUSDC = Math.floor(amount * 1_000_000);
     const networkPreference = resolveNetworkPreference(req);
     const payTo =
       isSolanaNetwork(networkPreference)
@@ -1491,67 +1360,33 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const asset = resolveAsset(networkPreference);
-    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
-    let feePayer: string | undefined;
-    if (networkGroup === 'solana') {
-      const rawFeePayer = await getFacilitatorFeePayer(networkPreference);
-      if (!rawFeePayer) {
-        console.error('[x402] Facilitator fee payer unavailable for donations on', networkPreference);
-        return res.status(503).json({
-          success: false,
-          error: 'Facilitator fee payer unavailable. Please try again shortly.'
-        });
-      }
-      feePayer = normalizeSolanaAddress(rawFeePayer);
-    }
-
-    // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
-    const paymentRequirement: PaymentRequirements = {
+    // Build payment requirements using SDK (handles fee payer, asset, amount parsing)
+    const requirements = await resourceServer.buildPaymentRequirements({
       scheme: 'exact',
       network: networkPreference,
-      asset,
-      amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
+      price: amount,
       payTo,
-      maxTimeoutSeconds: 900,
-      extra: {
-        name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
-        version: '2',
-        title: `Donate $${amount} to Readia.io`,
-        category: 'donation',
-        tags: ['donation', 'platform-support'],
-        serviceName: 'Readia.io Platform Donation',
-        serviceDescription: `Support Readia.io platform with a $${amount} donation`,
-        ...(feePayer ? { feePayer } : {}),
-        pricing: {
-          currency: 'USD',
-          amount: amount.toString(),
-          display: `$${amount.toFixed(2)}`
-        }
-      }
-    };
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
 
     // If no payment header, return 402 with requirements
     const resourceUrl = `${req.protocol}://${req.get('host')}/api/donate?network=${networkPreference}`;
     if (!paymentHeader) {
-      // v2 PaymentRequired response with top-level resource
-      const paymentRequired = {
-        x402Version: 2,
-        error: 'Payment required',
-        resource: {
-          url: resourceUrl,
-          description: `Donation to Readia.io platform - $${amount}`,
-          mimeType: 'application/json'
-        },
-        accepts: [paymentRequirement]
-      };
+      // v2 PaymentRequired response using SDK helper
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        { url: resourceUrl, description: `Donation to Readia.io platform - $${amount}`, mimeType: 'application/json' },
+        'Payment required'
+      );
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
       return res.status(402).json(paymentRequired);
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Donation request on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-    console.log(`💰 Processing donation of $${amount} to platform`);
+    const hasTransaction = paymentHeader && typeof paymentHeader === 'string';
+    const networkType = networkGroup === 'solana' ? 'SVM' : 'EVM';
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1565,20 +1400,20 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    console.log('🔍 Verifying donation payment with CDP facilitator...');
-    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
-    
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+
+    const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
+
     if (!verification.isValid) {
+      console.log(`[x402] ❌ Donation | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
         details: verification.invalidReason
       });
     }
-
-    // v2: Access authorization from payload with type safety
-    const rawPayload = paymentPayload.payload as Record<string, unknown>;
-    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
@@ -1603,12 +1438,11 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    logSettlementDebug(paymentPayload, paymentRequirement);
-    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
     // v2: Check settlement success
     if (!settlement.success) {
-      console.error('❌ Donation settlement failed:', settlement.errorReason);
+      console.error('[x402] Donation settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Donation settlement failed. Please try again.',
@@ -1618,10 +1452,11 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Donation successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`[x402] ✅ Donation
+  Network: ${networkPreference} | ${networkType}
+  Amount: $${amount.toFixed(2)}
+  Donor: ${payerAddress || 'unknown'}
+  Platform: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     return res.json({
       success: true,
@@ -1668,7 +1503,6 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     const authorRecord = await db.getAuthor(article.authorAddress);
     const payoutProfile = buildPayoutProfile(article, authorRecord);
 
-    const amountInMicroUSDC = Math.floor(amount * 1_000_000);
     const networkPreference = resolveNetworkPreference(req);
     let payTo: string;
     try {
@@ -1680,67 +1514,32 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
-    const asset = resolveAsset(networkPreference);
-    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
-    let feePayer: string | undefined;
-    if (networkGroup === 'solana') {
-      const rawFeePayer = await getFacilitatorFeePayer(networkPreference);
-      if (!rawFeePayer) {
-        console.error('[x402] Facilitator fee payer unavailable for tips on', networkPreference);
-        return res.status(503).json({
-          success: false,
-          error: 'Facilitator fee payer unavailable. Please try again shortly.'
-        });
-      }
-      feePayer = normalizeSolanaAddress(rawFeePayer);
-    }
-
-    // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
-    const paymentRequirement: PaymentRequirements = {
+    // Build payment requirements using SDK (handles fee payer, asset, amount parsing)
+    const requirements = await resourceServer.buildPaymentRequirements({
       scheme: 'exact',
       network: networkPreference,
-      asset,
-      amount: amountInMicroUSDC.toString(),  // v2: renamed from maxAmountRequired
+      price: amount,
       payTo,
-      maxTimeoutSeconds: 900,
-      extra: {
-        name: networkPreference === 'eip155:8453' ? 'USD Coin' : 'USDC',
-        version: '2',
-        title: `Tip $${amount} to author`,
-        category: 'tip',
-        tags: ['tip', 'author-support', 'article'],
-        serviceName: 'Readia.io Article Tip',
-        serviceDescription: `Tip the author of "${article.title}" with $${amount}`,
-        ...(feePayer ? { feePayer } : {}),
-        pricing: {
-          currency: 'USD',
-          amount: amount.toString(),
-          display: `$${amount.toFixed(2)}`
-        }
-      }
-    };
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+    const networkGroup = getNetworkGroup(networkPreference as SupportedX402Network);
 
     // If no payment header, return 402 with requirements
     const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${articleId}/tip?network=${networkPreference}`;
     if (!paymentHeader) {
-      // v2 PaymentRequired response with top-level resource
-      const paymentRequired = {
-        x402Version: 2,
-        error: 'Payment required',
-        resource: {
-          url: resourceUrl,
-          description: `Tip for article: ${article.title}`,
-          mimeType: 'application/json'
-        },
-        accepts: [paymentRequirement]
-      };
+      // v2 PaymentRequired response using SDK helper
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        { url: resourceUrl, description: `Tip for article: ${article.title}`, mimeType: 'application/json' },
+        'Payment required'
+      );
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
       return res.status(402).json(paymentRequired);
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Tip request for article ${articleId} on ${networkPreference} → payTo ${payTo}, asset ${asset}`);
-    console.log(`💰 Processing $${amount} tip for article ${articleId} to ${payTo}`);
+    const networkType = networkGroup === 'solana' ? 'SVM' : 'EVM';
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1754,20 +1553,20 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
       });
     }
 
-    console.log('🔍 Verifying tip payment with CDP facilitator...');
-    const verification = await facilitatorClient.verify(paymentPayload, paymentRequirement);
+    // v2: Access authorization from payload with type safety
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+
+    const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
+      console.log(`[x402] ❌ Tip | Article ${articleId} | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
         details: verification.invalidReason
       });
     }
-
-    // v2: Access authorization from payload with type safety
-    const rawPayload = paymentPayload.payload as Record<string, unknown>;
-    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
@@ -1792,12 +1591,11 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    logSettlementDebug(paymentPayload, paymentRequirement);
-    const settlement = await facilitatorClient.settle(paymentPayload, paymentRequirement);
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
     // v2: Check settlement success
     if (!settlement.success) {
-      console.error('❌ Tip settlement failed:', settlement.errorReason);
+      console.error('[x402] Tip settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Tip settlement failed. Please try again.',
@@ -1807,10 +1605,12 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Tip successful: $${amount.toFixed(2)} from ${payerAddress || 'unknown'} to ${payTo}`);
-    if (txHash) {
-      console.log(`   🔗 Transaction: ${txHash}`);
-    }
+    console.log(`[x402] ✅ Tip
+  Article: ${articleId}
+  Network: ${networkPreference} | ${networkType}
+  Amount: $${amount.toFixed(2)}
+  Tipper: ${payerAddress || 'unknown'}
+  Author: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     await incrementAuthorLifetimeStats(article.authorAddress, {
       earningsDelta: amount,

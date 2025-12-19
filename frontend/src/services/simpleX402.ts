@@ -18,11 +18,7 @@ class SimpleX402Service {
 
       if (response.status === 402) {
         // Payment required - this is normal for x402
-        const paymentData = await response.json();
-        console.log('Payment required:', paymentData);
-        
         // In a real x402 client, the browser/extension would handle this automatically
-        // For now, we'll return the payment requirements
         return {
           success: false,
           error: 'Payment required - x402 client needed'

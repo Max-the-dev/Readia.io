@@ -3,10 +3,10 @@ import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import path from 'path';
-import routes from './routes';
+import routes, { initializeResourceServer } from './routes';
 import authRouter from './auth';
 
-// feePayer helper function
+// feePayer helper function (legacy - keeping for debugging)
 import { ensureFacilitatorSupportLoaded } from './facilitatorSupport';
 
 
@@ -66,6 +66,7 @@ const corsOptions: CorsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'PAYMENT-SIGNATURE'],  // v2: renamed from X-PAYMENT
+  exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],  // x402 v2 response headers
 };
 
 app.use(cors(corsOptions));
@@ -116,20 +117,16 @@ if (PUBLIC_API_HOST) {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// x402 Payment Middleware Configuration
-const facilitatorUrl = process.env.CDP_API_KEY_ID
-  ? `https://facilitator.cdp.coinbase.com` // CDP facilitator
-  : process.env.X402_FACILITATOR_URL || 'https://x402.org/facilitator'; // Public fallback
+// x402 v2 Configuration
+const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
+const hasCdpCredentials = !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET);
 
-const network = process.env.X402_NETWORK || 'base-sepolia';
-
-console.log(`🔗 x402 Facilitator: ${facilitatorUrl}`);
-console.log(`🌐 Network: ${network}`);
-// Line 27
-if (process.env.CDP_API_KEY_ID) {
-  console.log(`✅ Using Coinbase CDP Facilitator`);
+console.log(`🔗 x402 Facilitator: ${CDP_FACILITATOR_URL}`);
+console.log(`🌐 Supported networks: eip155:8453, eip155:84532, solana:mainnet, solana:devnet`);
+if (hasCdpCredentials) {
+  console.log(`✅ CDP credentials configured`);
 } else {
-  console.log(`⚠️  Using public facilitator (testnet mode)`);
+  console.log(`⚠️  CDP credentials missing - payments will fail`);
 }
 
 // Health check endpoint
@@ -137,18 +134,28 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     message: 'Readia.io backend is running!',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
-    facilitator: facilitatorUrl,
-    network: network,
-    cdpEnabled: !!process.env.CDP_API_KEY_ID
+    version: '2.0.0',
+    x402: {
+      facilitator: CDP_FACILITATOR_URL,
+      networks: ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'],
+      cdpConfigured: hasCdpCredentials
+    }
   });
 });
 
-// Warming the fee payer into cache at boot time
+// Warming the fee payer into cache at boot time (legacy - keeping for debugging)
 ensureFacilitatorSupportLoaded()
-  .then(() => console.log('✅ Facilitator fee payer cache warm'))
+  .then(() => console.log('✅ Legacy facilitator fee payer cache warm'))
   .catch(error => {
-    console.error('⚠️ Failed to warm facilitator cache:', error);
+    console.error('⚠️ Failed to warm legacy facilitator cache:', error);
+  });
+
+// Initialize x402 v2 Resource Server (fetches /supported and caches fee payers per network)
+initializeResourceServer()
+  .then(() => console.log('✅ x402 Resource Server initialized'))
+  .catch(error => {
+    console.error('❌ Failed to initialize x402 Resource Server:', error);
+    process.exit(1);  // Critical - exit if we can't initialize payment processing
   });
 
 // Authentication routes must load before protected API routes
@@ -175,8 +182,7 @@ app.use((req: Request, res: Response) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Readia.io backend server running on port ${PORT}`);
-  console.log(`📚 API documentation available at http://localhost:${PORT}/api/health`);
+  // Server started silently - startup info logged above
 });
 
 server.on('error', (error: any) => {

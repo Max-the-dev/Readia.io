@@ -27,11 +27,8 @@ export function createSolanaTransactionSigner(
   provider?: SolanaWalletProvider | null
 ): TransactionSigner | undefined {
   if (!provider) {
-    // console.warn('[SolanaSigner] No provider received');
     return undefined;
   }
-
-  // console.log('[SolanaSigner] Provider keys:', Object.keys(provider));
 
   if (typeof (provider as TransactionSigner).signTransactions === 'function') {
     return provider as TransactionSigner;
@@ -109,16 +106,42 @@ function buildSignatureDictionary(
   signedTransaction: Web3Transaction
 ): SignatureDictionary {
   const signerAddresses = Object.keys(transaction.signatures) as Address<string>[];
+  const messageAccountKeys = getMessageAccountKeys(signedTransaction);
+  const result: Record<string, Uint8Array> = {};
 
-  const entries = signerAddresses.map((address, index) => {
-    const signatureBytes = extractSignatureBytes(signedTransaction, index);
-    if (!signatureBytes) {
-      throw new Error(`Missing signature for signer ${address}`);
+  for (const address of signerAddresses) {
+    const signerIndex = messageAccountKeys.findIndex(
+      (key) => key === address
+    );
+
+    if (signerIndex === -1) {
+      continue;
     }
-    return [address, signatureBytes] as const;
-  });
 
-  return Object.freeze(Object.fromEntries(entries));
+    const signatureBytes = extractSignatureBytes(signedTransaction, signerIndex);
+
+    if (!signatureBytes) {
+      continue;
+    }
+
+    // Skip empty signatures (fee payer slot)
+    const isEmpty = signatureBytes.every((byte) => byte === 0);
+    if (isEmpty) {
+      continue;
+    }
+
+    result[address] = signatureBytes;
+  }
+
+  return Object.freeze(result) as SignatureDictionary;
+}
+
+function getMessageAccountKeys(transaction: Web3Transaction): string[] {
+  if (transaction instanceof VersionedTransaction) {
+    return transaction.message.staticAccountKeys.map((key) => key.toBase58());
+  }
+  const legacyTx = transaction as LegacyTransaction;
+  return legacyTx.message.accountKeys.map((key: { toBase58(): string }) => key.toBase58());
 }
 
 function extractSignatureBytes(transaction: Web3Transaction, index: number): Uint8Array | null {

@@ -57,8 +57,8 @@ const AppKitConnectButton = () => {
           const isMainnet = caipNetworkId.includes('5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp');
 
           const rpcUrl = isMainnet
-            ? 'https://mainnet.helius-rpc.com/?api-key=df097add-2a0e-43c5-a06d-468c8641b459'
-            : 'https://api.devnet.solana.com';
+            ? import.meta.env.VITE_SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com'
+            : import.meta.env.VITE_SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com';
 
           // console.log('Connecting to Solana RPC:', rpcUrl);
           const connection = new Connection(rpcUrl, 'confirmed');
