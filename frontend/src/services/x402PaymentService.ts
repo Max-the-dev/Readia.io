@@ -1,8 +1,7 @@
 // x402 Payment Service for handling micropayments (v2)
 import { apiService } from './api';
 import { x402Client, x402HTTPClient } from '@x402/fetch';
-import type { PaymentPayload, PaymentRequired, PaymentRequirements } from '@x402/core/types';
-// v2: Use official helper for EVM, manual registration for SVM (custom RPC needed)
+import type { PaymentRequired } from '@x402/core/types';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
 import { ExactSvmScheme } from '@x402/svm/exact/client';
 import type { WalletClient } from 'viem';
@@ -120,10 +119,10 @@ class X402PaymentService {
       registerExactEvmScheme(baseClient, { signer: evmSigner });
     }
 
-    // v2: Register SVM scheme using official helper (matches test script)
+    // v2: Register SVM scheme with custom RPC (public RPC blocks browser requests)
     if (context.solanaSigner) {
-      console.log('[X402_DEBUG] Registering SVM scheme with registerExactSvmScheme');
-      registerExactSvmScheme(baseClient, { signer: context.solanaSigner });
+      const rpcUrl = this.getSolanaRpcUrl(context.network);
+      baseClient.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
     }
 
     return new x402HTTPClient(baseClient);
@@ -217,13 +216,6 @@ class X402PaymentService {
       throw new Error('No x402 payment data returned by server');
     }
 
-    console.log('[X402_DEBUG] Payment requirements:', {
-      contextNetwork: context.network,
-      requirementNetwork: requirement.accept?.network,
-      rawAcceptsNetwork: requirement.raw?.accepts?.[0]?.network,
-      networkMatch: context.network === requirement.accept?.network
-    });
-
     const requirementNetwork = requirement.accept?.network || context.network;
     const isSolana = requirementNetwork.startsWith('solana:');
 
@@ -245,12 +237,6 @@ class X402PaymentService {
     // Pass the sanitized 402 response (PaymentRequired) to create the v2 PaymentPayload
     // SDK will: copy resource, select accepted from accepts[], build signed payload
     const paymentPayload = await httpClient.createPaymentPayload(sanitizedRaw as PaymentRequired);
-
-    // DEBUG: Log the transaction AFTER SDK creates it, BEFORE encoding
-    const txBase64 = (paymentPayload as any).payload?.transaction;
-    if (txBase64) {
-      console.log('[X402_DEBUG] Transaction in paymentPayload (first 200 chars):', txBase64.slice(0, 200));
-    }
 
     // Encode to PAYMENT-SIGNATURE header format
     const headers = httpClient.encodePaymentSignatureHeader(paymentPayload);

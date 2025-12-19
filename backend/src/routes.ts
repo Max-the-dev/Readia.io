@@ -94,7 +94,8 @@ export async function initializeResourceServer(): Promise<void> {
 /**
  * Debug logging helper for settlement - replicates logs from old settlementService.ts
  */
-function logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): void {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): void {
   console.log('🔧 SETTLEMENT DEBUG:');
   console.log('\n========== CDP SETTLEMENT REQUEST ==========');
 
@@ -180,8 +181,10 @@ function base58Encode(bytes: Buffer | Uint8Array): string {
 /**
  * Debug Solana TX structure before CDP verify - VERBOSE VERSION
  * Shows full addresses, signature details, and transfer info
+ * Kept for debugging - uncomment calls in purchase/tip/donate endpoints when needed
  */
-function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _debugSolanaTx(base64Tx: string, _req: PaymentRequirements): void {
   try {
     const tx = Buffer.from(base64Tx, 'base64');
     const numSigs = tx[0];
@@ -245,7 +248,7 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
 
     // Identify account roles
     console.log(`[SOLANA_DEBUG] ====== TRANSACTION ANALYSIS ======`);
-    console.log(`  Network: ${req.network}`);
+    console.log(`  Network: ${_req.network}`);
     console.log(`  Version: ${versioned ? 'V0' : 'Legacy'}`);
     console.log(`  Raw header bytes: [${msg[off]}, ${msg[off+1]}, ${msg[off+2]}, ${msg[off+3]}]`);
     console.log(`  Header: ${numRequiredSigs} required sigs, ${numReadonlySigned} readonly-signed, ${numReadonlyUnsigned} readonly-unsigned`);
@@ -257,8 +260,8 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
     console.log(`[SOLANA_DEBUG] SIGNATURES (${numSigs} slots):`);
     signatures.forEach(s => {
       const acctAddr = accts[s.index] || 'N/A';
-      const role = acctAddr === req.extra?.feePayer ? 'FEEPAYER' :
-                   acctAddr === req.payTo ? 'RECIPIENT' :
+      const role = acctAddr === _req.extra?.feePayer ? 'FEEPAYER' :
+                   acctAddr === _req.payTo ? 'RECIPIENT' :
                    s.index === 1 ? 'BUYER?' : '';
       console.log(`    [${s.index}] ${s.filled ? 'SIGNED' : 'EMPTY '} ${s.preview} → account: ${acctAddr} ${role}`);
     });
@@ -267,9 +270,9 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
     console.log(`[SOLANA_DEBUG] ALL ACCOUNTS (full addresses):`);
     accts.forEach((a, i) => {
       let role = '';
-      if (a === req.payTo) role = '← RECIPIENT (payTo)';
-      else if (a === req.asset) role = '← MINT (asset)';
-      else if (a === req.extra?.feePayer) role = '← FEEPAYER';
+      if (a === _req.payTo) role = '← RECIPIENT (payTo)';
+      else if (a === _req.asset) role = '← MINT (asset)';
+      else if (a === _req.extra?.feePayer) role = '← FEEPAYER';
       else if (a === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') role = '← Token Program';
       else if (a === 'ComputeBudget111111111111111111111111111111') role = '← ComputeBudget';
       else if (i < numRequiredSigs) role = '← SIGNER';
@@ -278,9 +281,9 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
     console.log(``);
 
     console.log(`[SOLANA_DEBUG] EXPECTED VALUES:`);
-    console.log(`    payTo (recipient): ${req.payTo}`);
-    console.log(`    asset (mint):      ${req.asset}`);
-    console.log(`    feePayer:          ${req.extra?.feePayer || 'NOT SET'}`);
+    console.log(`    payTo (recipient): ${_req.payTo}`);
+    console.log(`    asset (mint):      ${_req.asset}`);
+    console.log(`    feePayer:          ${_req.extra?.feePayer || 'NOT SET'}`);
     console.log(`    Transfer: ${transferInfo}`);
     console.log(`[SOLANA_DEBUG] ====== END ANALYSIS ======`);
   } catch (e) {
@@ -290,8 +293,10 @@ function debugSolanaTx(base64Tx: string, req: PaymentRequirements): void {
 
 /**
  * Simulate transaction on Solana RPC to get actual error details
+ * Kept for debugging - uncomment calls in purchase/tip/donate endpoints when needed
  */
-async function simulateSolanaTransaction(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _simulateSolanaTransaction(
   base64Tx: string,
   network: string
 ): Promise<{ success: boolean; error?: string; logs?: string[] }> {
@@ -1490,19 +1495,10 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     console.log(`[x402] Article ${articleId} | ${paymentRequirement.network} | ${hasTransaction ? 'SVM' : 'EVM'}`);
 
-    // Compare 402 response vs full payload structure
-    console.log('[x402] STRUCTURE COMPARE:');
-    console.log('  402 requirement:', JSON.stringify(paymentRequirement));
-    console.log('  payload.accepted:', JSON.stringify(paymentPayload.accepted));
-    console.log('  payload.resource:', JSON.stringify(paymentPayload.resource));
-    console.log('  payload.payload keys:', Object.keys(paymentPayload.payload || {}));
-    console.log('  x402Version:', paymentPayload.x402Version);
-
-    // Solana debug: decode TX structure before CDP verify
-    if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
-      console.log('[x402] RAW_SOLANA_TX:', transactionValue);
-      debugSolanaTx(transactionValue, paymentRequirement);
-    }
+    // DEBUG: Uncomment to analyze Solana transaction structure
+    // if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
+    //   _debugSolanaTx(transactionValue, paymentRequirement);
+    // }
 
     let verification;
     try {
@@ -1531,23 +1527,13 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
         correlationId,
         body: responseBody,
       });
-      if (correlationId) {
-        console.log('[x402] CDP correlation-id:', correlationId);
-      }
-
       return res.status(502).json({
         success: false,
         error: 'Payment verification failed: facilitator error',
       });
     }
     if (!verification.isValid) {
-      console.log('[x402] Verify failure payload:', JSON.stringify(verification, null, 2));
-
-      // If Solana transaction failed, run local simulation to get actual error
-      if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
-        console.log('[x402] Running local Solana simulation to diagnose failure...');
-        await simulateSolanaTransaction(transactionValue, paymentRequirement.network);
-      }
+      console.log(`[x402] Verify failed: ${verification.invalidReason || 'unknown'}`);
 
       return res.status(400).json({
         success: false,
@@ -1614,7 +1600,6 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
   }
 
     // Settle authorization using SDK (wraps facilitator with hooks)
-    logSettlementDebug(paymentPayload, paymentRequirement);
     const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
    
 
@@ -1728,24 +1713,11 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     // v2: Access authorization from payload with type safety
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
-    const transactionValue = rawPayload.transaction as string | undefined;
-
-    // Debug Solana TX before verification
-    if (networkPreference.startsWith('solana:') && transactionValue) {
-      debugSolanaTx(transactionValue, paymentRequirement);
-    }
 
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
-      console.log('[x402] Verify failure payload (donation):', JSON.stringify(verification, null, 2));
-
-      // If Solana transaction failed, run local simulation to get actual error
-      if (networkPreference.startsWith('solana:') && transactionValue) {
-        console.log('[x402] Running local Solana simulation to diagnose failure...');
-        await simulateSolanaTransaction(transactionValue, networkPreference);
-      }
-
+      console.log(`[x402] Donation verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
@@ -1776,12 +1748,11 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
         typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    logSettlementDebug(paymentPayload, paymentRequirement);
     const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
     // v2: Check settlement success
     if (!settlement.success) {
-      console.error('❌ Donation settlement failed:', settlement.errorReason);
+      console.error('[x402] Donation settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Donation settlement failed. Please try again.',
@@ -1891,24 +1862,11 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     // v2: Access authorization from payload with type safety
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
-    const transactionValue = rawPayload.transaction as string | undefined;
-
-    // Debug Solana TX before verification
-    if (networkPreference.startsWith('solana:') && transactionValue) {
-      debugSolanaTx(transactionValue, paymentRequirement);
-    }
 
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
-      console.log('[x402] Verify failure payload (tip):', JSON.stringify(verification, null, 2));
-
-      // If Solana transaction failed, run local simulation to get actual error
-      if (networkPreference.startsWith('solana:') && transactionValue) {
-        console.log('[x402] Running local Solana simulation to diagnose failure...');
-        await simulateSolanaTransaction(transactionValue, networkPreference);
-      }
-
+      console.log(`[x402] Tip verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
@@ -1939,12 +1897,11 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
         typeof authorization?.from === 'string' ? authorization.from : ''
       );
 
-    logSettlementDebug(paymentPayload, paymentRequirement);
     const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
     // v2: Check settlement success
     if (!settlement.success) {
-      console.error('❌ Tip settlement failed:', settlement.errorReason);
+      console.error('[x402] Tip settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Tip settlement failed. Please try again.',

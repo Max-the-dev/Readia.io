@@ -14,7 +14,7 @@ import { config } from "dotenv";
 import { x402Client, x402HTTPClient } from "@x402/fetch";
 import { ExactSvmScheme } from "@x402/svm/exact/client";
 import { createKeyPairSignerFromBytes } from "@solana/kit";
-import { Keypair } from "@solana/web3.js";
+import { Keypair, VersionedTransaction, PublicKey } from "@solana/web3.js";
 
 config();
 
@@ -78,6 +78,44 @@ function logDetail(label: string, value: any) {
     console.log(JSON.stringify(value, null, 2));
   } else {
     console.log(`${label}: ${value}`);
+  }
+}
+
+function decodeAndLogTransaction(base64Tx: string) {
+  try {
+    const txBytes = Buffer.from(base64Tx, "base64");
+    const tx = VersionedTransaction.deserialize(txBytes);
+
+    console.log("\n📋 TRANSACTION DETAILS:");
+    console.log("=" .repeat(50));
+
+    // Signatures
+    console.log(`\nSignatures: ${tx.signatures.length}`);
+    tx.signatures.forEach((sig, i) => {
+      const isEmpty = sig.every(b => b === 0);
+      console.log(`  [${i}] ${isEmpty ? "(empty - fee payer slot)" : Buffer.from(sig).toString("base64").substring(0, 20) + "..."}`);
+    });
+
+    // Accounts
+    const accountKeys = tx.message.staticAccountKeys;
+    console.log(`\nAccounts: ${accountKeys.length}`);
+    accountKeys.forEach((key, i) => {
+      console.log(`  [${i}] ${key.toBase58()}`);
+    });
+
+    // Instructions
+    const instructions = tx.message.compiledInstructions;
+    console.log(`\nInstructions: ${instructions.length}`);
+    instructions.forEach((ix, i) => {
+      const programId = accountKeys[ix.programIdIndex];
+      console.log(`  [${i}] Program: ${programId.toBase58()}`);
+      console.log(`      Account indices: [${ix.accountKeyIndexes.join(", ")}]`);
+      console.log(`      Data length: ${ix.data.length} bytes`);
+    });
+
+    console.log("=" .repeat(50));
+  } catch (error: any) {
+    console.log("Failed to decode transaction:", error.message);
   }
 }
 
@@ -201,11 +239,12 @@ async function main(): Promise<void> {
       x402Version: paymentPayload.x402Version,
       hasPayload: !!paymentPayload.payload,
       payloadKeys: paymentPayload.payload ? Object.keys(paymentPayload.payload) : [],
-      // Show first 100 chars of transaction if present
-      transactionPreview: paymentPayload.payload?.transaction
-        ? paymentPayload.payload.transaction.substring(0, 100) + "..."
-        : "N/A"
     });
+
+    // Decode and log transaction details
+    if (paymentPayload.payload?.transaction) {
+      decodeAndLogTransaction(paymentPayload.payload.transaction);
+    }
 
   } catch (error: any) {
     console.error("❌ Failed to create payment payload:", error.message);
