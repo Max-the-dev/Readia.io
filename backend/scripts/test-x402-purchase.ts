@@ -12,7 +12,7 @@
 
 import { config } from "dotenv";
 import { x402Client, x402HTTPClient } from "@x402/fetch";
-import { registerExactSvmScheme } from "@x402/svm/exact/client";
+import { ExactSvmScheme } from "@x402/svm/exact/client";
 import { createKeyPairSignerFromBytes } from "@solana/kit";
 import { Keypair } from "@solana/web3.js";
 
@@ -127,9 +127,13 @@ async function main(): Promise<void> {
   logStep(3, "CREATE X402 CLIENT");
 
   const client = new x402Client();
-  registerExactSvmScheme(client, { signer: svmSigner });
+
+  // Use custom RPC URL (same as frontend would use)
+  const rpcUrl = "https://mainnet.helius-rpc.com/?api-key=df097add-2a0e-43c5-a06d-468c8641b459";
+  client.register("solana:*", new ExactSvmScheme(svmSigner, { rpcUrl }));
+
   console.log("✅ x402Client created");
-  console.log("✅ ExactSvmScheme registered for solana:*");
+  console.log("✅ ExactSvmScheme registered with custom RPC:", rpcUrl.substring(0, 40) + "...");
 
   const httpClient = new x402HTTPClient(client);
 

@@ -4,7 +4,7 @@ import { x402Client, x402HTTPClient } from '@x402/fetch';
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from '@x402/core/types';
 // v2: Use official helper for EVM, manual registration for SVM (custom RPC needed)
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
-import { registerExactSvmScheme } from '@x402/svm/exact/client';
+import { ExactSvmScheme } from '@x402/svm/exact/client';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
 
@@ -83,19 +83,19 @@ class X402PaymentService {
   private readonly X402_VERSION = 2;
   private readonly apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
-  // /**
-  //  * Returns the appropriate Solana RPC URL for the given network.
-  //  * Public RPC blocks browser requests (403), so we use Helius/custom RPC.
-  //  */
-  // private getSolanaRpcUrl(network: SupportedNetwork): string | undefined {
-  //   if (network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
-  //     return import.meta.env.VITE_SOLANA_MAINNET_RPC_URL;
-  //   }
-  //   if (network === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1') {
-  //     return import.meta.env.VITE_SOLANA_DEVNET_RPC_URL;
-  //   }
-  //   return undefined;
-  // }
+  /**
+   * Returns the appropriate Solana RPC URL for the given network.
+   * Public RPC blocks browser requests (403), so we use Helius/custom RPC.
+   */
+  private getSolanaRpcUrl(network: SupportedNetwork): string | undefined {
+    if (network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp') {
+      return import.meta.env.VITE_SOLANA_MAINNET_RPC_URL;
+    }
+    if (network === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1') {
+      return import.meta.env.VITE_SOLANA_DEVNET_RPC_URL;
+    }
+    return undefined;
+  }
 
   /**
    * Creates an x402HTTPClient configured for the given payment context
@@ -275,7 +275,8 @@ class X402PaymentService {
 
       // Step 2: Register schemes (matches test script)
       if (context.solanaSigner) {
-        registerExactSvmScheme(client, { signer: context.solanaSigner });
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
       }
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {
