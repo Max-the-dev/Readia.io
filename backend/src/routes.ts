@@ -435,25 +435,37 @@ function estimateReadTime(content: string): string {
 
 // GET /api/x402 - x402 Discovery endpoint for x402scan listing
 router.get('/x402', async (req: Request, res: Response) => {
-  const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'eip155:8453';
-  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402?network=${network}`;
+  const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
 
-  // Resolve payTo based on network (same pattern as purchase endpoint)
-  const payTo = isSolanaNetwork(network) ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
+  // All supported networks for discovery
+  const allNetworks: SupportedX402Network[] = [
+    'eip155:8453',                              // Base mainnet
+    'eip155:84532',                             // Base Sepolia
+    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',  // Solana mainnet
+    'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',  // Solana devnet
+  ];
 
-  // Build payment requirements using SDK (handles feePayer, asset, network-specific extras)
-  const requirements = await resourceServer.buildPaymentRequirements({
-    scheme: 'exact',
-    network,
-    price: 0.01,  // $0.01 symbolic for discovery
-    payTo,
-    maxTimeoutSeconds: 900
-  });
-  const paymentRequirement = requirements[0];
+  // Build payment requirements for all networks
+  const allRequirements = await Promise.all(
+    allNetworks.map(async (network) => {
+      const payTo = isSolanaNetwork(network) ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
+      const requirements = await resourceServer.buildPaymentRequirements({
+        scheme: 'exact',
+        network,
+        price: 0.01,  // $0.01 symbolic for discovery
+        payTo,
+        maxTimeoutSeconds: 900
+      });
+      return requirements[0];
+    })
+  );
+
+  // Filter out any null/undefined requirements
+  const validRequirements = allRequirements.filter(Boolean);
 
   // v2 PaymentRequired response using SDK helper
   const paymentRequired = resourceServer.createPaymentRequiredResponse(
-    [paymentRequirement],
+    validRequirements,
     { url: resourceUrl, description: 'Readia.io - The New Content Economy', mimeType: 'application/json' },
     'Payment required'
   );
