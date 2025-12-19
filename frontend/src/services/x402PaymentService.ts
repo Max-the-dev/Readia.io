@@ -1,7 +1,6 @@
 // x402 Payment Service for handling micropayments (v2)
 import { apiService } from './api';
 import { x402Client, x402HTTPClient } from '@x402/fetch';
-import type { PaymentRequired } from '@x402/core/types';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
 import { ExactSvmScheme } from '@x402/svm/exact/client';
 import type { WalletClient } from 'viem';
@@ -32,7 +31,6 @@ function sanitizeForBase64<T>(obj: T): T {
   }
   return obj;
 }
-
 
 export interface PaymentRequirement {
   price: string;
@@ -79,7 +77,6 @@ export interface PaymentExecutionContext {
 class X402PaymentService {
   private facilitatorUrl = import.meta.env.VITE_X402_FACILITATOR_URL || 'https://x402.org/facilitator';
   private network: SupportedNetwork = (import.meta.env.VITE_X402_NETWORK === 'base' ? 'eip155:8453' : 'eip155:84532');
-  private readonly X402_VERSION = 2;
   private readonly apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
 
   /**
@@ -96,38 +93,6 @@ class X402PaymentService {
     return undefined;
   }
 
-  /**
-   * Creates an x402HTTPClient configured for the given payment context
-   * v2: Uses official registerExact*Scheme helpers instead of manual registration
-   */
-  private createX402HttpClient(context: PaymentExecutionContext): x402HTTPClient {
-    const baseClient = new x402Client();
-
-    // v2: Register EVM scheme using official helper
-    if (context.evmWalletClient && context.evmWalletClient.account) {
-      const evmSigner = {
-        address: context.evmWalletClient.account.address,
-        signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
-          context.evmWalletClient!.signTypedData({
-            account: context.evmWalletClient!.account!,
-            domain: params.domain as any,
-            types: params.types as any,
-            primaryType: params.primaryType as any,
-            message: params.message as any,
-          }),
-      };
-      registerExactEvmScheme(baseClient, { signer: evmSigner });
-    }
-
-    // v2: Register SVM scheme with custom RPC (public RPC blocks browser requests)
-    if (context.solanaSigner) {
-      const rpcUrl = this.getSolanaRpcUrl(context.network);
-      baseClient.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
-    }
-
-    return new x402HTTPClient(baseClient);
-  }
-
   private buildRequestUrl(endpoint: string, networkOverride?: SupportedNetwork): string {
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const targetNetwork = networkOverride || this.network;
@@ -141,10 +106,6 @@ class X402PaymentService {
       return 'https://facilitator.cdp.coinbase.com';
     }
     return this.facilitatorUrl;
-  }
-
-  isCDPEnabled(): boolean {
-    return !!import.meta.env.VITE_COINBASE_CDP_APP_ID;
   }
 
   async attemptPayment(
@@ -204,51 +165,6 @@ class X402PaymentService {
     }
   }
 
-  /**
-   * Creates a v2 PaymentPayload and encodes it for the PAYMENT-SIGNATURE header
-   * v2 structure: { x402Version, resource, accepted, payload }
-   */
-  private async createPaymentHeaderFromRequirements(
-    requirement: PaymentRequirement,
-    context: PaymentExecutionContext
-  ): Promise<string> {
-    if (!requirement.raw) {
-      throw new Error('No x402 payment data returned by server');
-    }
-
-    const requirementNetwork = requirement.accept?.network || context.network;
-    const isSolana = requirementNetwork.startsWith('solana:');
-
-    // Validate wallet availability
-    if (isSolana && !context.solanaSigner) {
-      throw new Error('Please connect a Solana wallet to continue');
-    }
-    if (!isSolana && !context.evmWalletClient) {
-      throw new Error('Please connect a Base-compatible wallet to continue');
-    }
-
-    // Create the v2 HTTP client with appropriate signers
-    const httpClient = this.createX402HttpClient(context);
-
-    // Sanitize the 402 response to remove Unicode characters that break btoa encoding
-    // This handles article titles with em dashes, smart quotes, etc.
-    const sanitizedRaw = sanitizeForBase64(requirement.raw);
-
-    // Pass the sanitized 402 response (PaymentRequired) to create the v2 PaymentPayload
-    // SDK will: copy resource, select accepted from accepts[], build signed payload
-    const paymentPayload = await httpClient.createPaymentPayload(sanitizedRaw as PaymentRequired);
-
-    // Encode to PAYMENT-SIGNATURE header format
-    const headers = httpClient.encodePaymentSignatureHeader(paymentPayload);
-    const encodedHeader = headers['payment-signature'] || headers['PAYMENT-SIGNATURE'];
-
-    if (!encodedHeader) {
-      throw new Error('Failed to encode payment signature header');
-    }
-
-    return encodedHeader;
-  }
-
   async purchaseArticle(
     articleId: number,
     context: PaymentExecutionContext
@@ -297,13 +213,14 @@ class X402PaymentService {
         return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
       }
 
-      // Step 6: Get response body (matches test script)
+      // Step 6: Get response body and sanitize Unicode for base64 encoding
       const responseBody = await initialResponse.json();
+      const sanitizedBody = sanitizeForBase64(responseBody);
 
       // Step 7: Parse with SDK helper (matches test script)
       const paymentRequired = httpClient.getPaymentRequiredResponse(
         (name) => initialResponse.headers.get(name),
-        responseBody
+        sanitizedBody
       );
 
       // Step 8: Create payment payload (matches test script)
@@ -352,65 +269,82 @@ class X402PaymentService {
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
     try {
-      const response1 = await fetch(this.buildRequestUrl('/donate', context.network), {
+      const url = this.buildRequestUrl('/donate', context.network);
+
+      const client = new x402Client();
+
+      if (context.solanaSigner) {
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+      }
+      if (context.evmWalletClient && context.evmWalletClient.account) {
+        const evmSigner = {
+          address: context.evmWalletClient.account.address,
+          signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
+            context.evmWalletClient!.signTypedData({
+              account: context.evmWalletClient!.account!,
+              domain: params.domain as any,
+              types: params.types as any,
+              primaryType: params.primaryType as any,
+              message: params.message as any,
+            }),
+        };
+        registerExactEvmScheme(client, { signer: evmSigner });
+      }
+
+      const httpClient = new x402HTTPClient(client);
+
+      const initialResponse = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount })
       });
 
-      if (response1.status === 402) {
-        const paymentData = await response1.json();
-        const paymentSpec = paymentData.accepts?.[0];
-
-        if (!paymentSpec) {
-          throw new Error('No payment requirements returned');
+      if (initialResponse.status !== 402) {
+        const body = await initialResponse.json();
+        if (initialResponse.ok && body.success) {
+          return { success: true, receipt: body.data?.receipt || 'Donation processed' };
         }
+        return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
+      }
 
-        const paymentRequirement: PaymentRequirement = {
-          price: paymentData.price,
-          network: paymentSpec.network,
-          facilitator: this.getFacilitatorUrl(),
-          to: paymentSpec.payTo,
-          accept: paymentSpec,
-          raw: paymentData
-        };
+      const responseBody = await initialResponse.json();
+      const sanitizedBody = sanitizeForBase64(responseBody);
+      const paymentRequired = httpClient.getPaymentRequiredResponse(
+        (name) => initialResponse.headers.get(name),
+        sanitizedBody
+      );
 
-        const encodedHeader = await this.createPaymentHeaderFromRequirements(
-          paymentRequirement,
-          context
-        );
+      const paymentPayload = await client.createPaymentPayload(paymentRequired);
+      const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
 
-        const response2 = await fetch(this.buildRequestUrl('/donate', context.network), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
-          },
-          body: JSON.stringify({ amount })
-        });
+      const paymentResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...paymentHeaders,
+        },
+        body: JSON.stringify({ amount })
+      });
 
-        const result = await response2.json();
+      const result = await paymentResponse.json();
 
-        if (response2.ok && result.success) {
-          return {
-            success: true,
-            receipt: result.data?.receipt || 'Donation processed',
-            encodedHeader,
-            rawResponse: result
-          };
-        }
-
+      if (paymentResponse.ok && result.success) {
         return {
-          success: false,
-          error: result?.error || 'Donation failed',
+          success: true,
+          receipt: result.data?.receipt || 'Donation processed',
           rawResponse: result
         };
       }
 
-      throw new Error(`Unexpected response: ${response1.status}`);
+      return {
+        success: false,
+        error: result?.error || 'Donation failed',
+        rawResponse: result
+      };
 
     } catch (error) {
-      console.error('❌ Donation failed:', error);
+      console.error('Donation failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Donation failed',
@@ -424,65 +358,82 @@ class X402PaymentService {
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
     try {
-      const response1 = await fetch(this.buildRequestUrl(`/articles/${articleId}/tip`, context.network), {
+      const url = this.buildRequestUrl(`/articles/${articleId}/tip`, context.network);
+
+      const client = new x402Client();
+
+      if (context.solanaSigner) {
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+      }
+      if (context.evmWalletClient && context.evmWalletClient.account) {
+        const evmSigner = {
+          address: context.evmWalletClient.account.address,
+          signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
+            context.evmWalletClient!.signTypedData({
+              account: context.evmWalletClient!.account!,
+              domain: params.domain as any,
+              types: params.types as any,
+              primaryType: params.primaryType as any,
+              message: params.message as any,
+            }),
+        };
+        registerExactEvmScheme(client, { signer: evmSigner });
+      }
+
+      const httpClient = new x402HTTPClient(client);
+
+      const initialResponse = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount })
       });
 
-      if (response1.status === 402) {
-        const paymentData = await response1.json();
-        const paymentSpec = paymentData.accepts?.[0];
-
-        if (!paymentSpec) {
-          throw new Error('No payment requirements returned');
+      if (initialResponse.status !== 402) {
+        const body = await initialResponse.json();
+        if (initialResponse.ok && body.success) {
+          return { success: true, receipt: body.data?.receipt || 'Tip processed' };
         }
+        return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
+      }
 
-        const paymentRequirement: PaymentRequirement = {
-          price: paymentData.price,
-          network: paymentSpec.network,
-          facilitator: this.getFacilitatorUrl(),
-          to: paymentSpec.payTo,
-          accept: paymentSpec,
-          raw: paymentData
-        };
+      const responseBody = await initialResponse.json();
+      const sanitizedBody = sanitizeForBase64(responseBody);
+      const paymentRequired = httpClient.getPaymentRequiredResponse(
+        (name) => initialResponse.headers.get(name),
+        sanitizedBody
+      );
 
-        const encodedHeader = await this.createPaymentHeaderFromRequirements(
-          paymentRequirement,
-          context
-        );
+      const paymentPayload = await client.createPaymentPayload(paymentRequired);
+      const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
 
-        const response2 = await fetch(this.buildRequestUrl(`/articles/${articleId}/tip`, context.network), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'PAYMENT-SIGNATURE': encodedHeader  // v2: renamed from X-PAYMENT
-          },
-          body: JSON.stringify({ amount })
-        });
+      const paymentResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...paymentHeaders,
+        },
+        body: JSON.stringify({ amount })
+      });
 
-        const result = await response2.json();
+      const result = await paymentResponse.json();
 
-        if (response2.ok && result.success) {
-          return {
-            success: true,
-            receipt: result.data?.receipt || 'Tip processed',
-            encodedHeader,
-            rawResponse: result
-          };
-        }
-
+      if (paymentResponse.ok && result.success) {
         return {
-          success: false,
-          error: result?.error || 'Tip failed. Please try again.',
+          success: true,
+          receipt: result.data?.receipt || 'Tip processed',
           rawResponse: result
         };
       }
 
-      throw new Error(`Unexpected response: ${response1.status}`);
+      return {
+        success: false,
+        error: result?.error || 'Tip failed. Please try again.',
+        rawResponse: result
+      };
 
     } catch (error) {
-      console.error('❌ Tip failed:', error);
+      console.error('Tip failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Tip failed',

@@ -182,8 +182,7 @@ app.use((req: Request, res: Response) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Readia.io backend server running on port ${PORT}`);
-  console.log(`📚 API documentation available at http://localhost:${PORT}/api/health`);
+  // Server started silently - startup info logged above
 });
 
 server.on('error', (error: any) => {

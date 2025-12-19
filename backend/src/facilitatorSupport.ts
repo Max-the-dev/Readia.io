@@ -63,9 +63,6 @@ async function hydrateCache(): Promise<void> {
     }
     return acc;
   }, {});
-
-  // Debug: show what CDP returned for fee payers
-  console.log('[CDP] Fee payer cache:', JSON.stringify(feePayerCache, null, 2));
 }
 
 export async function ensureFacilitatorSupportLoaded(): Promise<void> {

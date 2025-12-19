@@ -52,21 +52,9 @@ export function createSolanaTransactionSigner(
 
       const deserialized = transactions.map(deserializeTransaction);
 
-      // Log BEFORE signing - this is what SDK built (should match test script: 7 accounts, 3 instructions)
-      console.log('\n🔍 SOLANA TRANSACTION DEBUG - BEFORE PHANTOM SIGNING');
-      deserialized.forEach((tx, i) => {
-        logTransactionDetails(`Transaction ${i} - BEFORE Phantom`, tx);
-      });
-
       const signedTransactions = provider.signAllTransactions
         ? await provider.signAllTransactions([...deserialized])
         : await Promise.all(deserialized.map((tx) => provider.signTransaction!(tx)));
-
-      // Log AFTER signing - this is what Phantom returns (may have Lighthouse: 8 accounts, 4 instructions)
-      console.log('\n🔍 SOLANA TRANSACTION DEBUG - AFTER PHANTOM SIGNING');
-      signedTransactions.forEach((tx, i) => {
-        logTransactionDetails(`Transaction ${i} - AFTER Phantom`, tx);
-      });
 
       return signedTransactions.map((signedTx, index) =>
         buildSignatureDictionary(transactions[index], signedTx)
@@ -190,57 +178,4 @@ function toUint8Array(value: unknown): Uint8Array {
     }
   }
   throw new Error('Unsupported transaction bytes format');
-}
-
-/**
- * Debug function to log transaction structure for comparison with test script.
- * Test script produces: 7 accounts, 3 instructions (2 ComputeBudget + 1 TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA)
- * Phantom may add Lighthouse: 8 accounts, 4 instructions
- */
-function logTransactionDetails(label: string, transaction: Web3Transaction): void {
-  console.log(`\n📋 ${label}`);
-  console.log('='.repeat(60));
-
-  if (transaction instanceof VersionedTransaction) {
-    // Signatures
-    console.log(`\nSignatures: ${transaction.signatures.length}`);
-    transaction.signatures.forEach((sig, i) => {
-      const isEmpty = sig.every((b) => b === 0);
-      const preview = isEmpty ? '(empty - fee payer slot)' : btoa(String.fromCharCode(...sig.slice(0, 16))) + '...';
-      console.log(`  [${i}] ${preview}`);
-    });
-
-    // Accounts
-    const accountKeys = transaction.message.staticAccountKeys;
-    console.log(`\nAccounts: ${accountKeys.length}`);
-    accountKeys.forEach((key, i) => {
-      console.log(`  [${i}] ${key.toBase58()}`);
-    });
-
-    // Instructions
-    const instructions = transaction.message.compiledInstructions;
-    console.log(`\nInstructions: ${instructions.length}`);
-    instructions.forEach((ix, i) => {
-      const programId = accountKeys[ix.programIdIndex];
-      console.log(`  [${i}] Program: ${programId.toBase58()}`);
-      console.log(`      Account indices: [${ix.accountKeyIndexes.join(', ')}]`);
-      console.log(`      Data length: ${ix.data.length} bytes`);
-    });
-  } else {
-    // Legacy transaction
-    const legacyTx = transaction as LegacyTransaction;
-    const accountKeys = legacyTx.message.accountKeys;
-    console.log(`\nAccounts: ${accountKeys.length}`);
-    accountKeys.forEach((key: { toBase58(): string }, i: number) => {
-      console.log(`  [${i}] ${key.toBase58()}`);
-    });
-
-    console.log(`\nInstructions: ${legacyTx.message.instructions.length}`);
-    legacyTx.message.instructions.forEach((ix: { programIdIndex: number }, i: number) => {
-      const programId = accountKeys[ix.programIdIndex];
-      console.log(`  [${i}] Program: ${programId.toBase58()}`);
-    });
-  }
-
-  console.log('='.repeat(60));
 }

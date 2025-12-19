@@ -21,11 +21,16 @@ dist-ssr/
 *.db
 *.sqlite
 *.sqlite3
+
+# Supabase migrations
 backend/supabase/migrations/
-backend/scripts/exportSQLiteData.ts
-backend/scripts/importToPostgres.ts
-backend/scripts/migrateImagesToSupabase.ts
+
+# Data exports
 backend/data_export/
+
+# Development scripts (internal use only)
+scripts/
+backend/scripts/
 
 # Logs
 logs/

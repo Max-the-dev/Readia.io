@@ -20,8 +20,6 @@ import {
   historyQuerySchema
 } from './validation';
 import { checkForSpam, checkContentQuality } from './spamPrevention';
-// Solana simulation for debugging
-import { Connection, VersionedTransaction } from '@solana/web3.js';
 // x402 v2 imports
 import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
 import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
@@ -37,10 +35,6 @@ import {
   tryNormalizeSolanaAddress,
   tryNormalizeAddress,
 } from './utils/address';
-// settlementService removed in v2 - using facilitatorClient.settle() directly
-import { getFacilitatorFeePayer } from './facilitatorSupport';
-import { getCACertificates } from 'tls';
-import { success } from 'zod';
 import { requireAuth, requireOwnership, AuthenticatedRequest } from './auth';
 
 const router = express.Router();
@@ -89,269 +83,6 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
 export async function initializeResourceServer(): Promise<void> {
   await resourceServer.initialize();
   console.log('[x402] Resource server initialized with scheme registrations for all networks');
-}
-
-/**
- * Debug logging helper for settlement - replicates logs from old settlementService.ts
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _logSettlementDebug(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements): void {
-  console.log('🔧 SETTLEMENT DEBUG:');
-  console.log('\n========== CDP SETTLEMENT REQUEST ==========');
-
-  // v2: scheme and network are in the 'accepted' field
-  const scheme = paymentPayload.accepted?.scheme || 'unknown';
-  const network = paymentPayload.accepted?.network || 'unknown';
-  console.log('🔧 Network:', network);
-  console.log('📋 Scheme:', scheme);
-
-  const payloadData = paymentPayload.payload as Record<string, unknown>;
-  const hasAuthorization = payloadData && typeof payloadData === 'object' && 'authorization' in payloadData;
-  const hasTransaction = payloadData && typeof payloadData === 'object' && 'transaction' in payloadData;
-
-  if (hasAuthorization) {
-    const authorization = payloadData.authorization as Record<string, unknown>;
-    console.log('\n--- AUTHORIZATION DETAILS ---');
-    console.log('From (payer):', authorization.from);
-    console.log('To (recipient):', authorization.to);
-    console.log('Value (micro USDC):', authorization.value);
-    console.log('Nonce:', authorization.nonce);
-
-    console.log('\n--- TIME WINDOW ---');
-    const validAfter = parseInt(authorization.validAfter as string, 10);
-    const validBefore = parseInt(authorization.validBefore as string, 10);
-    const windowSeconds = validBefore - validAfter;
-    const maxTimeout = paymentRequirements.maxTimeoutSeconds || 0;
-    const sdkPaddingSeconds = 600; // x402 client backdates validAfter by 10 minutes
-    const allowedWindow = maxTimeout + sdkPaddingSeconds;
-
-    console.log('ValidAfter:', validAfter, new Date(validAfter * 1000).toISOString());
-    console.log('ValidBefore:', validBefore, new Date(validBefore * 1000).toISOString());
-    console.log('Window Duration:', windowSeconds, 'seconds');
-    console.log('Allowed Duration (incl. SDK padding):', allowedWindow, 'seconds');
-    console.log('VALIDATION:', windowSeconds <= allowedWindow ? '✅ PASS' : '❌ FAIL - Window too long!');
-
-    console.log('\n--- SIGNATURE ---');
-    console.log('Signature:', payloadData.signature);
-  } else if (hasTransaction) {
-    console.log('\n--- TRANSACTION DETAILS (SVM) ---');
-    const transaction = payloadData.transaction as string;
-    console.log('Transaction (base64, first 120 chars):', transaction.slice(0, 120) + (transaction.length > 120 ? '...' : ''));
-    console.log('Transaction Length:', transaction.length);
-    console.log('Skipping EVM-specific authorization window validation for SVM payload.');
-  }
-
-  console.log('\n--- PAYMENT REQUIREMENTS ---');
-  console.log('Amount:', paymentRequirements.amount);  // v2: renamed from maxAmountRequired
-  console.log('Asset (USDC):', paymentRequirements.asset);
-  console.log('PayTo:', paymentRequirements.payTo);
-
-  console.log('\n========== CALLING CDP SETTLE ==========\n');
-}
-
-/**
- * Base58 encoder for Solana addresses
- */
-const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function base58Encode(bytes: Buffer | Uint8Array): string {
-  const digits = [0];
-  for (const byte of bytes) {
-    let carry = byte;
-    for (let i = 0; i < digits.length; i++) {
-      carry += digits[i] << 8;
-      digits[i] = carry % 58;
-      carry = (carry / 58) | 0;
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = (carry / 58) | 0;
-    }
-  }
-  let result = '';
-  for (const byte of bytes) {
-    if (byte === 0) result += '1';
-    else break;
-  }
-  for (let i = digits.length - 1; i >= 0; i--) {
-    result += BASE58_ALPHABET[digits[i]];
-  }
-  return result;
-}
-
-/**
- * Debug Solana TX structure before CDP verify - VERBOSE VERSION
- * Shows full addresses, signature details, and transfer info
- * Kept for debugging - uncomment calls in purchase/tip/donate endpoints when needed
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _debugSolanaTx(base64Tx: string, _req: PaymentRequirements): void {
-  try {
-    const tx = Buffer.from(base64Tx, 'base64');
-    const numSigs = tx[0];
-    const msgStart = 1 + numSigs * 64;
-    const msg = tx.slice(msgStart);
-
-    const versioned = (msg[0] & 0x80) !== 0;
-    const off = versioned ? 1 : 0;
-
-    // Parse message header
-    const numRequiredSigs = msg[off];
-    const numReadonlySigned = msg[off + 1];
-    const numReadonlyUnsigned = msg[off + 2];
-    const numAccts = msg[off + 3];
-
-    // Extract signatures and check which are filled
-    const signatures: { index: number; filled: boolean; preview: string }[] = [];
-    for (let i = 0; i < numSigs; i++) {
-      const sigStart = 1 + i * 64;
-      const sigBytes = tx.slice(sigStart, sigStart + 64);
-      const isEmpty = sigBytes.every((b: number) => b === 0);
-      signatures.push({
-        index: i,
-        filled: !isEmpty,
-        preview: isEmpty ? '(empty)' : base58Encode(sigBytes).slice(0, 16) + '...'
-      });
-    }
-
-    // Extract accounts (FULL addresses)
-    const accts: string[] = [];
-    for (let i = 0; i < numAccts; i++) {
-      const start = off + 4 + i * 32;
-      accts.push(base58Encode(msg.slice(start, start + 32)));
-    }
-
-    // Find transfer instruction (discriminator 12 = TransferChecked)
-    const acctEnd = off + 4 + numAccts * 32;
-    const instrStart = acctEnd + 32; // after blockhash
-    const numInstr = msg[instrStart];
-
-    let transferInfo = '';
-    let instrOff = instrStart + 1;
-    for (let i = 0; i < numInstr; i++) {
-      const progIdx = msg[instrOff];
-      const numAcctsInstr = msg[instrOff + 1];
-      const acctIdxs = Array.from(msg.slice(instrOff + 2, instrOff + 2 + numAcctsInstr));
-      const dataLen = msg[instrOff + 2 + numAcctsInstr];
-      const data = msg.slice(instrOff + 3 + numAcctsInstr, instrOff + 3 + numAcctsInstr + dataLen);
-
-      if (data[0] === 12 && dataLen >= 10) { // TransferChecked
-        const amt = Buffer.from(data.slice(1, 9)).readBigUInt64LE();
-        transferInfo = `amount=${amt} (${Number(amt) / 1_000_000} USDC)`;
-        console.log(`[SOLANA_DEBUG] TransferChecked instruction:`);
-        console.log(`    source ATA [${acctIdxs[0]}]: ${accts[acctIdxs[0]]}`);
-        console.log(`    mint       [${acctIdxs[1]}]: ${accts[acctIdxs[1]]}`);
-        console.log(`    dest ATA   [${acctIdxs[2]}]: ${accts[acctIdxs[2]]}`);
-        console.log(`    authority  [${acctIdxs[3]}]: ${accts[acctIdxs[3]]}`);
-      }
-      instrOff += 3 + numAcctsInstr + dataLen;
-    }
-
-    // Identify account roles
-    console.log(`[SOLANA_DEBUG] ====== TRANSACTION ANALYSIS ======`);
-    console.log(`  Network: ${_req.network}`);
-    console.log(`  Version: ${versioned ? 'V0' : 'Legacy'}`);
-    console.log(`  Raw header bytes: [${msg[off]}, ${msg[off+1]}, ${msg[off+2]}, ${msg[off+3]}]`);
-    console.log(`  Header: ${numRequiredSigs} required sigs, ${numReadonlySigned} readonly-signed, ${numReadonlyUnsigned} readonly-unsigned`);
-    console.log(`  Total accounts (from header byte): ${numAccts}`);
-    console.log(`  TX length: ${tx.length} bytes, msg length: ${msg.length} bytes`);
-    console.log(`  Raw TX base64 (first 200 chars): ${base64Tx.slice(0, 200)}`);
-    console.log(``);
-
-    console.log(`[SOLANA_DEBUG] SIGNATURES (${numSigs} slots):`);
-    signatures.forEach(s => {
-      const acctAddr = accts[s.index] || 'N/A';
-      const role = acctAddr === _req.extra?.feePayer ? 'FEEPAYER' :
-                   acctAddr === _req.payTo ? 'RECIPIENT' :
-                   s.index === 1 ? 'BUYER?' : '';
-      console.log(`    [${s.index}] ${s.filled ? 'SIGNED' : 'EMPTY '} ${s.preview} → account: ${acctAddr} ${role}`);
-    });
-    console.log(``);
-
-    console.log(`[SOLANA_DEBUG] ALL ACCOUNTS (full addresses):`);
-    accts.forEach((a, i) => {
-      let role = '';
-      if (a === _req.payTo) role = '← RECIPIENT (payTo)';
-      else if (a === _req.asset) role = '← MINT (asset)';
-      else if (a === _req.extra?.feePayer) role = '← FEEPAYER';
-      else if (a === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') role = '← Token Program';
-      else if (a === 'ComputeBudget111111111111111111111111111111') role = '← ComputeBudget';
-      else if (i < numRequiredSigs) role = '← SIGNER';
-      console.log(`    [${i}] ${a} ${role}`);
-    });
-    console.log(``);
-
-    console.log(`[SOLANA_DEBUG] EXPECTED VALUES:`);
-    console.log(`    payTo (recipient): ${_req.payTo}`);
-    console.log(`    asset (mint):      ${_req.asset}`);
-    console.log(`    feePayer:          ${_req.extra?.feePayer || 'NOT SET'}`);
-    console.log(`    Transfer: ${transferInfo}`);
-    console.log(`[SOLANA_DEBUG] ====== END ANALYSIS ======`);
-  } catch (e) {
-    console.log(`[SOLANA_DEBUG] Failed to decode: ${e}`);
-  }
-}
-
-/**
- * Simulate transaction on Solana RPC to get actual error details
- * Kept for debugging - uncomment calls in purchase/tip/donate endpoints when needed
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function _simulateSolanaTransaction(
-  base64Tx: string,
-  network: string
-): Promise<{ success: boolean; error?: string; logs?: string[] }> {
-  try {
-    // Map CAIP-2 network to RPC URL
-    const rpcUrl = network === 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
-      ? (process.env.SOLANA_MAINNET_RPC_URL || 'https://api.mainnet-beta.solana.com')
-      : (process.env.SOLANA_DEVNET_RPC_URL || 'https://api.devnet.solana.com');
-
-    console.log(`[SOLANA_SIM] Simulating on ${network} via ${rpcUrl.slice(0, 40)}...`);
-
-    const connection = new Connection(rpcUrl, 'confirmed');
-    const txBuffer = Buffer.from(base64Tx, 'base64');
-    const tx = VersionedTransaction.deserialize(txBuffer);
-
-    // Test with ORIGINAL blockhash first (what CDP sees)
-    const simulation = await connection.simulateTransaction(tx, {
-      sigVerify: false,
-      replaceRecentBlockhash: false  // Use actual blockhash from TX
-    });
-
-    if (simulation.value.err) {
-      console.log(`[SOLANA_SIM] ❌ Simulation FAILED (original blockhash):`);
-      console.log(`  Error: ${JSON.stringify(simulation.value.err)}`);
-      if (simulation.value.logs) {
-        console.log(`  Logs:`);
-        simulation.value.logs.forEach(log => console.log(`    ${log}`));
-      }
-
-      // Retry with fresh blockhash to isolate the issue
-      console.log('[SOLANA_SIM] Retrying with fresh blockhash...');
-      const retrySimulation = await connection.simulateTransaction(tx, {
-        sigVerify: false,
-        replaceRecentBlockhash: true
-      });
-      if (!retrySimulation.value.err) {
-        console.log('[SOLANA_SIM] ⚠️ BLOCKHASH ISSUE CONFIRMED: TX valid but blockhash stale/invalid');
-      } else {
-        console.log('[SOLANA_SIM] ❌ Still fails with fresh blockhash - not a blockhash issue');
-      }
-
-      return {
-        success: false,
-        error: JSON.stringify(simulation.value.err),
-        logs: simulation.value.logs || []
-      };
-    }
-
-    console.log(`[SOLANA_SIM] ✅ Simulation SUCCESS (original blockhash valid)`);
-    return { success: true, logs: simulation.value.logs || [] };
-
-  } catch (e: any) {
-    console.log(`[SOLANA_SIM] Exception during simulation: ${e.message}`);
-    return { success: false, error: e.message };
-  }
 }
 
 // CAIP-2 network identifiers for x402 v2
@@ -1491,19 +1222,11 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
 
     // Verify payment with facilitator
     const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
-    const transactionValue = hasTransaction ? (rawPayload as { transaction: string }).transaction : undefined;
-
-    console.log(`[x402] Article ${articleId} | ${paymentRequirement.network} | ${hasTransaction ? 'SVM' : 'EVM'}`);
-
-    // DEBUG: Uncomment to analyze Solana transaction structure
-    // if (paymentRequirement.network.startsWith('solana:') && transactionValue) {
-    //   _debugSolanaTx(transactionValue, paymentRequirement);
-    // }
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     let verification;
     try {
       verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
-      console.log(`[x402] Verify: ${verification.isValid ? '✅' : '❌'} ${verification.invalidReason || ''}`);
     } catch (error: any) {
       let responseBody;
       let correlationId: string | undefined;
@@ -1533,8 +1256,7 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
     if (!verification.isValid) {
-      console.log(`[x402] Verify failed: ${verification.invalidReason || 'unknown'}`);
-
+      console.log(`[x402] ❌ Purchase | Article ${articleId} | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
@@ -1586,11 +1308,11 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       }
     }
 
-    // Early check to query db if already paid for article BEFORE settlement goes out 
+    // Early check to query db if already paid for article BEFORE settlement goes out
     if (payerAddress) {
-      const aldreadyPaid = await checkPaymentStatus(articleId, payerAddress);
-      if (aldreadyPaid) {
-        console.log(`⚠️ Duplicate payment attempt blocked for article ${articleId} by ${payerAddress}`);
+      const alreadyPaid = await checkPaymentStatus(articleId, payerAddress);
+      if (alreadyPaid) {
+        console.warn(`[x402] ⚠️ Purchase | Article ${articleId} | Duplicate blocked | Buyer: ${payerAddress}`);
         return res.status(409).json({
         success: false,
         error: 'You have already purchased this article',
@@ -1623,7 +1345,12 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       purchaseDelta: 1,
     });
 
-    console.log(`✅ Purchase: Article ${article.id} | $${article.price.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
+    console.log(`[x402] ✅ Purchase
+  Article: ${article.id}
+  Network: ${paymentRequirement.network} | ${networkType}
+  Price: $${article.price.toFixed(2)}
+  Buyer: ${payerAddress || 'unknown'}
+  Seller: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     return res.json({
       success: true,
@@ -1696,7 +1423,8 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Donation | ${networkPreference} | $${amount}`);
+    const hasTransaction = paymentHeader && typeof paymentHeader === 'string';
+    const networkType = networkGroup === 'solana' ? 'SVM' : 'EVM';
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1717,7 +1445,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
-      console.log(`[x402] Donation verify failed: ${verification.invalidReason || 'unknown'}`);
+      console.log(`[x402] ❌ Donation | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
@@ -1762,7 +1490,11 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Donation: $${amount.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
+    console.log(`[x402] ✅ Donation
+  Network: ${networkPreference} | ${networkType}
+  Amount: $${amount.toFixed(2)}
+  Donor: ${payerAddress || 'unknown'}
+  Platform: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     return res.json({
       success: true,
@@ -1845,7 +1577,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     }
 
     // Payment header provided - verify it
-    console.log(`[x402] Tip | Article ${articleId} | ${networkPreference} | $${amount}`);
+    const networkType = networkGroup === 'solana' ? 'SVM' : 'EVM';
 
     let paymentPayload: PaymentPayload;
     try {
@@ -1866,7 +1598,7 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
 
     if (!verification.isValid) {
-      console.log(`[x402] Tip verify failed: ${verification.invalidReason || 'unknown'}`);
+      console.log(`[x402] ❌ Tip | Article ${articleId} | Verify failed: ${verification.invalidReason || 'unknown'}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
@@ -1911,7 +1643,12 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 
     const txHash = settlement.transaction;  // v2: renamed from txHash
 
-    console.log(`✅ Tip: Article ${articleId} | $${amount.toFixed(2)} | ${payerAddress?.slice(0,8) || '?'}...${txHash ? ' | tx:' + txHash.slice(0,12) + '...' : ''}`);
+    console.log(`[x402] ✅ Tip
+  Article: ${articleId}
+  Network: ${networkPreference} | ${networkType}
+  Amount: $${amount.toFixed(2)}
+  Tipper: ${payerAddress || 'unknown'}
+  Author: ${payTo}${txHash ? `\n  Tx Hash: ${txHash}` : ''}`);
 
     await incrementAuthorLifetimeStats(article.authorAddress, {
       earningsDelta: amount,
