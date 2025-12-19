@@ -82,7 +82,7 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
  */
 export async function initializeResourceServer(): Promise<void> {
   await resourceServer.initialize();
-  console.log('[x402] Resource server initialized with scheme registrations for all networks');
+  console.log('[x402] ✅ Resource server initialized with scheme registrations for all networks');
 }
 
 // CAIP-2 network identifiers for x402 v2
@@ -460,6 +460,33 @@ function estimateReadTime(content: string): string {
 router.get('/x402', async (req: Request, res: Response) => {
   const network = (req.query.network as SupportedX402Network) || process.env.X402_NETWORK || 'eip155:8453';
   const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
+  const isSolana = isSolanaNetwork(network);
+
+  // Resolve payTo based on network
+  const payTo = isSolana ? PLATFORM_SOLANA_ADDRESS! : PLATFORM_EVM_ADDRESS;
+
+  // Build network-specific extra fields
+  const extra: Record<string, unknown> = {
+    title: 'Readia.io Platform',
+    category: 'content',
+    tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
+    serviceName: 'Readia.io',
+    serviceDescription: 'Readia.io - The New Content Economy',
+    pricing: {
+      currency: 'USD',
+      amount: '0.01',
+      display: '$0.01'
+    }
+  };
+
+  // Add network-specific fields
+  if (isSolana) {
+    const feePayer = resourceServer.getSupportedKind(2, network, 'exact')?.extra?.feePayer;
+    if (feePayer) extra.feePayer = feePayer;
+  } else {
+    extra.name = 'USD Coin';
+    extra.version = '2';
+  }
 
   // v2 PaymentRequirements - resource/description/mimeType moved to top-level ResourceInfo
   const paymentRequirement: PaymentRequirements = {
@@ -467,22 +494,9 @@ router.get('/x402', async (req: Request, res: Response) => {
     network,
     asset: resolveAsset(network as SupportedX402Network),
     amount: '10000',  // v2: renamed from maxAmountRequired ($0.01 symbolic)
-    payTo: PLATFORM_EVM_ADDRESS,
+    payTo,
     maxTimeoutSeconds: 900,
-    extra: {
-      name: 'USD Coin',
-      version: '2',
-      title: 'Readia.io Platform',
-      category: 'content',
-      tags: ['content', 'x402', 'economy', 'peer-to-peer', 'micropayments', '$READ', 'Solana', 'Base'],
-      serviceName: 'Readia.io',
-      serviceDescription: 'Readia.io - The New Content Economy',
-      pricing: {
-        currency: 'USD',
-        amount: '0.01',
-        display: '$0.01'
-      }
-    }
+    extra
   };
 
   // v2 PaymentRequired response with top-level resource
