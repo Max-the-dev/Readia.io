@@ -41,6 +41,9 @@ const allowedOrigins = Array.from(
       MARKETING_ORIGIN,
       ...parsedInternalOrigins,
       ...parsedUploadOrigins,
+      // x402 ecosystem
+      'https://x402scan.com',
+      'https://www.x402scan.com',
     ].filter(Boolean)
   )
 );
