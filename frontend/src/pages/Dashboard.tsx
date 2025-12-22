@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { isDateWithinRange, getRelativeTimeString } from '../utils/dateUtils';
 import { extractPlainText } from '../utils/htmlUtils';
+import { generateSlug } from '../utils/slug';
 import {
   apiService,
   Article,
@@ -1023,7 +1024,7 @@ function Dashboard() {
               filteredArticles.map((article) => (
                 <div key={article.id} className="table-row">
                   <div className="table-cell article-info">
-                    <Link to={`/article/${article.id}`} className="article-title-link">
+                    <Link to={`/article/${article.id}/${generateSlug(article.title)}`} className="article-title-link">
                       <div className="article-title">{article.title}</div>
                     </Link>
                   </div>

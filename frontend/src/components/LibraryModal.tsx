@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, Clock, Star, BookOpen } from 'lucide-react';
 import { apiService, type UserArticleMeta } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { generateSlug } from '../utils/slug';
 import '../styles/components/library.css';
 
 type TabType = 'history' | 'favorites';
@@ -177,7 +178,7 @@ function LibraryModal({
             <div className="library-modal__grid">
               {currentItems.map((item) => (
                 <div key={item.id} className="library-card">
-                  <Link to={`/article/${item.id}`} className="library-card__link" onClick={onClose}>
+                  <Link to={`/article/${item.id}/${generateSlug(item.title)}`} className="library-card__link" onClick={onClose}>
                     <div className="library-card__meta">
                       <span className="library-card__date">
                         {new Date(

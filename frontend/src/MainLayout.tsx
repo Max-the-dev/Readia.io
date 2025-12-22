@@ -76,7 +76,7 @@ function MainLayout() {
           <Route path="/write" element={<Write />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/edit/:id" element={<EditArticle />} />
-          <Route path="/article/:id" element={<Article />} />
+          <Route path="/article/:id/:slug?" element={<Article />} />
           <Route path="/whitepaper" element={<Whitepaper />} />
           <Route path="/about" element={<Ecosystem />} />
           <Route path="/mission" element={<Mission />} />

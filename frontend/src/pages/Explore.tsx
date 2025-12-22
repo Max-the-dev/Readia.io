@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, Filter, X, BookOpen, Tag, Grid, List, ArrowUp } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 import { useWallet } from '../contexts/WalletContext';
+import { generateSlug } from '../utils/slug';
 import LikeButton from '../components/LikeButton';
 import FavoriteButton from '../components/FavoriteButton';
 
@@ -394,7 +395,7 @@ function Explore() {
                   <div className={`article-${viewMode}`}>
                     {displayedArticles.map((article) => (
                       <div key={article.id} className="article-card">
-                        <Link to={`/article/${article.id}`} className="article-card-link">
+                        <Link to={`/article/${article.id}/${generateSlug(article.title)}`} className="article-card-link">
                           <h3>{article.title}</h3>
                           <p>{stripHtmlTags(article.preview)}</p>
                         </Link>
