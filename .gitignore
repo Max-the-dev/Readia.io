@@ -89,6 +89,9 @@ Dev_Notes/
 x402_Documentation
 Shill_It_Readia/
 
+# Stream/demo pages (internal only)
+frontend/stream_live_feed/
+
 # Scratch notes
 backend/src/Untitled-1.md
 
