@@ -29,6 +29,7 @@ import {
 import { apiService, Draft, CreateArticleRequest, API_BASE_URL } from '../services/api';
 import { Editor } from '@tinymce/tinymce-react';
 import { extractPlainText } from '../utils/htmlUtils';
+import { generateSlug } from '../utils/slug';
 
 function Write() {
   const { isConnected, isConnecting, address } = useWallet();
@@ -224,7 +225,8 @@ function Write() {
   // Share functions
   const getArticleUrl = () => {
     if (!publishedArticleId) return '';
-    return `${window.location.origin}/article/${publishedArticleId}`;
+    const slug = generateSlug(publishedArticleTitle);
+    return `${window.location.origin}/article/${publishedArticleId}/${slug}`;
   };
 
   const getShareText = () => {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { PenTool, BookOpen, Copy, Check } from 'lucide-react';
 import { apiService, Article } from '../services/api';
+import { generateSlug } from '../utils/slug';
 
 // We'll fetch real articles from the backend instead of using mock data
 
@@ -312,7 +313,7 @@ function Home() {
           ) : articles.length > 0 ? (
             articles.map((article) => (
               <div key={article.id} className="article-card">
-                <Link to={`/article/${article.id}`} className="article-card-link">
+                <Link to={`/article/${article.id}/${generateSlug(article.title)}`} className="article-card-link">
                   <h3>{article.title}</h3>
                   <p>{stripHtmlTags(article.preview)}</p>
                 </Link>
