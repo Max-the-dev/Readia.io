@@ -14,6 +14,7 @@ import {
   tryNormalizeSolanaAddress
 } from './utils/address';
 import { Author, SupportedAuthorNetwork } from './types';
+import { ensureSolanaUsdcAta } from './ataService';
 
 type NetworkGroup = 'evm' | 'solana';
 
@@ -343,6 +344,13 @@ authRouter.post('/verify', verifyLimiter, async (req: Request, res: Response) =>
     }
 
     const author = await ensureAuthorForWallet(walletAddress, resolvedNetwork);
+
+    // Create USDC ATA for Solana wallets (fire-and-forget, don't block auth)
+    if (isSolanaNetwork(resolvedNetwork)) {
+      ensureSolanaUsdcAta(walletAddress, resolvedNetwork, 'auth').catch((error) => {
+        console.error('[auth] Background ATA creation failed:', error);
+      });
+    }
 
     const sessionExpiresAt = getSessionExpiryDate();
     const { rows: sessionRows } = await pgPool.query(

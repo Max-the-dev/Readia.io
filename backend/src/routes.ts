@@ -36,6 +36,7 @@ import {
   tryNormalizeAddress,
 } from './utils/address';
 import { requireAuth, requireOwnership, AuthenticatedRequest } from './auth';
+import { ensureSolanaUsdcAta } from './ataService';
 
 const router = express.Router();
 const db = new Database();
@@ -886,6 +887,13 @@ router.post('/authors/:address/payout-methods', writeLimiter, requireAuth, async
       network,
       isPrimary: false,
     });
+
+    // Create USDC ATA for Solana secondary wallets (fire-and-forget)
+    if (isSolanaNetwork(network)) {
+      ensureSolanaUsdcAta(normalizedPayoutAddress, network, 'secondary_wallet').catch((error) => {
+        console.error('[routes] Background ATA creation failed for secondary wallet:', error);
+      });
+    }
 
     author.secondaryPayoutNetwork = network;
     author.secondaryPayoutAddress = normalizedPayoutAddress;
