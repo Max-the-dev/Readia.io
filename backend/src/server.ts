@@ -123,9 +123,15 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // x402 v2 Configuration
 const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
 const hasCdpCredentials = !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET);
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Network configuration - testnets disabled in production
+const MAINNET_NETWORKS = ['eip155:8453', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'];
+const ALL_NETWORKS = ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'];
+const activeNetworks = isProduction ? MAINNET_NETWORKS : ALL_NETWORKS;
 
 console.log(`🔗 x402 Facilitator: ${CDP_FACILITATOR_URL}`);
-console.log(`🌐 Supported networks: eip155:8453, eip155:84532, solana:mainnet, solana:devnet`);
+console.log(`🌐 Supported networks: ${activeNetworks.join(', ')}${isProduction ? ' (production - testnets disabled)' : ' (dev - testnets enabled)'}`);
 if (hasCdpCredentials) {
   console.log(`✅ CDP credentials configured`);
 } else {
@@ -140,7 +146,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     version: '2.0.0',
     x402: {
       facilitator: CDP_FACILITATOR_URL,
-      networks: ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'],
+      networks: activeNetworks,
       cdpConfigured: hasCdpCredentials
     }
   });

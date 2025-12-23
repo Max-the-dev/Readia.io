@@ -5,7 +5,12 @@ import { base, baseSepolia, solana, solanaDevnet } from '@reown/appkit/networks'
 
 import type { AppKitNetwork } from '@reown/appkit/networks';
 
-const networks: [AppKitNetwork, ...AppKitNetwork[]] = [base, baseSepolia, solana, solanaDevnet];
+// Testnets disabled in production
+const isProduction = import.meta.env.PROD;
+
+const networks: [AppKitNetwork, ...AppKitNetwork[]] = isProduction
+  ? [base, solana]
+  : [base, baseSepolia, solana, solanaDevnet];
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
@@ -18,7 +23,7 @@ const metadata = {
 
 const wagmiAdapter = new WagmiAdapter({
   projectId,
-  networks: [base, baseSepolia],
+  networks: isProduction ? [base] : [base, baseSepolia],
   ssr: false,
 });
 
