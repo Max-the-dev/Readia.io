@@ -100,6 +100,12 @@ const SUPPORTED_X402_NETWORKS: SupportedX402Network[] = [
   'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',
 ];
 
+// Testnet networks - blocked in production
+const TESTNET_X402_NETWORKS: SupportedX402Network[] = [
+  'eip155:84532',                              // Base Sepolia
+  'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',  // Solana Devnet
+];
+
 // Network type helpers (prefix-based for CAIP-2)
 const isEvmNetwork = (n: string): boolean => n.startsWith('eip155:');
 const isSolanaNetwork = (n: string): boolean => n.startsWith('solana:');
@@ -146,10 +152,15 @@ function resolveNetworkPreference(req: Request): SupportedX402Network {
         : undefined;
 
   if (candidate && SUPPORTED_X402_NETWORKS.includes(candidate as SupportedX402Network)) {
+    // Block testnets in production
+    if (isProduction && TESTNET_X402_NETWORKS.includes(candidate as SupportedX402Network)) {
+      throw new Error('TESTNET_NOT_ALLOWED');
+    }
     return candidate as SupportedX402Network;
   }
 
-  return DEFAULT_X402_NETWORK;
+  // Default to mainnet in production, otherwise use configured default
+  return isProduction ? 'eip155:8453' : DEFAULT_X402_NETWORK;
 }
 
 // ============================================
@@ -1121,7 +1132,19 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    const networkPreference = resolveNetworkPreference(req);
+    let networkPreference: SupportedX402Network;
+    try {
+      networkPreference = resolveNetworkPreference(req);
+    } catch (error) {
+      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet payments are not accepted'
+        });
+      }
+      throw error;
+    }
+
     const authorRecord = await db.getAuthor(article.authorAddress);
     const payoutProfile = buildPayoutProfile(article, authorRecord);
 
@@ -1355,7 +1378,19 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const networkPreference = resolveNetworkPreference(req);
+    let networkPreference: SupportedX402Network;
+    try {
+      networkPreference = resolveNetworkPreference(req);
+    } catch (error) {
+      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet payments are not accepted'
+        });
+      }
+      throw error;
+    }
+
     const payTo =
       isSolanaNetwork(networkPreference)
         ? PLATFORM_SOLANA_ADDRESS
@@ -1511,7 +1546,19 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
     const authorRecord = await db.getAuthor(article.authorAddress);
     const payoutProfile = buildPayoutProfile(article, authorRecord);
 
-    const networkPreference = resolveNetworkPreference(req);
+    let networkPreference: SupportedX402Network;
+    try {
+      networkPreference = resolveNetworkPreference(req);
+    } catch (error) {
+      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet payments are not accepted'
+        });
+      }
+      throw error;
+    }
+
     let payTo: string;
     try {
       payTo = resolvePayTo(payoutProfile, networkPreference);
