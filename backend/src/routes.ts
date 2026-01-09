@@ -449,12 +449,10 @@ function estimateReadTime(content: string): string {
 router.get('/x402', async (req: Request, res: Response) => {
   const resourceUrl = `${req.protocol}://${req.get('host')}/api/x402`;
 
-  // All supported networks for discovery
+  // Mainnet networks only for discovery (no testnets)
   const allNetworks: SupportedX402Network[] = [
     'eip155:8453',                              // Base mainnet
-    'eip155:84532',                             // Base Sepolia
     'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',  // Solana mainnet
-    'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1',  // Solana devnet
   ];
 
   // Build payment requirements for all networks
