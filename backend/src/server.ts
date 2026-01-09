@@ -120,8 +120,8 @@ if (PUBLIC_API_HOST) {
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// x402 v2 Configuration
-const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
+// x402 v2 Configuration (PayAI takes priority if set, falls back to CDP)
+const FACILITATOR_URL = process.env.PAYAI_FACILITATOR_URL || process.env.CDP_FACILITATOR_URL;
 const hasCdpCredentials = !!(process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET);
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -130,7 +130,7 @@ const MAINNET_NETWORKS = ['eip155:8453', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd
 const ALL_NETWORKS = ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'];
 const activeNetworks = isProduction ? MAINNET_NETWORKS : ALL_NETWORKS;
 
-console.log(`🔗 x402 Facilitator: ${CDP_FACILITATOR_URL}`);
+console.log(`🔗 x402 Facilitator: ${FACILITATOR_URL}`);
 console.log(`🌐 Supported networks: ${activeNetworks.join(', ')}${isProduction ? ' (production - testnets disabled)' : ' (dev - testnets enabled)'}`);
 if (hasCdpCredentials) {
   console.log(`✅ CDP credentials configured`);
@@ -145,7 +145,7 @@ app.get('/api/health', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     version: '2.0.0',
     x402: {
-      facilitator: CDP_FACILITATOR_URL,
+      facilitator: FACILITATOR_URL,
       networks: activeNetworks,
       cdpConfigured: hasCdpCredentials
     }

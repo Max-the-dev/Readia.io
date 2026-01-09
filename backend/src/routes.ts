@@ -43,11 +43,12 @@ const db = new Database();
 const isProduction = process.env.NODE_ENV === 'production';
 const enableRateLimiting = process.env.ENABLE_RATE_LIMITING === 'true';
 
-// CDP Facilitator Client for x402 v2
-const CDP_FACILITATOR_URL = 'https://api.cdp.coinbase.com/platform/v2/x402';
+// x402 Facilitator URL (PayAI takes priority if set, falls back to CDP)
+const FACILITATOR_URL = process.env.PAYAI_FACILITATOR_URL || process.env.CDP_FACILITATOR_URL;
+console.log(`[x402] HTTPFacilitatorClient using: ${FACILITATOR_URL}`);
 
 const facilitatorClient = new HTTPFacilitatorClient({
-  url: CDP_FACILITATOR_URL,
+  url: FACILITATOR_URL,
   createAuthHeaders: async () => {
     const generateAuthForPath = async (path: string, method: 'GET' | 'POST' = 'POST') => {
       const token = await generateJwt({
