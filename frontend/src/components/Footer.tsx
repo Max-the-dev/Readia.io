@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAccount, useWalletClient } from 'wagmi';
 import { Info, BookOpen, PenTool, HelpCircle, Mail, Shield, FileText, LayoutDashboard, Library, Laptop, HeartHandshake, Copy, Check, Coins } from 'lucide-react';
 import { useAppKitProvider } from '@reown/appkit/react';
-import { x402PaymentService, type SupportedNetwork } from '../services/x402PaymentService';
-import { createSolanaTransactionSigner } from '../utils/solanaSigner';
+import { x402PaymentService, type SupportedNetwork, type SolanaWalletProvider } from '../services/x402PaymentService';
 import { useAppKitNetwork } from '@reown/appkit/react';
 import { useNetworkIconByCaipId } from '../hooks/useNetworkAssets';
 import { NETWORK_FALLBACK_ICONS, NETWORK_FAMILY_DEFAULTS } from '../constants/networks';
@@ -25,23 +24,26 @@ function Footer() {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const { isConnected, chain } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const { walletProvider: solanaWalletProvider } = useAppKitProvider('solana');
-  const solanaSigner = useMemo(
-    () => createSolanaTransactionSigner(solanaWalletProvider),
-    [solanaWalletProvider]
-  );
+  const { walletProvider: rawSolanaProvider } = useAppKitProvider('solana');
+  const solanaProvider = rawSolanaProvider as SolanaWalletProvider | undefined;
+  const solanaAddressString = useMemo(() => {
+    if (!solanaProvider?.publicKey) return undefined;
+    return typeof solanaProvider.publicKey === 'string'
+      ? solanaProvider.publicKey
+      : solanaProvider.publicKey.toString();
+  }, [solanaProvider?.publicKey]);
   const modalRef = useRef<HTMLDivElement | null>(null);
 
   // Dynamic network selection
   const {caipNetworkId} = useAppKitNetwork();
-    const detectSolanaNetwork = (caip?: string, solanaSigner?: any): SupportedNetwork => {
+  const detectSolanaNetwork = (caip?: string, provider?: SolanaWalletProvider): SupportedNetwork => {
     // First try CAIP detection (when Solana is active network)
     if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
     if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
 
-    // If CAIP is not Solana (e.g., Base wallet is active), check if Solana signer exists
+    // If CAIP is not Solana (e.g., Base wallet is active), check if Solana provider exists
     // If Solana wallet is connected behind the scenes, default to mainnet
-    if (solanaSigner?.address) {
+    if (provider?.publicKey) {
       return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Default to mainnet for production
     }
 
@@ -49,8 +51,8 @@ function Footer() {
     return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
   };
   const resolvedSolanaNetwork = useMemo(
-    () => detectSolanaNetwork(caipNetworkId, solanaSigner),
-    [caipNetworkId, solanaSigner]
+    () => detectSolanaNetwork(caipNetworkId, solanaProvider),
+    [caipNetworkId, solanaProvider]
   );
   const donationShareUrl = useMemo(
     () => (typeof window !== 'undefined' ? `${window.location.origin}/donate` : ''),
@@ -91,12 +93,12 @@ function Footer() {
   };
   const isSolanaSelected = selectedNetworkFamily === 'solana';
   const isSelectedNetworkReady = isSolanaSelected
-    ? Boolean(solanaSigner)
+    ? Boolean(solanaProvider?.publicKey)
     : Boolean(isConnected && walletClient);
   const donationNetworkLabel = isSolanaSelected ? 'Solana USDC (x402)' : 'Base USDC (x402)';
   const getNetworkStatus = (family: 'base' | 'solana') => {
     if (family === 'solana') {
-      const isReady = Boolean(solanaSigner);
+      const isReady = Boolean(solanaProvider?.publicKey);
       return {
         isReady,
         badgeText: isReady ? 'Wallet connected' : 'Connect Solana wallet',
@@ -124,7 +126,7 @@ function Footer() {
         ...status,
       };
     });
-  }, [isConnected, walletClient, solanaSigner, donationNetworkIcons.base, donationNetworkIcons.solana]);
+  }, [isConnected, walletClient, solanaProvider, donationNetworkIcons.base, donationNetworkIcons.solana]);
   const handleCopyAddress = async (address: string) => {
     try {
       if (navigator?.clipboard?.writeText) {
@@ -351,7 +353,7 @@ function Footer() {
         {
           network,
           evmWalletClient: isSolanaSelected ? undefined : walletClient ?? undefined,
-          solanaSigner: isSolanaSelected ? solanaSigner : undefined,
+          solanaProvider: isSolanaSelected ? solanaProvider : undefined,
         }
       );
 
