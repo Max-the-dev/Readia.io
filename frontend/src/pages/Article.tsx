@@ -3,14 +3,13 @@ import { useParams } from 'react-router-dom';
 import { useWallet } from '../contexts/WalletContext';
 import { Clock, User, Lock, HeartHandshake, Tag, Coins } from 'lucide-react';
 import { apiService, Article as ArticleType, type AuthorWallet, type SupportedAuthorNetwork } from '../services/api';
-import { x402PaymentService, type SupportedNetwork } from '../services/x402PaymentService';
+import { x402PaymentService, type SupportedNetwork, type SolanaWalletProvider } from '../services/x402PaymentService';
 import { useAccount, useWalletClient } from 'wagmi';
 import { useAppKitProvider } from '@reown/appkit/react';
 import LikeButton from '../components/LikeButton';
 import FavoriteButton from '../components/FavoriteButton';
 import { sanitizeHTML } from '../utils/sanitize';
 import AppKitConnectButton from '../components/AppKitConnectButton';
-import { createSolanaTransactionSigner } from '../utils/solanaSigner';
 import { useAppKitNetwork } from '@reown/appkit/react';
 import { useNetworkIconByCaipId } from '../hooks/useNetworkAssets';
 import { NETWORK_FALLBACK_ICONS, NETWORK_FAMILY_DEFAULTS } from '../constants/networks';
@@ -40,7 +39,8 @@ function Article() {
   const { id } = useParams();
   const { isConnected, address } = useWallet();
   const { data: walletClient } = useWalletClient();
-  const { walletProvider: solanaWalletProvider } = useAppKitProvider('solana');
+  const { walletProvider: rawSolanaProvider } = useAppKitProvider('solana');
+  const solanaProvider = rawSolanaProvider as SolanaWalletProvider | undefined;
   const networkIcons = {
     base: useNetworkIconByCaipId(
       NETWORK_META.base.caipNetworkId,
@@ -53,10 +53,6 @@ function Article() {
   };
   const baseIconSrc = networkIcons.base ?? NETWORK_FALLBACK_ICONS[NETWORK_META.base.caipNetworkId];
   const solanaIconSrc = networkIcons.solana ?? NETWORK_FALLBACK_ICONS[NETWORK_META.solana.caipNetworkId];
-  const solanaSigner = useMemo(
-    () => createSolanaTransactionSigner(solanaWalletProvider),
-    [solanaWalletProvider]
-  );
   const [article, setArticle] = useState<ArticleType | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string>('');
@@ -83,14 +79,14 @@ function Article() {
   const { chain } = useAccount();
   const {caipNetworkId} = useAppKitNetwork();
   // v2: Return CAIP-2 format network identifiers
-  const detectSolanaNetwork = (caip?: string, solanaSigner?: any): SupportedNetwork => {
+  const detectSolanaNetwork = (caip?: string, provider?: any): SupportedNetwork => {
   // First try CAIP detection (when Solana is active network)
   if (caip?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
   if (caip?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
 
-  // If CAIP is not Solana (e.g., Base wallet is active), check if Solana signer exists
+  // If CAIP is not Solana (e.g., Base wallet is active), check if Solana provider exists
   // If Solana wallet is connected behind the scenes, default to mainnet
-  if (solanaSigner?.address) {
+  if (provider?.publicKey) {
     return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'; // Default to mainnet for production
   }
 
@@ -98,8 +94,8 @@ function Article() {
   return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
 };
   const resolvedSolanaNetwork = useMemo(
-    () => detectSolanaNetwork(caipNetworkId, solanaSigner),
-    [caipNetworkId, solanaSigner]
+    () => detectSolanaNetwork(caipNetworkId, solanaProvider),
+    [caipNetworkId, solanaProvider]
   );
   
 
@@ -144,7 +140,7 @@ function Article() {
   const selectedNetworkLabel = selectedNetworkFamily === 'solana' ? 'Solana USDC' : 'Base USDC';
 
   const isTipNetworkReady = selectedTipNetworkFamily === 'solana'
-    ? Boolean(solanaSigner)
+    ? Boolean(solanaProvider?.publicKey)
     : Boolean(isConnected && walletClient);
 
   useEffect(() => {
@@ -211,9 +207,12 @@ function Article() {
           }
 
           // Check if user has already paid for this article (Base or Solana address)
+          const solanaAddress = typeof solanaProvider?.publicKey === 'string'
+            ? solanaProvider.publicKey
+            : solanaProvider?.publicKey?.toString?.();
           const potentialPayers = [
             address,
-            solanaSigner?.address
+            solanaAddress
           ].filter((value): value is string => Boolean(value));
 
           if (!potentialPayers.length) {
@@ -252,7 +251,7 @@ function Article() {
     };
 
     fetchArticle();
-  }, [id, address, solanaSigner?.address]);
+  }, [id, address, solanaProvider?.publicKey]);
 
   // Check if current user is the author of this article
   const normalizeWalletAddress = (value?: string | null): string | undefined => {
@@ -341,7 +340,7 @@ function Article() {
     setIsProcessingPayment(true);
     setPaymentError('');
 
-    if (isSolanaSelected && !solanaSigner) {
+    if (isSolanaSelected && !solanaProvider?.publicKey) {
       setPaymentError('Connect a Solana USDC-compatible wallet to complete this payment.');
       setIsProcessingPayment(false);
       return;
@@ -359,7 +358,7 @@ function Article() {
         {
           network: selectedNetwork,
           evmWalletClient: !isSolanaSelected ? walletClient ?? undefined : undefined,
-          solanaSigner: isSolanaSelected ? solanaSigner : undefined,
+          solanaProvider: isSolanaSelected ? solanaProvider : undefined,
         }
       );
 
@@ -399,7 +398,7 @@ function Article() {
     const selectedNetwork: SupportedNetwork = isSolanaTip ? resolvedSolanaNetwork : getNetworkFromChain(chain?.id);
 
 
-    if (isSolanaTip && !solanaSigner) {
+    if (isSolanaTip && !solanaProvider?.publicKey) {
       setTipResult({ success: false, message: 'Please connect a Solana wallet to tip' });
       return;
     }
@@ -419,7 +418,7 @@ function Article() {
         {
           network: selectedNetwork,
           evmWalletClient: !isSolanaTip ? walletClient ?? undefined : undefined,
-          solanaSigner: isSolanaTip ? solanaSigner : undefined,
+          solanaProvider: isSolanaTip ? solanaProvider : undefined,
         }
       );
 

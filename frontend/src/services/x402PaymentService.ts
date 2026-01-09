@@ -2,17 +2,15 @@
 import { apiService } from './api';
 import { x402Client, x402HTTPClient } from '@x402/fetch';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
-import { ExactSvmScheme } from '@x402/svm/exact/client';
+// ExactSvmScheme removed - using PayAI for Solana payments
 // PayAI's Solana-specific client (handles Phantom lighthouse instructions)
 import { createX402Client as createPayAISolanaClient } from 'x402-solana/client';
 import type { WalletAdapter as PayAIWalletAdapter } from 'x402-solana/types';
 import type { WalletClient } from 'viem';
-import type { TransactionSigner } from '@solana/kit';
 import { VersionedTransaction } from '@solana/web3.js';
 
-// Network type helpers
+// Network type helper
 const isSolanaNetwork = (network: string): boolean => network.startsWith('solana:');
-const isEvmNetwork = (network: string): boolean => network.startsWith('eip155:');
 
 // Convert CAIP-2 Solana network to simple format for PayAI
 const toPayAISolanaNetwork = (network: string): 'solana' | 'solana-devnet' => {
@@ -82,10 +80,17 @@ export type SupportedNetwork =
   | 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'  // Solana mainnet
   | 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'; // Solana devnet
 
+// Raw Solana wallet provider interface (Phantom, Solflare, AppKit, etc.)
+// Matches PayAI's WalletAdapter interface from x402-solana docs
+export interface SolanaWalletProvider {
+  publicKey?: { toString(): string } | string | null;
+  signTransaction?: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+}
+
 export interface PaymentExecutionContext {
   network: SupportedNetwork;
   evmWalletClient?: WalletClient;
-  solanaSigner?: TransactionSigner;
+  solanaProvider?: SolanaWalletProvider;
 }
 
 class X402PaymentService {
@@ -191,47 +196,43 @@ class X402PaymentService {
 
     console.log(`[x402 Purchase] Starting purchase for article ${articleId}`);
     console.log(`[x402 Purchase] Network: ${context.network} (${networkType})`);
-    console.log(`[x402 Purchase] Has Solana signer: ${!!context.solanaSigner}`);
+    console.log(`[x402 Purchase] Has Solana provider: ${!!context.solanaProvider}`);
     console.log(`[x402 Purchase] Has EVM wallet: ${!!context.evmWalletClient}`);
 
     try {
       // ============================================
       // SOLANA PATH - Use PayAI's x402-solana client
       // ============================================
-      if (isSolanaNetwork(context.network) && context.solanaSigner) {
+      if (isSolanaNetwork(context.network) && context.solanaProvider) {
         console.log('[x402 Purchase] Using PayAI Solana client (handles Phantom lighthouse)');
+
+        // Extract address from provider (handles different provider formats)
+        const providerAddress = typeof context.solanaProvider.publicKey === 'string'
+          ? context.solanaProvider.publicKey
+          : context.solanaProvider.publicKey?.toString();
+
+        if (!providerAddress || !context.solanaProvider.signTransaction) {
+          return {
+            success: false,
+            error: 'Solana wallet not properly connected'
+          };
+        }
 
         const rpcUrl = this.getSolanaRpcUrl(context.network);
         const payaiNetwork = toPayAISolanaNetwork(context.network);
 
+        console.log(`[x402 Purchase] Wallet address: ${providerAddress}`);
         console.log(`[x402 Purchase] PayAI network: ${payaiNetwork}`);
         console.log(`[x402 Purchase] RPC URL: ${rpcUrl || 'default'}`);
 
-        // Adapt our TransactionSigner to PayAI's WalletAdapter format
+        // Create PayAI wallet adapter (per official docs)
         const payaiWallet: PayAIWalletAdapter = {
-          address: context.solanaSigner.address,
+          address: providerAddress,
           signTransaction: async (tx: VersionedTransaction) => {
-            console.log('[x402 Purchase] PayAI requesting transaction signature...');
-            // Use our existing signer's signTransactions method
-            const kitTx = {
-              messageBytes: tx.message.serialize(),
-              signatures: {} as Record<string, Uint8Array>,
-            };
-            // Add placeholder for the signer's address
-            kitTx.signatures[context.solanaSigner!.address] = new Uint8Array(64);
-
-            const signer = context.solanaSigner as any;
-            const signedResults = await signer.signTransactions([kitTx]);
-            const signature = signedResults[0][context.solanaSigner!.address];
-
-            if (signature) {
-              tx.addSignature(
-                tx.message.staticAccountKeys[0], // payer is first key
-                signature
-              );
-            }
+            console.log('[x402 Purchase] Wallet signing transaction...');
+            const signed = await context.solanaProvider!.signTransaction!(tx);
             console.log('[x402 Purchase] Transaction signed successfully');
-            return tx;
+            return signed;
           },
         };
 
@@ -240,7 +241,7 @@ class X402PaymentService {
           wallet: payaiWallet,
           network: payaiNetwork,
           rpcUrl,
-          verbose: true, // Enable PayAI's internal logging
+          verbose: true,
         });
 
         console.log('[x402 Purchase] Making payment request via PayAI client...');
@@ -364,12 +365,12 @@ class X402PaymentService {
     try {
       const url = this.buildRequestUrl('/donate', context.network);
 
-      const client = new x402Client();
-
-      if (context.solanaSigner) {
-        const rpcUrl = this.getSolanaRpcUrl(context.network);
-        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+      // TODO: Update to PayAI after purchase validated
+      if (isSolanaNetwork(context.network)) {
+        return { success: false, error: 'Solana donations temporarily disabled - use Base' };
       }
+
+      const client = new x402Client();
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {
           address: context.evmWalletClient.account.address,
@@ -453,12 +454,12 @@ class X402PaymentService {
     try {
       const url = this.buildRequestUrl(`/articles/${articleId}/tip`, context.network);
 
-      const client = new x402Client();
-
-      if (context.solanaSigner) {
-        const rpcUrl = this.getSolanaRpcUrl(context.network);
-        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
+      // TODO: Update to PayAI after purchase validated
+      if (isSolanaNetwork(context.network)) {
+        return { success: false, error: 'Solana tips temporarily disabled - use Base' };
       }
+
+      const client = new x402Client();
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {
           address: context.evmWalletClient.account.address,
