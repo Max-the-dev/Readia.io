@@ -1,3 +1,7 @@
+// Polyfill Buffer for browser (required by x402-solana package)
+import { Buffer } from 'buffer';
+globalThis.Buffer = Buffer;
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
