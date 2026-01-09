@@ -41,6 +41,13 @@ function Article() {
   const { data: walletClient } = useWalletClient();
   const { walletProvider: rawSolanaProvider } = useAppKitProvider('solana');
   const solanaProvider = rawSolanaProvider as SolanaWalletProvider | undefined;
+  // Memoize solana address as string for stable useEffect dependency
+  const solanaAddressString = useMemo(() => {
+    if (!solanaProvider?.publicKey) return undefined;
+    return typeof solanaProvider.publicKey === 'string'
+      ? solanaProvider.publicKey
+      : solanaProvider.publicKey.toString();
+  }, [solanaProvider?.publicKey]);
   const networkIcons = {
     base: useNetworkIconByCaipId(
       NETWORK_META.base.caipNetworkId,
@@ -207,12 +214,9 @@ function Article() {
           }
 
           // Check if user has already paid for this article (Base or Solana address)
-          const solanaAddress = typeof solanaProvider?.publicKey === 'string'
-            ? solanaProvider.publicKey
-            : solanaProvider?.publicKey?.toString?.();
           const potentialPayers = [
             address,
-            solanaAddress
+            solanaAddressString
           ].filter((value): value is string => Boolean(value));
 
           if (!potentialPayers.length) {
@@ -251,7 +255,7 @@ function Article() {
     };
 
     fetchArticle();
-  }, [id, address, solanaProvider?.publicKey]);
+  }, [id, address, solanaAddressString]);
 
   // Check if current user is the author of this article
   const normalizeWalletAddress = (value?: string | null): string | undefined => {
