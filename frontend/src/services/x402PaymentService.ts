@@ -3,8 +3,22 @@ import { apiService } from './api';
 import { x402Client, x402HTTPClient } from '@x402/fetch';
 import { registerExactEvmScheme } from '@x402/evm/exact/client';
 import { ExactSvmScheme } from '@x402/svm/exact/client';
+// PayAI's Solana-specific client (handles Phantom lighthouse instructions)
+import { createX402Client as createPayAISolanaClient } from 'x402-solana/client';
+import type { WalletAdapter as PayAIWalletAdapter } from 'x402-solana/types';
 import type { WalletClient } from 'viem';
 import type { TransactionSigner } from '@solana/kit';
+import { VersionedTransaction } from '@solana/web3.js';
+
+// Network type helpers
+const isSolanaNetwork = (network: string): boolean => network.startsWith('solana:');
+const isEvmNetwork = (network: string): boolean => network.startsWith('eip155:');
+
+// Convert CAIP-2 Solana network to simple format for PayAI
+const toPayAISolanaNetwork = (network: string): 'solana' | 'solana-devnet' => {
+  if (network === 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1') return 'solana-devnet';
+  return 'solana'; // mainnet
+};
 
 /**
  * Recursively sanitizes strings in an object to be ASCII-safe for btoa encoding.
@@ -172,17 +186,97 @@ class X402PaymentService {
     articleId: number,
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
-    try {
-      const url = this.buildRequestUrl(`/articles/${articleId}/purchase`, context.network);
+    const url = this.buildRequestUrl(`/articles/${articleId}/purchase`, context.network);
+    const networkType = isSolanaNetwork(context.network) ? 'SOLANA' : 'EVM';
 
-      // Step 1: Create client (matches test script)
+    console.log(`[x402 Purchase] Starting purchase for article ${articleId}`);
+    console.log(`[x402 Purchase] Network: ${context.network} (${networkType})`);
+    console.log(`[x402 Purchase] Has Solana signer: ${!!context.solanaSigner}`);
+    console.log(`[x402 Purchase] Has EVM wallet: ${!!context.evmWalletClient}`);
+
+    try {
+      // ============================================
+      // SOLANA PATH - Use PayAI's x402-solana client
+      // ============================================
+      if (isSolanaNetwork(context.network) && context.solanaSigner) {
+        console.log('[x402 Purchase] Using PayAI Solana client (handles Phantom lighthouse)');
+
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        const payaiNetwork = toPayAISolanaNetwork(context.network);
+
+        console.log(`[x402 Purchase] PayAI network: ${payaiNetwork}`);
+        console.log(`[x402 Purchase] RPC URL: ${rpcUrl || 'default'}`);
+
+        // Adapt our TransactionSigner to PayAI's WalletAdapter format
+        const payaiWallet: PayAIWalletAdapter = {
+          address: context.solanaSigner.address,
+          signTransaction: async (tx: VersionedTransaction) => {
+            console.log('[x402 Purchase] PayAI requesting transaction signature...');
+            // Use our existing signer's signTransactions method
+            const kitTx = {
+              messageBytes: tx.message.serialize(),
+              signatures: {} as Record<string, Uint8Array>,
+            };
+            // Add placeholder for the signer's address
+            kitTx.signatures[context.solanaSigner!.address] = new Uint8Array(64);
+
+            const signer = context.solanaSigner as any;
+            const signedResults = await signer.signTransactions([kitTx]);
+            const signature = signedResults[0][context.solanaSigner!.address];
+
+            if (signature) {
+              tx.addSignature(
+                tx.message.staticAccountKeys[0], // payer is first key
+                signature
+              );
+            }
+            console.log('[x402 Purchase] Transaction signed successfully');
+            return tx;
+          },
+        };
+
+        // Create PayAI client
+        const payaiClient = createPayAISolanaClient({
+          wallet: payaiWallet,
+          network: payaiNetwork,
+          rpcUrl,
+          verbose: true, // Enable PayAI's internal logging
+        });
+
+        console.log('[x402 Purchase] Making payment request via PayAI client...');
+
+        // PayAI client handles the full 402 flow internally
+        const response = await payaiClient.fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        const result = await response.json();
+        console.log(`[x402 Purchase] PayAI response status: ${response.status}`);
+        console.log('[x402 Purchase] PayAI response:', result);
+
+        if (response.ok && result.success) {
+          return {
+            success: true,
+            receipt: result.data?.receipt || result.receipt || 'Payment processed',
+            rawResponse: result
+          };
+        }
+
+        return {
+          success: false,
+          error: result?.error || `Payment failed with status ${response.status}`,
+          rawResponse: result
+        };
+      }
+
+      // ============================================
+      // EVM PATH - Use existing Coinbase client (unchanged)
+      // ============================================
+      console.log('[x402 Purchase] Using Coinbase EVM client');
+
       const client = new x402Client();
 
-      // Step 2: Register schemes (matches test script)
-      if (context.solanaSigner) {
-        const rpcUrl = this.getSolanaRpcUrl(context.network);
-        client.register('solana:*', new ExactSvmScheme(context.solanaSigner, { rpcUrl }));
-      }
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {
           address: context.evmWalletClient.account.address,
@@ -196,18 +290,18 @@ class X402PaymentService {
             }),
         };
         registerExactEvmScheme(client, { signer: evmSigner });
+        console.log(`[x402 Purchase] EVM signer registered: ${evmSigner.address}`);
       }
 
-      // Step 3: Create httpClient (matches test script)
       const httpClient = new x402HTTPClient(client);
 
-      // Step 4: Initial request (matches test script)
+      // Initial request
+      console.log('[x402 Purchase] Making initial request...');
       const initialResponse = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      // Step 5: Check for 402 (matches test script)
       if (initialResponse.status !== 402) {
         const body = await initialResponse.json();
         if (initialResponse.ok && body.success) {
@@ -216,23 +310,19 @@ class X402PaymentService {
         return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
       }
 
-      // Step 6: Get response body and sanitize Unicode for base64 encoding
+      console.log('[x402 Purchase] Got 402, processing payment...');
       const responseBody = await initialResponse.json();
       const sanitizedBody = sanitizeForBase64(responseBody);
 
-      // Step 7: Parse with SDK helper (matches test script)
       const paymentRequired = httpClient.getPaymentRequiredResponse(
         (name) => initialResponse.headers.get(name),
         sanitizedBody
       );
 
-      // Step 8: Create payment payload (matches test script)
       const paymentPayload = await client.createPaymentPayload(paymentRequired);
-
-      // Step 9: Encode header (matches test script)
       const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
 
-      // Step 10: Payment request (matches test script)
+      console.log('[x402 Purchase] Sending payment...');
       const paymentResponse = await fetch(url, {
         method: 'POST',
         headers: {
@@ -241,8 +331,8 @@ class X402PaymentService {
         },
       });
 
-      // Step 11: Handle result
       const result = await paymentResponse.json();
+      console.log(`[x402 Purchase] Payment response status: ${paymentResponse.status}`);
 
       if (paymentResponse.ok && result.success) {
         return {
@@ -259,7 +349,7 @@ class X402PaymentService {
       };
 
     } catch (error) {
-      console.error('Article purchase failed:', error);
+      console.error('[x402 Purchase] Failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Purchase failed',

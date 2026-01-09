@@ -34,7 +34,8 @@
     "react-syntax-highlighter": "^16.1.0",
     "siwe": "^2.3.2",
     "viem": "^2.38.6",
-    "wagmi": "^2.19.2"
+    "wagmi": "^2.19.2",
+    "x402-solana": "^2.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
