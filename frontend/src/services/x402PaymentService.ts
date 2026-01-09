@@ -192,69 +192,42 @@ class X402PaymentService {
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
     const url = this.buildRequestUrl(`/articles/${articleId}/purchase`, context.network);
-    const networkType = isSolanaNetwork(context.network) ? 'SOLANA' : 'EVM';
-
-    console.log(`[x402 Purchase] Starting purchase for article ${articleId}`);
-    console.log(`[x402 Purchase] Network: ${context.network} (${networkType})`);
-    console.log(`[x402 Purchase] Has Solana provider: ${!!context.solanaProvider}`);
-    console.log(`[x402 Purchase] Has EVM wallet: ${!!context.evmWalletClient}`);
 
     try {
       // ============================================
       // SOLANA PATH - Use PayAI's x402-solana client
       // ============================================
       if (isSolanaNetwork(context.network) && context.solanaProvider) {
-        console.log('[x402 Purchase] Using PayAI Solana client (handles Phantom lighthouse)');
-
-        // Extract address from provider (handles different provider formats)
         const providerAddress = typeof context.solanaProvider.publicKey === 'string'
           ? context.solanaProvider.publicKey
           : context.solanaProvider.publicKey?.toString();
 
         if (!providerAddress || !context.solanaProvider.signTransaction) {
-          return {
-            success: false,
-            error: 'Solana wallet not properly connected'
-          };
+          return { success: false, error: 'Solana wallet not properly connected' };
         }
 
         const rpcUrl = this.getSolanaRpcUrl(context.network);
         const payaiNetwork = toPayAISolanaNetwork(context.network);
 
-        console.log(`[x402 Purchase] Wallet address: ${providerAddress}`);
-        console.log(`[x402 Purchase] PayAI network: ${payaiNetwork}`);
-        console.log(`[x402 Purchase] RPC URL: ${rpcUrl || 'default'}`);
-
-        // Create PayAI wallet adapter (per official docs)
         const payaiWallet: PayAIWalletAdapter = {
           address: providerAddress,
           signTransaction: async (tx: VersionedTransaction) => {
-            console.log('[x402 Purchase] Wallet signing transaction...');
-            const signed = await context.solanaProvider!.signTransaction!(tx);
-            console.log('[x402 Purchase] Transaction signed successfully');
-            return signed;
+            return await context.solanaProvider!.signTransaction!(tx);
           },
         };
 
-        // Create PayAI client
         const payaiClient = createPayAISolanaClient({
           wallet: payaiWallet,
           network: payaiNetwork,
           rpcUrl,
-          verbose: true,
         });
 
-        console.log('[x402 Purchase] Making payment request via PayAI client...');
-
-        // PayAI client handles the full 402 flow internally
         const response = await payaiClient.fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });
 
         const result = await response.json();
-        console.log(`[x402 Purchase] PayAI response status: ${response.status}`);
-        console.log('[x402 Purchase] PayAI response:', result);
 
         if (response.ok && result.success) {
           return {
@@ -272,10 +245,8 @@ class X402PaymentService {
       }
 
       // ============================================
-      // EVM PATH - Use existing Coinbase client (unchanged)
+      // EVM PATH - Use Coinbase client
       // ============================================
-      console.log('[x402 Purchase] Using Coinbase EVM client');
-
       const client = new x402Client();
 
       if (context.evmWalletClient && context.evmWalletClient.account) {
@@ -291,13 +262,10 @@ class X402PaymentService {
             }),
         };
         registerExactEvmScheme(client, { signer: evmSigner });
-        console.log(`[x402 Purchase] EVM signer registered: ${evmSigner.address}`);
       }
 
       const httpClient = new x402HTTPClient(client);
 
-      // Initial request
-      console.log('[x402 Purchase] Making initial request...');
       const initialResponse = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -311,7 +279,6 @@ class X402PaymentService {
         return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
       }
 
-      console.log('[x402 Purchase] Got 402, processing payment...');
       const responseBody = await initialResponse.json();
       const sanitizedBody = sanitizeForBase64(responseBody);
 
@@ -323,7 +290,6 @@ class X402PaymentService {
       const paymentPayload = await client.createPaymentPayload(paymentRequired);
       const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
 
-      console.log('[x402 Purchase] Sending payment...');
       const paymentResponse = await fetch(url, {
         method: 'POST',
         headers: {
@@ -333,7 +299,6 @@ class X402PaymentService {
       });
 
       const result = await paymentResponse.json();
-      console.log(`[x402 Purchase] Payment response status: ${paymentResponse.status}`);
 
       if (paymentResponse.ok && result.success) {
         return {
@@ -350,7 +315,6 @@ class X402PaymentService {
       };
 
     } catch (error) {
-      console.error('[x402 Purchase] Failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Purchase failed',
@@ -362,14 +326,63 @@ class X402PaymentService {
     amount: number,
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
-    try {
-      const url = this.buildRequestUrl('/donate', context.network);
+    const url = this.buildRequestUrl('/donate', context.network);
 
-      // TODO: Update to PayAI after purchase validated
-      if (isSolanaNetwork(context.network)) {
-        return { success: false, error: 'Solana donations temporarily disabled - use Base' };
+    try {
+      // ============================================
+      // SOLANA PATH - Use PayAI's x402-solana client
+      // ============================================
+      if (isSolanaNetwork(context.network) && context.solanaProvider) {
+        const providerAddress = typeof context.solanaProvider.publicKey === 'string'
+          ? context.solanaProvider.publicKey
+          : context.solanaProvider.publicKey?.toString();
+
+        if (!providerAddress || !context.solanaProvider.signTransaction) {
+          return { success: false, error: 'Solana wallet not properly connected' };
+        }
+
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        const payaiNetwork = toPayAISolanaNetwork(context.network);
+
+        const payaiWallet: PayAIWalletAdapter = {
+          address: providerAddress,
+          signTransaction: async (tx: VersionedTransaction) => {
+            return await context.solanaProvider!.signTransaction!(tx);
+          },
+        };
+
+        const payaiClient = createPayAISolanaClient({
+          wallet: payaiWallet,
+          network: payaiNetwork,
+          rpcUrl,
+        });
+
+        const response = await payaiClient.fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          return {
+            success: true,
+            receipt: result.data?.receipt || result.receipt || 'Donation processed',
+            rawResponse: result
+          };
+        }
+
+        return {
+          success: false,
+          error: result?.error || `Donation failed with status ${response.status}`,
+          rawResponse: result
+        };
       }
 
+      // ============================================
+      // EVM PATH - Use Coinbase client
+      // ============================================
       const client = new x402Client();
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {
@@ -451,14 +464,63 @@ class X402PaymentService {
     amount: number,
     context: PaymentExecutionContext
   ): Promise<PaymentResponse> {
-    try {
-      const url = this.buildRequestUrl(`/articles/${articleId}/tip`, context.network);
+    const url = this.buildRequestUrl(`/articles/${articleId}/tip`, context.network);
 
-      // TODO: Update to PayAI after purchase validated
-      if (isSolanaNetwork(context.network)) {
-        return { success: false, error: 'Solana tips temporarily disabled - use Base' };
+    try {
+      // ============================================
+      // SOLANA PATH - Use PayAI's x402-solana client
+      // ============================================
+      if (isSolanaNetwork(context.network) && context.solanaProvider) {
+        const providerAddress = typeof context.solanaProvider.publicKey === 'string'
+          ? context.solanaProvider.publicKey
+          : context.solanaProvider.publicKey?.toString();
+
+        if (!providerAddress || !context.solanaProvider.signTransaction) {
+          return { success: false, error: 'Solana wallet not properly connected' };
+        }
+
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        const payaiNetwork = toPayAISolanaNetwork(context.network);
+
+        const payaiWallet: PayAIWalletAdapter = {
+          address: providerAddress,
+          signTransaction: async (tx: VersionedTransaction) => {
+            return await context.solanaProvider!.signTransaction!(tx);
+          },
+        };
+
+        const payaiClient = createPayAISolanaClient({
+          wallet: payaiWallet,
+          network: payaiNetwork,
+          rpcUrl,
+        });
+
+        const response = await payaiClient.fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          return {
+            success: true,
+            receipt: result.data?.receipt || result.receipt || 'Tip processed',
+            rawResponse: result
+          };
+        }
+
+        return {
+          success: false,
+          error: result?.error || `Tip failed with status ${response.status}`,
+          rawResponse: result
+        };
       }
 
+      // ============================================
+      // EVM PATH - Use Coinbase client
+      // ============================================
       const client = new x402Client();
       if (context.evmWalletClient && context.evmWalletClient.account) {
         const evmSigner = {

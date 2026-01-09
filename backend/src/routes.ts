@@ -45,7 +45,6 @@ const enableRateLimiting = process.env.ENABLE_RATE_LIMITING === 'true';
 
 // x402 Facilitator URL (PayAI takes priority if set, falls back to CDP)
 const FACILITATOR_URL = process.env.PAYAI_FACILITATOR_URL || process.env.CDP_FACILITATOR_URL;
-console.log(`[x402] HTTPFacilitatorClient using: ${FACILITATOR_URL}`);
 
 const facilitatorClient = new HTTPFacilitatorClient({
   url: FACILITATOR_URL,

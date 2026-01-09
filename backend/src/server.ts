@@ -130,12 +130,9 @@ const MAINNET_NETWORKS = ['eip155:8453', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd
 const ALL_NETWORKS = ['eip155:8453', 'eip155:84532', 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1'];
 const activeNetworks = isProduction ? MAINNET_NETWORKS : ALL_NETWORKS;
 
-console.log(`🔗 x402 Facilitator: ${FACILITATOR_URL}`);
 console.log(`🌐 Supported networks: ${activeNetworks.join(', ')}${isProduction ? ' (production - testnets disabled)' : ' (dev - testnets enabled)'}`);
-if (hasCdpCredentials) {
-  console.log(`✅ CDP credentials configured`);
-} else {
-  console.log(`⚠️  CDP credentials missing - payments will fail`);
+if (!hasCdpCredentials) {
+  console.log(`⚠️  CDP credentials missing - payments may fail`);
 }
 
 // Health check endpoint
