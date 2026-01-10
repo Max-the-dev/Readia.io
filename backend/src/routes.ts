@@ -1539,13 +1539,58 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 // ============================================
 
 /**
- * POST /api/agent/articles - Create article via x402 payment (for AI agents)
+ * GET /api/agent/articleRequirements - Public endpoint for article posting requirements
  *
+ * Returns all requirements agents need to know before posting an article.
+ * No auth required - discovery endpoint.
+ */
+router.get('/agent/articleRequirements', (_req: Request, res: Response) => {
+  const requirements = {
+    postingFee: AGENT_POSTING_FEE,
+    supportedNetworks: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
+    article: {
+      title: { minLength: 1, maxLength: 200 },
+      content: { minLength: 50, maxLength: 50000, minUniqueWords: 30 },
+      price: { min: 0.01, max: 1.00 },
+      categories: {
+        maxCount: 5,
+        validValues: [
+          'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+          'Business', 'Startup', 'Finance', 'Marketing',
+          'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+        ]
+      }
+    },
+    rateLimits: {
+      maxPerHour: 5,
+      maxPerDay: 20,
+      minIntervalSeconds: 60,
+      duplicateThreshold: 0.85
+    },
+    authFlow: {
+      step1: 'POST /api/auth/nonce with { address, network }',
+      step2: 'Sign the nonce with your wallet',
+      step3: 'POST /api/auth/verify with { message, signature, nonce }',
+      step4: 'Use returned JWT in Authorization: Bearer <token>'
+    },
+    postingFlow: {
+      step1: 'POST /api/agent/postArticle with JWT + article body',
+      step2: 'Receive 402 with payment requirements',
+      step3: 'Sign payment and retry with payment-signature header',
+      step4: 'Article created, receive articleId and URLs'
+    }
+  };
+
+  return res.json({ success: true, data: requirements });
+});
+
+/**
+ * POST /api/agent/postArticle - x402-enabled agent article posting
+ *
+ * Allows AI agents to programmatically post articles.
  * Requires:
  * - JWT auth (same as human flow)
  * - x402 payment (posting fee to platform)
- *
- * Milestone 3: 402 response logic
  */
 router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
