@@ -265,6 +265,9 @@ const PLATFORM_SOLANA_ADDRESS = process.env.X402_PLATFORM_SOL_ADDRESS
   ? normalizeSolanaAddress(process.env.X402_PLATFORM_SOL_ADDRESS)
   : null;
 
+// Agent posting fee (USD) - paid to platform for programmatic article creation
+const AGENT_POSTING_FEE = parseFloat(process.env.AGENT_POSTING_FEE || '0.25');
+
 const getNetworkGroup = (network?: SupportedX402Network | string | null): NetworkGroup =>
   network && isSolanaNetwork(network) ? 'solana' : 'evm';
 
@@ -1542,23 +1545,77 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
  * - JWT auth (same as human flow)
  * - x402 payment (posting fee to platform)
  *
- * Milestone 2: JWT auth + validation only (placeholder response)
+ * Milestone 3: 402 response logic
  */
 router.post('/agent/articles', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { title, content, price, categories } = req.body;
     const authorAddress = req.auth!.address;
 
-    // Milestone 2: Just confirm auth + validation works
+    // Resolve network preference from query param
+    let networkPreference: SupportedX402Network;
+    try {
+      networkPreference = resolveNetworkPreference(req);
+    } catch (error) {
+      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet payments are not accepted in production'
+        });
+      }
+      throw error;
+    }
+
+    // Determine platform payout address for this network
+    const payTo = isSolanaNetwork(networkPreference)
+      ? PLATFORM_SOLANA_ADDRESS
+      : PLATFORM_EVM_ADDRESS;
+
+    if (!payTo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Platform does not accept payments on this network'
+      });
+    }
+
+    // Build payment requirements using SDK
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: networkPreference,
+      price: AGENT_POSTING_FEE,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+
+    const paymentHeader = req.headers['payment-signature'];
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/articles?network=${networkPreference}`;
+
+    // No payment header? Return 402 Payment Required
+    if (!paymentHeader) {
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
+        'Payment required'
+      );
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
+    }
+
+    // TODO Milestone 4: Verify payment and settle
+    // TODO Milestone 5: Create article after successful payment
+
+    // Placeholder for now - payment header exists but not yet verified
     return res.status(200).json({
       success: true,
-      message: 'Auth and validation passed (x402 payment not yet implemented)',
+      message: 'Payment header received (verification not yet implemented)',
       data: {
         authorAddress,
         title: title.substring(0, 50),
         contentLength: content.length,
         price,
-        categories
+        categories,
+        network: networkPreference
       }
     });
 
