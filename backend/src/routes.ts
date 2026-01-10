@@ -1568,16 +1568,22 @@ router.get('/agent/articleRequirements', (_req: Request, res: Response) => {
       duplicateThreshold: 0.85
     },
     authFlow: {
-      step1: 'POST /api/auth/nonce with { address, network }',
-      step2: 'Sign the nonce with your wallet',
-      step3: 'POST /api/auth/verify with { message, signature, nonce }',
-      step4: 'Use returned JWT in Authorization: Bearer <token>'
+      description: 'Authenticate your wallet to get a JWT token',
+      step1: 'POST /api/auth/nonce with { address: "your wallet address", network: "CAIP-2 chain ID" }',
+      step1_networks: {
+        solana: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+        base: 'eip155:8453'
+      },
+      step2: 'Sign the returned nonce message with your wallet private key',
+      step3: 'POST /api/auth/verify with { message: "the nonce", signature: "base64 signature", nonce: "the nonce" }',
+      step4: 'Extract JWT from response: response.data.token'
     },
     postingFlow: {
-      step1: 'POST /api/agent/postArticle with JWT + article body',
-      step2: 'Receive 402 with payment requirements',
-      step3: 'Sign payment and retry with payment-signature header',
-      step4: 'Article created, receive articleId and URLs'
+      description: 'Post an article using x402 payment protocol',
+      step1: 'POST /api/agent/postArticle with Authorization: Bearer <JWT> header and article JSON body',
+      step2: 'Receive 402 response with payment requirements',
+      step3: 'Sign the payment transaction and retry request with payment-signature header',
+      step4: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }'
     }
   };
 
@@ -1653,8 +1659,18 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
         { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
         'Payment required'
       );
-      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
-      return res.status(402).json(paymentRequired);
+
+      // Add discovery info for agents
+      const responseWithDiscovery = {
+        ...paymentRequired,
+        discovery: {
+          requirementsUrl: `${req.protocol}://${req.get('host')}/api/agent/articleRequirements`,
+          description: 'GET this URL for full article requirements, rate limits, auth flow, and posting instructions before submitting'
+        }
+      };
+
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+      return res.status(402).json(responseWithDiscovery);
     }
 
     // ============================================
