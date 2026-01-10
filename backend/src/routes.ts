@@ -1547,7 +1547,7 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
  *
  * Milestone 3: 402 response logic
  */
-router.post('/agent/articles', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { title, content, price, categories } = req.body;
     const authorAddress = req.auth!.address;
@@ -1589,7 +1589,7 @@ router.post('/agent/articles', requireAuth, validate(createAgentArticleSchema), 
     const paymentRequirement = requirements[0];
 
     const paymentHeader = req.headers['payment-signature'];
-    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/articles?network=${networkPreference}`;
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle?network=${networkPreference}`;
 
     // No payment header? Return 402 Payment Required
     if (!paymentHeader) {
@@ -1602,20 +1602,148 @@ router.post('/agent/articles', requireAuth, validate(createAgentArticleSchema), 
       return res.status(402).json(paymentRequired);
     }
 
-    // TODO Milestone 4: Verify payment and settle
-    // TODO Milestone 5: Create article after successful payment
+    // ============================================
+    // MILESTONE 4: Payment Verification & Settlement
+    // ============================================
 
-    // Placeholder for now - payment header exists but not yet verified
+    // Decode payment header
+    let paymentPayload: PaymentPayload;
+    try {
+      const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;
+    } catch (error) {
+      console.error('[agent/postArticle] Invalid payment header:', error);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid x402 payment header'
+      });
+    }
+
+    // Basic amount guard
+    const requiredAmount = BigInt(paymentRequirement.amount);
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const providedAmount = authorization && typeof authorization.value !== 'undefined'
+      ? BigInt(authorization.value as string)
+      : requiredAmount;
+
+    if (providedAmount < requiredAmount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient payment amount'
+      });
+    }
+
+    // Verify payment with facilitator
+    let verification;
+    try {
+      verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
+    } catch (error: any) {
+      let responseBody;
+      let correlationId: string | undefined;
+      if (error?.response?.text) {
+        try {
+          responseBody = await error.response.text();
+        } catch (bodyError) {
+          responseBody = `Failed to read response body: ${bodyError}`;
+        }
+      }
+      if (error?.response?.headers?.get) {
+        correlationId =
+          error.response.headers.get('correlation-id') ||
+          error.response.headers.get('x-correlation-id');
+      }
+
+      console.error('[agent/postArticle] Facilitator verify failed:', {
+        message: error?.message,
+        status: error?.response?.status,
+        correlationId,
+        body: responseBody,
+      });
+      return res.status(502).json({
+        success: false,
+        error: 'Payment verification failed: facilitator error',
+      });
+    }
+
+    if (!verification.isValid) {
+      console.log(`[agent/postArticle] ❌ Verify failed: ${verification.invalidReason || 'unknown'}`);
+      return res.status(400).json({
+        success: false,
+        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
+      });
+    }
+
+    // Verify recipient matches platform wallet
+    const networkGroup = getNetworkGroup(paymentRequirement.network as SupportedX402Network);
+    let paymentRecipient: string;
+    if (networkGroup === 'solana') {
+      paymentRecipient = normalizeRecipientForNetwork(
+        paymentRequirement.payTo,
+        paymentRequirement.network
+      );
+    } else {
+      paymentRecipient = normalizeRecipientForNetwork(
+        (authorization?.to as string) || '',
+        paymentRequirement.network
+      );
+    }
+    const expectedRecipient = normalizeRecipientForNetwork(
+      paymentRequirement.payTo,
+      paymentRequirement.network
+    );
+
+    if (paymentRecipient !== expectedRecipient) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment recipient mismatch - must pay to platform'
+      });
+    }
+
+    // Get payer address for logging
+    let payerAddress =
+      tryNormalizeFlexibleAddress(verification.payer) ||
+      tryNormalizeFlexibleAddress(
+        typeof authorization?.from === 'string' ? authorization.from : ''
+      );
+
+    // Settle payment
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
+
+    if (!settlement.success) {
+      console.error('[agent/postArticle] Settlement failed:', settlement.errorReason);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed. Please try again.',
+        details: settlement.errorReason || 'Unknown settlement error'
+      });
+    }
+
+    const txHash = settlement.transaction;
+
+    // Log successful payment
+    console.log(`[agent/postArticle] 💰 Payment settled:`, {
+      txHash,
+      network: networkPreference,
+      amount: AGENT_POSTING_FEE,
+      from: payerAddress,
+      to: payTo
+    });
+
+    // TODO Milestone 5: Run spam prevention and create article
+
+    // Placeholder response - payment verified and settled
     return res.status(200).json({
       success: true,
-      message: 'Payment header received (verification not yet implemented)',
+      message: 'Payment verified and settled (article creation not yet implemented)',
       data: {
         authorAddress,
         title: title.substring(0, 50),
         contentLength: content.length,
         price,
         categories,
-        network: networkPreference
+        network: networkPreference,
+        txHash
       }
     });
 
