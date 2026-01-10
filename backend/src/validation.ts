@@ -96,6 +96,33 @@ export const updateArticleSchema = createArticleSchema.partial().extend({
   authorAddress: walletAddressSchema, // Always required for auth
 });
 
+/**
+ * Agent Article Creation Schema
+ * For programmatic posting via x402 payment + JWT auth
+ * Note: authorAddress comes from JWT (req.auth.address), not body
+ */
+export const createAgentArticleSchema = z.object({
+  title: z.string()
+    .min(1, 'Title is required')
+    .max(200, 'Title must be 200 characters or less')
+    .trim(),
+
+  content: z.string()
+    .min(50, 'Content must be at least 50 characters')
+    .max(50000, 'Content must be 50,000 characters or less')
+    .trim(),
+
+  price: z.number()
+    .min(0.01, 'Price must be at least $0.01')
+    .max(1.00, 'Price must be $1.00 or less')
+    .refine(val => Number.isFinite(val), 'Price must be a valid number'),
+
+  categories: z.array(categorySchema)
+    .max(5, 'Maximum 5 categories allowed')
+    .optional()
+    .default([])
+});
+
 // ============================================
 // DRAFT VALIDATION
 // ============================================

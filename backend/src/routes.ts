@@ -8,6 +8,7 @@ import { Article, Author, Draft, CreateArticleRequest, CreateDraftRequest, ApiRe
 import {
   validate,
   createArticleSchema,
+  createAgentArticleSchema,
   updateArticleSchema,
   createDraftSchema,
   getArticlesQuerySchema,
@@ -1526,6 +1527,46 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to process donation'
+    });
+  }
+});
+
+// ============================================
+// AGENT ENDPOINTS (x402 + JWT auth)
+// ============================================
+
+/**
+ * POST /api/agent/articles - Create article via x402 payment (for AI agents)
+ *
+ * Requires:
+ * - JWT auth (same as human flow)
+ * - x402 payment (posting fee to platform)
+ *
+ * Milestone 2: JWT auth + validation only (placeholder response)
+ */
+router.post('/agent/articles', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { title, content, price, categories } = req.body;
+    const authorAddress = req.auth!.address;
+
+    // Milestone 2: Just confirm auth + validation works
+    return res.status(200).json({
+      success: true,
+      message: 'Auth and validation passed (x402 payment not yet implemented)',
+      data: {
+        authorAddress,
+        title: title.substring(0, 50),
+        contentLength: content.length,
+        price,
+        categories
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Agent article creation error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process agent article creation'
     });
   }
 });
