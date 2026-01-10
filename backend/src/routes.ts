@@ -1566,6 +1566,16 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       throw error;
     }
 
+    // Spam prevention check BEFORE payment (don't take money then reject)
+    const spamCheck = await checkForSpam(authorAddress, title, content);
+    if (spamCheck.isSpam) {
+      return res.status(429).json({
+        success: false,
+        error: spamCheck.reason || 'Content blocked by spam filter',
+        details: spamCheck.details
+      });
+    }
+
     // Determine platform payout address for this network
     const payTo = isSolanaNetwork(networkPreference)
       ? PLATFORM_SOLANA_ADDRESS
@@ -1730,18 +1740,66 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       to: payTo
     });
 
-    // TODO Milestone 5: Run spam prevention and create article
+    // ============================================
+    // MILESTONE 5: Create Article
+    // ============================================
+    // Note: Spam check already passed before 402 response
 
-    // Placeholder response - payment verified and settled
-    return res.status(200).json({
+    // Ensure author record exists
+    const author = await ensureAuthorRecord(authorAddress);
+
+    // Generate preview and read time
+    const preview = generatePreview(content);
+    const readTime = estimateReadTime(content);
+    const now = new Date().toISOString();
+
+    // Create article (same as human flow)
+    const articleData: Omit<Article, 'id'> = {
+      title,
+      content,
+      preview,
+      price,
+      authorAddress: author.address,
+      authorPrimaryNetwork: author.primaryPayoutNetwork,
+      authorSecondaryNetwork: author.secondaryPayoutNetwork,
+      authorSecondaryAddress: author.secondaryPayoutAddress,
+      publishDate: now.split('T')[0],
+      createdAt: now,
+      updatedAt: now,
+      views: 0,
+      purchases: 0,
+      earnings: 0,
+      readTime,
+      categories: categories || [],
+      likes: 0,
+      popularityScore: 0
+    };
+
+    const article = await db.createArticle(articleData);
+
+    // Update author statistics
+    author.totalArticles += 1;
+    await db.createOrUpdateAuthor(author);
+
+    console.log(`[agent/postArticle] ✅ Article created:`, {
+      articleId: article.id,
+      author: authorAddress,
+      title: title.substring(0, 50),
+      txHash
+    });
+
+    // Build URLs for response
+    const frontendUrl = process.env.FRONTEND_ORIGIN || 'https://readia.io';
+    const articleUrl = `${frontendUrl}/article/${article.id}`;
+    const purchaseUrl = `/api/articles/${article.id}/purchase`;
+
+    return res.status(201).json({
       success: true,
-      message: 'Payment verified and settled (article creation not yet implemented)',
       data: {
-        authorAddress,
-        title: title.substring(0, 50),
-        contentLength: content.length,
-        price,
-        categories,
+        articleId: article.id,
+        articleUrl,
+        purchaseUrl,
+        authorAddress: author.address,
         network: networkPreference,
         txHash
       }
@@ -2293,7 +2351,7 @@ router.post('/upload', uploadLimiter, requireAuth, upload.single('file'), async 
     const filePath = `articles/${fileName}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('article-images')
       .upload(filePath, req.file.buffer, {
         contentType: req.file.mimetype,
@@ -2329,7 +2387,7 @@ router.post('/upload', uploadLimiter, requireAuth, upload.single('file'), async 
 });
 
 // POST /api/articles/recalculate-popularity - Manually recalculate all popularity scores
-router.post('/articles/recalculate-popularity', criticalLimiter, requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/articles/recalculate-popularity', criticalLimiter, requireAuth, async (_req: AuthenticatedRequest, res: Response) => {
   try {
     console.log('🔄 Starting manual popularity score recalculation...');
     const result = await db.recalculateAllPopularityScores();
