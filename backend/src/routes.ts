@@ -1567,23 +1567,13 @@ router.get('/agent/articleRequirements', (_req: Request, res: Response) => {
       minIntervalSeconds: 60,
       duplicateThreshold: 0.85
     },
-    authFlow: {
-      description: 'Authenticate your wallet to get a JWT token',
-      step1: 'POST /api/auth/nonce with { address: "your wallet address", network: "CAIP-2 chain ID" }',
-      step1_networks: {
-        solana: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
-        base: 'eip155:8453'
-      },
-      step2: 'Sign the returned nonce message with your wallet private key',
-      step3: 'POST /api/auth/verify with { message: "the nonce", signature: "base64 signature", nonce: "the nonce" }',
-      step4: 'Extract JWT from response: response.data.token'
-    },
     postingFlow: {
-      description: 'Post an article using x402 payment protocol',
-      step1: 'POST /api/agent/postArticle with Authorization: Bearer <JWT> header and article JSON body',
+      description: 'Post an article using x402 payment protocol. NO JWT REQUIRED - payment signature proves wallet ownership.',
+      step1: 'POST /api/agent/postArticle with article JSON body (title, content, price, categories)',
       step2: 'Receive 402 response with payment requirements',
-      step3: 'Sign the payment transaction and retry request with payment-signature header',
-      step4: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }'
+      step3: 'Sign the payment transaction with your wallet and retry request with payment-signature header',
+      step4: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }',
+      note: 'Author = wallet address that signed the payment. New authors are auto-created on first post.'
     }
   };
 
@@ -1591,17 +1581,105 @@ router.get('/agent/articleRequirements', (_req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/agent/postArticle - x402 discovery endpoint
+ *
+ * Returns 402 with payment requirements for x402Jobs/x402scan registration.
+ * This allows discovery tools to find the payment schema without auth.
+ */
+router.get('/agent/postArticle', async (req: Request, res: Response) => {
+  try {
+    // Default to Solana mainnet for discovery
+    const networkPreference: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+
+    const payTo = PLATFORM_SOLANA_ADDRESS;
+    if (!payTo) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform Solana address not configured'
+      });
+    }
+
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: networkPreference,
+      price: AGENT_POSTING_FEE,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle?network=${networkPreference}`;
+
+    const paymentRequired = resourceServer.createPaymentRequiredResponse(
+      [paymentRequirement],
+      { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
+      'Payment required'
+    );
+
+    const responseWithDiscovery = {
+      ...paymentRequired,
+      service: {
+        name: 'Readia Article Publisher',
+        description: 'Publish articles on Readia.io - a micropayment content platform. Your published articles become x402-enabled endpoints that other agents and humans can discover and purchase.',
+        website: 'https://readia.io'
+      },
+      requirements: {
+        postingFee: AGENT_POSTING_FEE,
+        supportedNetworks: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
+        article: {
+          title: { minLength: 1, maxLength: 200 },
+          content: { minLength: 50, maxLength: 50000, minUniqueWords: 30 },
+          price: { min: 0.01, max: 1.00 },
+          categories: {
+            maxCount: 5,
+            validValues: [
+              'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+              'Business', 'Startup', 'Finance', 'Marketing',
+              'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+            ]
+          }
+        },
+        rateLimits: {
+          maxPerHour: 5,
+          maxPerDay: 20,
+          minIntervalSeconds: 60,
+          duplicateThreshold: 0.85
+        },
+        postingFlow: {
+          description: 'Post an article using x402 payment protocol. NO JWT REQUIRED - payment signature proves wallet ownership.',
+          step1: 'POST /api/agent/postArticle with article JSON body (title, content, price, categories)',
+          step2: 'Receive 402 response with payment requirements',
+          step3: 'Sign the payment transaction with your wallet and retry request with payment-signature header',
+          step4: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }',
+          note: 'Author = wallet address that signed the payment. New authors are auto-created on first post.'
+        }
+      }
+    };
+
+    res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+    return res.status(402).json(responseWithDiscovery);
+  } catch (error) {
+    console.error('[agent/postArticle GET] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to build payment requirements'
+    });
+  }
+});
+
+/**
  * POST /api/agent/postArticle - x402-enabled agent article posting
  *
  * Allows AI agents to programmatically post articles.
- * Requires:
- * - JWT auth (same as human flow)
- * - x402 payment (posting fee to platform)
+ * NO JWT REQUIRED - payment signature proves wallet ownership.
+ *
+ * Flow:
+ * - No payment header → 402 (discovery mode)
+ * - With payment header → validation → spam check → verify → settle → create
+ * - Author = wallet address that signed the payment
  */
-router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/agent/postArticle', async (req: Request, res: Response) => {
   try {
-    const { title, content, price, categories } = req.body;
-    const authorAddress = req.auth!.address;
+    const paymentHeader = req.headers['payment-signature'];
 
     // Resolve network preference from query param
     let networkPreference: SupportedX402Network;
@@ -1615,16 +1693,6 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
         });
       }
       throw error;
-    }
-
-    // Spam prevention check BEFORE payment (don't take money then reject)
-    const spamCheck = await checkForSpam(authorAddress, title, content);
-    if (spamCheck.isSpam) {
-      return res.status(429).json({
-        success: false,
-        error: spamCheck.reason || 'Content blocked by spam filter',
-        details: spamCheck.details
-      });
     }
 
     // Determine platform payout address for this network
@@ -1648,11 +1716,11 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       maxTimeoutSeconds: 900
     });
     const paymentRequirement = requirements[0];
-
-    const paymentHeader = req.headers['payment-signature'];
     const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle?network=${networkPreference}`;
 
-    // No payment header? Return 402 Payment Required
+    // ============================================
+    // DISCOVERY MODE: No payment header → 402
+    // ============================================
     if (!paymentHeader) {
       const paymentRequired = resourceServer.createPaymentRequiredResponse(
         [paymentRequirement],
@@ -1660,12 +1728,17 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
         'Payment required'
       );
 
-      // Add discovery info for agents
+      // Add service info and discovery for agents
       const responseWithDiscovery = {
         ...paymentRequired,
+        service: {
+          name: 'Readia Article Publisher',
+          description: 'Publish articles on Readia.io - a micropayment content platform. Your published articles become x402-enabled endpoints that other agents and humans can discover and purchase.',
+          website: 'https://readia.io'
+        },
         discovery: {
           requirementsUrl: `${req.protocol}://${req.get('host')}/api/agent/articleRequirements`,
-          description: 'GET this URL for full article requirements, rate limits, auth flow, and posting instructions before submitting'
+          description: 'GET this URL for full article requirements, validation rules, and posting instructions'
         }
       };
 
@@ -1674,14 +1747,30 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
     }
 
     // ============================================
-    // MILESTONE 4: Payment Verification & Settlement
+    // SUBMISSION MODE: Has payment header
     // ============================================
 
-    // Decode payment header
+    // Step 1: Validate body
+    const validationResult = createAgentArticleSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((err) => ({
+        field: err.path.join('.'),
+        message: err.message
+      }));
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors
+      });
+    }
+
+    const { title, content, price, categories } = validationResult.data;
+
+    // Step 2: Decode payment header to get payer address
     let paymentPayload: PaymentPayload;
     try {
-      const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
-      paymentPayload = JSON.parse(decoded) as PaymentPayload;
+      const decodedPayment = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = JSON.parse(decodedPayment) as PaymentPayload;
     } catch (error) {
       console.error('[agent/postArticle] Invalid payment header:', error);
       return res.status(400).json({
@@ -1690,10 +1779,42 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       });
     }
 
-    // Basic amount guard
-    const requiredAmount = BigInt(paymentRequirement.amount);
+    // Extract payer address from payment (this is the author)
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const payerFromAuth = authorization?.from as string | undefined;
+
+    // Try to get payer from authorization.from first, fall back to payload-level from
+    let authorAddress = tryNormalizeFlexibleAddress(payerFromAuth || '');
+    if (!authorAddress) {
+      // For Solana, payer might be in a different location
+      const payloadFrom = rawPayload.from as string | undefined;
+      authorAddress = tryNormalizeFlexibleAddress(payloadFrom || '');
+    }
+
+    if (!authorAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not extract payer address from payment'
+      });
+    }
+
+    // Step 3: Spam prevention check BEFORE payment verification
+    const spamCheck = await checkForSpam(authorAddress, title, content);
+    if (spamCheck.isSpam) {
+      return res.status(429).json({
+        success: false,
+        error: spamCheck.reason || 'Content blocked by spam filter',
+        details: spamCheck.details
+      });
+    }
+
+    // ============================================
+    // Payment Verification & Settlement
+    // ============================================
+
+    // Basic amount guard
+    const requiredAmount = BigInt(paymentRequirement.amount);
     const providedAmount = authorization && typeof authorization.value !== 'undefined'
       ? BigInt(authorization.value as string)
       : requiredAmount;
@@ -1771,13 +1892,6 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       });
     }
 
-    // Get payer address for logging
-    let payerAddress =
-      tryNormalizeFlexibleAddress(verification.payer) ||
-      tryNormalizeFlexibleAddress(
-        typeof authorization?.from === 'string' ? authorization.from : ''
-      );
-
     // Settle payment
     const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
@@ -1797,17 +1911,16 @@ router.post('/agent/postArticle', requireAuth, validate(createAgentArticleSchema
       txHash,
       network: networkPreference,
       amount: AGENT_POSTING_FEE,
-      from: payerAddress,
+      from: authorAddress,
       to: payTo
     });
 
     // ============================================
-    // MILESTONE 5: Create Article
+    // Create Article
     // ============================================
-    // Note: Spam check already passed before 402 response
 
-    // Ensure author record exists
-    const author = await ensureAuthorRecord(authorAddress);
+    // Ensure author record exists (network from payment determines payout network)
+    const author = await ensureAuthorRecord(authorAddress, networkPreference);
 
     // Generate preview and read time
     const preview = generatePreview(content);
