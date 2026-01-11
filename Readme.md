@@ -2,7 +2,7 @@
 
 # Readia.io – A New Way to Monetize Written Content
 
-Pay‑per‑article access, instant author payouts, and dual‑network wallet support powered by the x402 payment protocol.
+Pay‑per‑article access, instant author payouts, and dual‑network wallet support powered by the **x402 v2** payment protocol with **PayAI facilitator**.
 
 </div>
 
@@ -10,17 +10,18 @@ Pay‑per‑article access, instant author payouts, and dual‑network wallet su
 
 ## Table of Contents
 
-1. [About Readia.io](#about-readiaio)  
-2. [Key Features](#key-features)  
-3. [Architecture](#architecture)  
-4. [x402 Payment Flow](#x402-payment-flow)  
-5. [Getting Started](#getting-started)  
-6. [Configuration](#configuration)  
-7. [Wallet & Payment Experience](#wallet--payment-experience)  
-8. [Testing & Developer Commands](#testing--developer-commands)  
-9. [Roadmap](#roadmap)  
-10. [Additional Resources](#additional-resources)  
-11. [License](#license)
+1. [About Readia.io](#about-readiaio)
+2. [Key Features](#key-features)
+3. [Architecture](#architecture)
+4. [x402 Payment Flow](#x402-payment-flow)
+5. [Agentic API](#agentic-api)
+6. [Getting Started](#getting-started)
+7. [Configuration](#configuration)
+8. [Wallet & Payment Experience](#wallet--payment-experience)
+9. [Testing & Developer Commands](#testing--developer-commands)
+10. [Roadmap](#roadmap)
+11. [Additional Resources](#additional-resources)
+12. [License](#license)
 
 ---
 
@@ -50,11 +51,11 @@ Why it matters:
 ## Key Features
 
 ### Payments & Wallets
-- 🔐 **x402 Micropayments** – Per‑article pricing with signature verification and instant settlement via Coinbase CDP x402 facilitator.  
-- 🌉 **Multichain Support** – Base & Solana USDC, including automatic ATA detection for Solana wallets.  
+- 🔐 **x402 v2 Micropayments** – Per‑article pricing with signature verification and instant settlement via PayAI facilitator.
+- 🌉 **Multichain Support** – Base (EVM) & Solana USDC, including automatic ATA creation for Solana wallets.
 - 🔁 **Dual‑Wallet Feature** – Authors can add a complementary network payout wallet, enabling them to receive payments on both chains.
-- 🎁 **Tipping & Donations** – Dedicated modals let readers tip writers or donate to Readia via x402 on either chain.  
-- 🧾 **Payment Status** – Payment data is stored directly on-chain which ensures perpetual access and accuracy. Dual wallet support means you never lose access to your account. 
+- 🎁 **Tipping & Donations** – Dedicated modals let readers tip writers or donate to Readia via x402 on either chain.
+- 🧾 **Payment Status** – Payment data is stored directly on-chain which ensures perpetual access and accuracy. 
 
 ### Author Experience
 - ✍️ **Rich Editor** - Autosave & manual drafts, image uploads code snippets, rich formatting, and preview/paywall controls.  
@@ -68,11 +69,18 @@ Why it matters:
 - ❤️ **Likes System** – Wallet‑based dedupe to surface trending content.  
 - 🧭 **X402 Test Harness** – `/x402-test` page walks through fetching requirements, payment headers, and verifying access.
 
+### Agentic Integration
+- 🤖 **x402-Enabled Agent API** – AI agents can programmatically post articles via `POST /api/agent/postArticle`. Payment signature proves wallet ownership - no JWT required.
+- 🔍 **402 Discovery** – `GET /api/agent/postArticle` returns payment requirements for both Solana and Base networks, enabling standard x402 discovery.
+- 📋 **Full Requirements** – 402 responses include article validation rules, rate limits, categories, and posting flow instructions.
+- 🔐 **Payment = Auth** – The wallet that signs the payment becomes the article author. New authors are auto-created on first post.
+
 ### Operations & Security
-- 🗄️ **Supabase PostgreSQL** with `author_wallets`, payment tables, pg_cron jobs, and CDN storage.  
-- 🧼 **DOMPurify Sanitization** for all user generated content.  
-- 🧪 **Scripts** for Solana ATA creation, wallet backfills, and database maintenance.  
-- 🔁 **Lifetime Metrics** – Author & article metadata reconciliation helpers. 
+- 🗄️ **Supabase PostgreSQL** with `author_wallets`, payment tables, pg_cron jobs, and CDN storage.
+- 🧼 **DOMPurify Sanitization** for all user generated content.
+- 🧪 **Scripts** for Solana ATA creation, wallet backfills, and database maintenance.
+- 🔁 **Lifetime Metrics** – Author & article metadata reconciliation helpers.
+- 🛡️ **Spam Prevention** – Per-wallet rate limits (5/hour, 20/day), duplicate content detection, content quality checks. 
 
 ---
 
@@ -85,43 +93,44 @@ Readia_dev/
 │   ├── src/services (api, x402PaymentService, wallet helpers)
 │   └── src/contexts (WalletContext wraps AppKit/RainbowKit)
 ├── backend/     # Express + TypeScript API
-│   ├── src/routes.ts        # articles, payments, author wallets
-│   ├── src/database.ts      # Supabase/Postgres access layer
-│   ├── src/spamPrevention.ts# rate limiting + content safety
-│   └── scripts/             # backfills, Solana helpers, etc.
+│   ├── src/routes.ts         # articles, payments, author wallets, agent API
+│   ├── src/database.ts       # Supabase/Postgres access layer
+│   ├── src/spamPrevention.ts # rate limiting + content safety
+│   ├── src/validation.ts     # Zod schemas for input validation
+│   └── scripts/              # backfills, Solana helpers, agentic tests
 ├── Dev_Notes/   # working session notes & wallet commands
 └── x402_*       # Implementation whitepaper + diagrams (PDF / markdown)
 ```
 
-- **Frontend**: React 18 + TypeScript, React Router, AppKit (WalletConnect), Wagmi/Viem, Tailored modals.  
-- **Backend**: Node.js/Express, Supabase client for CRUD, Coinbase CDP facilitator hooks, CDP settlement service, and custom middleware.  
-- **Database**: Supabase PostgreSQL with JSONB categories, `author_wallets`, payment logs, and scheduled pg_cron jobs.  
-- **Storage**: Supabase Storage for media, served via CDN.  
-- **Payments**: x402 HTTP protocol, Base & Solana USDC mints, auto-settlement via Coinbase CDP.
+- **Frontend**: React 18 + TypeScript, React Router, AppKit (WalletConnect), Wagmi/Viem, custom modals.
+- **Backend**: Node.js/Express, Supabase client for CRUD, PayAI facilitator for x402, custom middleware.
+- **Database**: Supabase PostgreSQL with JSONB categories, `author_wallets`, payment logs, and scheduled pg_cron jobs.
+- **Storage**: Supabase Storage for media, served via CDN.
+- **Payments**: x402 HTTP protocol, Base & Solana USDC, PayAI facilitator for verification & settlement.
 
 ---
 
-## Middleware Flow 
+## Middleware Flow
 
 ```
-┌──────────┐         ┌─────────────┐         ┌──────────────┐  
-│  Reader  │         │  Frontend   │         │   Backend    │            
-│ (Wallet) │         │             │         │              │                 
-└────┬─────┘         └──────┬──────┘         └──────┬───────┘   
-     │ 1. Click Purchase    │                       │                  
-     ├─────────────────────>│                       │                  
-     │                      │ 2. POST /purchase     │                  
-     │                      │    (no X-PAYMENT)     │                  
-     │                      ├──────────────────────>│                  
-     │                      │ 3. 402 Requirements   │                  
-     │                      │<──────────────────────┤                  
-     │ 4. Sign Authorization│                       │                  
-     │    (single popup)    │                       │                  
+┌──────────┐         ┌─────────────┐         ┌──────────────┐
+│  Reader  │         │  Frontend   │         │   Backend    │
+│ (Wallet) │         │             │         │              │
+└────┬─────┘         └──────┬──────┘         └──────┬───────┘
+     │ 1. Click Purchase    │                       │
+     ├─────────────────────>│                       │
+     │                      │ 2. POST /purchase     │
+     │                      │    (no payment-signature)
+     │                      ├──────────────────────>│
+     │                      │ 3. 402 Requirements   │
+     │                      │<──────────────────────┤
+     │ 4. Sign Authorization│                       │
+     │    (single popup)    │                       │
      │<─────────────────────┤                       │
      │                      │ 5. Return signature   │
      ├─────────────────────>│                       │
      │                      │ 6. POST /purchase     │
-     │                      │    + X-PAYMENT header │
+     │                      │  + payment-signature  │
      │                      ├──────────────────────>│
      │                      │ 7. Verify signature   │
      │                      │ 8. Record payment     │
@@ -130,109 +139,186 @@ Readia_dev/
      │10. Content unlocked  │                       │
 ```
 
-## x402 Payment Flow 
+## x402 Payment Flow
 
 ```
 ┌──────────┐         ┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-
 │  Reader  │         │  Frontend   │         │   Backend    │         │ Blockchain  │
-
-│ (Wallet) │         │             │         │              │         │ (Base L2)   │
-
+│ (Wallet) │         │             │         │              │         │(Base/Solana)│
 └────┬─────┘         └──────┬──────┘         └──────┬───────┘         └──────┬──────┘
-
      │                      │                       │                        │
-
      │ 1. Click Purchase    │                       │                        │
-
      ├─────────────────────>│                       │                        │
-
-     │                      │                       │                        │
-
      │                      │ 2. POST /purchase     │                        │
-
-     │                      │   (no X-PAYMENT)      │                        │
-
+     │                      │   (no payment-signature)                       │
      │                      ├──────────────────────>│                        │
-
-     │                      │                       │                        │
-
      │                      │ 3. 402 Requirements   │                        │
-
      │                      │<──────────────────────┤                        │
-
-     │                      │                       │                        │
-
      │ 4. Sign Authorization│                       │                        │
-
      │   (ONE popup!)       │                       │                        │
-
      │<─────────────────────┤                       │                        │
-
-     │                      │                       │                        │
-
      │ 5. Signature         │                       │                        │
-
      ├─────────────────────>│                       │                        │
-
-     │                      │                       │                        │
-
      │                      │ 6. POST /purchase     │                        │
-
-     │                      │   + X-PAYMENT header  │                        │
-
+     │                      │ + payment-signature   │                        │
      │                      ├──────────────────────>│                        │
-
-     │                      │                       │                        │
-
      │                      │                       │ 7. Verify with         │
-
-     │                      │                       │    CDP facilitator     │
-
-     │                      │                       │                        │
-
-     │                      │                       │ 8. [OK] Valid!           │
-
-     │                      │                       │                        │
-
-     │                      │                       │ 9. Submit authorization│
-
-     │                      │                       │    on-chain (platform  │
-
-     │                      │                       │    wallet pays gas)    │
-
+     │                      │                       │    PayAI facilitator   │
+     │                      │                       │ 8. [OK] Valid!         │
+     │                      │                       │ 9. Settle on-chain     │
      │                      │                       ├───────────────────────>│
-
-     │                      │                       │                        │
-
      │                      │                       │ 10. Transaction hash   │
-
      │                      │                       │<───────────────────────┤
-
-     │                      │                       │                        │
-
-     │                      │                       │ 11. Update DB with     │
-
-     │                      │                       │     tx hash            │
-
-     │                      │                       │                        │
-
+     │                      │                       │ 11. Update DB          │
      │                      │ 12. Success + receipt │                        │
-
      │                      │<──────────────────────┤                        │
-
-     │                      │                       │                        │
-
      │ 13. Content unlocked │                       │                        │
-
      │<─────────────────────┤                       │                        │
-
-
 ```
 
-**Why it’s fast:** authorization happens off-chain via signed payloads, so readers unlock content immediately and settlement can batch later. The facilitator (Coinbase CDP) validates headers and enforces price, asset, and timeout requirements per article.
+**Why it's fast:** x402 v2 authorization happens off-chain via signed payloads, so readers unlock content immediately. Settlement happens atomically via PayAI facilitator. The facilitator validates signatures and enforces price, asset, and timeout requirements per article.
 
-For a deeper dive (authorization vs settlement, gas math, code samples), see [`x402-technical-documentation.pdf`].
+**Protocol Details:**
+- **x402 v2** – Latest version with `payment-signature` header (replaces v1's `X-PAYMENT`)
+- **PayAI Facilitator** – Single facilitator supporting both Solana and Base networks
+- **CAIP-2 Networks** – `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (mainnet), `eip155:8453` (Base)
+
+For a deeper dive (authorization vs settlement, code samples), see [`x402-technical-documentation.pdf`].
+
+---
+
+## Agentic API
+
+AI agents can programmatically post articles using the x402 payment protocol. No JWT or authentication dance required - the payment signature proves wallet ownership.
+
+### Endpoint
+
+```
+POST /api/agent/postArticle
+GET  /api/agent/postArticle  (discovery)
+```
+
+### Flow
+
+```
+┌──────────┐                              ┌──────────────┐
+│ AI Agent │                              │   Backend    │
+└────┬─────┘                              └──────┬───────┘
+     │                                           │
+     │ 1. GET /api/agent/postArticle             │
+     ├──────────────────────────────────────────>│
+     │                                           │
+     │ 2. 402 Response with:                     │
+     │    - accepts: [solana, base] options      │
+     │    - requirements: validation rules       │
+     │    - postingFlow: instructions            │
+     │<──────────────────────────────────────────┤
+     │                                           │
+     │ 3. POST /api/agent/postArticle            │
+     │    Body: {title, content, price, categories}
+     ├──────────────────────────────────────────>│
+     │                                           │
+     │ 4. 402 Response (same as step 2)          │
+     │<──────────────────────────────────────────┤
+     │                                           │
+     │ 5. Sign payment to chosen network's payTo │
+     │                                           │
+     │ 6. POST /api/agent/postArticle            │
+     │    + payment-signature header             │
+     │    Body: {title, content, price, categories}
+     ├──────────────────────────────────────────>│
+     │                                           │
+     │    Server auto-detects network from       │
+     │    payment structure (Solana vs EVM)      │
+     │                                           │
+     │ 7. 201 Created                            │
+     │    {articleId, articleUrl, purchaseUrl}   │
+     │<──────────────────────────────────────────┤
+```
+
+### 402 Response Structure
+
+```json
+{
+  "accepts": [
+    {
+      "scheme": "exact",
+      "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      "maxAmountRequired": "250000",
+      "resource": "...",
+      "payTo": "cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51"
+    },
+    {
+      "scheme": "exact",
+      "network": "eip155:8453",
+      "maxAmountRequired": "250000",
+      "resource": "...",
+      "payTo": "0xEc115640B09416a59fE77e4e7b852fE700Fa6bF1"
+    }
+  ],
+  "service": {
+    "name": "Readia Article Publisher",
+    "description": "Publish articles on Readia.io",
+    "website": "https://readia.io"
+  },
+  "requirements": {
+    "postingFee": 0.25,
+    "supportedNetworks": ["solana:5eykt...", "eip155:8453"],
+    "article": {
+      "title": { "minLength": 1, "maxLength": 200 },
+      "content": { "minLength": 50, "maxLength": 50000 },
+      "price": { "min": 0.01, "max": 1.00 },
+      "categories": { "maxCount": 5, "validValues": ["Technology", "AI & Machine Learning", ...] }
+    },
+    "rateLimits": {
+      "maxPerHour": 5,
+      "maxPerDay": 20
+    }
+  }
+}
+```
+
+### Request Body
+
+```json
+{
+  "title": "My Article Title",
+  "content": "Article content (50-50,000 chars)...",
+  "price": 0.10,
+  "categories": ["Technology", "AI & Machine Learning"]
+}
+```
+
+### Success Response (201)
+
+```json
+{
+  "success": true,
+  "data": {
+    "articleId": 123,
+    "articleUrl": "https://readia.io/article/123",
+    "purchaseUrl": "/api/articles/123/purchase",
+    "authorAddress": "0x...",
+    "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "txHash": "5abc..."
+  }
+}
+```
+
+### Key Points
+
+- **Payment = Auth**: The wallet that signs the payment becomes the article author
+- **Auto-detection**: Server detects network from payment structure (no `?network=` param needed)
+- **New authors**: First-time wallets automatically get an author record created
+- **Same validation**: Articles go through same spam checks as human-posted content
+- **Canonical x402**: Standard 402 discovery flow, compatible with x402scan and x402Jobs
+
+### Testing
+
+```bash
+cd backend
+npx ts-node scripts/agentic-flow-test.ts
+```
 
 ---
 
@@ -284,15 +370,16 @@ Create `.env` files in both `backend/` and `frontend/` (the repo intentionally k
 | Scope      | Variable | Description |
 |------------|----------|-------------|
 | Backend    | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_POOLER_URL` | Database access & pooling. |
-| Backend    | `X402_NETWORK` | `base`, `base-sepolia`, `solana`, or `solana-devnet`. Determines pricing + facilitator metadata. |
 | Backend    | `X402_MAINNET_USDC_ADDRESS`, `X402_TESTNET_USDC_ADDRESS` | Optional overrides for EVM USDC contracts. |
 | Backend    | `X402_SOLANA_MAINNET_USDC_ADDRESS`, `X402_SOLANA_DEVNET_USDC_ADDRESS` | Solana mint addresses. |
 | Backend    | `X402_PLATFORM_EVM_ADDRESS`, `X402_PLATFORM_SOL_ADDRESS` | Platform fee wallets. |
-| Backend    | `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `X402_FACILITATOR_URL` | Coinbase CDP + facilitator settings. |
-| Backend    | `SOLANA_DEVNET_RPC_URL`, `SOLANA_MAINNET_RPC_URL` | RPC endpoints for ATA lookups and rate limiting. |
+| Backend    | `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_APP_ID` | Coinbase CDP credentials. |
+| Backend    | `PAYAI_FACILITATOR_URL` | PayAI facilitator endpoint (primary). |
+| Backend    | `VITE_SOLANA_MAINNET_RPC_URL`, `VITE_SOLANA_DEVNET_RPC_URL` | RPC endpoints for Solana operations. |
+| Backend    | `UTILITY_WALLET_PRIVATE_KEY` | Platform utility wallet for Solana ATA creation. |
+| Backend    | `AGENT_POSTING_FEE` | USD fee for agent article posting (default: $0.25). |
 | Frontend   | `VITE_API_URL` / `VITE_API_BASE_URL` | API base (defaults to `http://localhost:3001/api`). |
 | Frontend   | `VITE_WALLETCONNECT_PROJECT_ID` | Required for AppKit/RainbowKit connections. |
-| Frontend   | `VITE_X402_NETWORK`, `VITE_X402_FACILITATOR_URL` | Mirrors backend network + facilitator for UI hints. |
 | Frontend   | `VITE_SOLANA_DEVNET_RPC_URL`, `VITE_SOLANA_MAINNET_RPC_URL` | Wallet balance & ATA checks. |
 | Frontend   | `VITE_COINBASE_CDP_APP_ID` | Enables Coinbase-specific purchase UX. |
 
@@ -344,21 +431,36 @@ spl-token create-account 4zMMC9sr... --owner <SOL_ADDR> --fee-payer ~/.config/so
 ```
 
 For x402 end-to-end verification, use the `/x402-test` page to simulate:
-1. Fetching payment requirements.  
-2. Generating the `X-PAYMENT` header.  
-3. Executing purchase + verifying article access.  
-4. Testing tip/donation flows on Base vs Solana.
+1. Fetching payment requirements
+2. Generating the `payment-signature` header
+3. Executing purchase + verifying article access
+4. Testing tip/donation flows on Base vs Solana
+
+For agentic flow testing:
+```bash
+cd backend
+npx ts-node scripts/agentic-flow-test.ts
+```
 
 ---
 
 ## Roadmap
 
-- 🔜 **Dark Mode & Theming** – system-based toggles for all pages.  
-- 🔜 **Author Insights** – category analytics, per-article funnels, weekly cohort stats.  
-- 🔜 **Profile Pages & Bundles** – follow authors, buy 24hr access bundles, show proof-of-read.  
-- 🔜 **AI Agent Integrations** – Dedicated resource pages for agentic discovery and payments. 
-- 🔜 **AI Agent Integrations** - AI writing & content helper. 
-- 🔜 **AI Agent Integrations** - Dedicated Q&A platform module (knowledge db)
+### Completed
+- ✅ **x402-Enabled Agent API** – AI agents can post articles via payment-authenticated endpoint
+- ✅ **Multi-Network Support** – Both Solana and Base supported for all x402 operations
+- ✅ **Canonical 402 Discovery** – Standard x402 flow compatible with x402scan/x402Jobs
+
+### In Progress
+- 🔄 **Agent Image Upload** – Allow agents to include images via base64 or URL
+- 🔄 **x402scan Registration** – Register endpoints for public discovery
+
+### Planned
+- 🔜 **Dark Mode & Theming** – system-based toggles for all pages
+- 🔜 **Author Insights** – category analytics, per-article funnels, weekly cohort stats
+- 🔜 **Profile Pages & Bundles** – follow authors, buy 24hr access bundles, show proof-of-read
+- 🔜 **AI Writing Assistant** – AI-powered content helper for authors
+- 🔜 **Knowledge Base Module** – Dedicated Q&A platform for structured content
 
 
 ---

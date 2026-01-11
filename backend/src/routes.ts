@@ -1588,29 +1588,43 @@ router.get('/agent/articleRequirements', (_req: Request, res: Response) => {
  */
 router.get('/agent/postArticle', async (req: Request, res: Response) => {
   try {
-    // Default to Solana mainnet for discovery
-    const networkPreference: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    // Build payment requirements for BOTH supported networks
+    const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    const evmNetwork: SupportedX402Network = 'eip155:8453';
 
-    const payTo = PLATFORM_SOLANA_ADDRESS;
-    if (!payTo) {
+    if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
       return res.status(500).json({
         success: false,
-        error: 'Platform Solana address not configured'
+        error: 'Platform payout addresses not configured'
       });
     }
 
-    const requirements = await resourceServer.buildPaymentRequirements({
-      scheme: 'exact',
-      network: networkPreference,
-      price: AGENT_POSTING_FEE,
-      payTo,
-      maxTimeoutSeconds: 900
-    });
-    const paymentRequirement = requirements[0];
-    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle?network=${networkPreference}`;
+    // Build requirements for both networks
+    const [solanaRequirements, evmRequirements] = await Promise.all([
+      resourceServer.buildPaymentRequirements({
+        scheme: 'exact',
+        network: solanaNetwork,
+        price: AGENT_POSTING_FEE,
+        payTo: PLATFORM_SOLANA_ADDRESS,
+        maxTimeoutSeconds: 900
+      }),
+      resourceServer.buildPaymentRequirements({
+        scheme: 'exact',
+        network: evmNetwork,
+        price: AGENT_POSTING_FEE,
+        payTo: PLATFORM_EVM_ADDRESS,
+        maxTimeoutSeconds: 900
+      })
+    ]);
+
+    // Combine both network options in accepts array
+    const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+
+    // Resource URL without network param - agent adds ?network=X when they POST
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
 
     const paymentRequired = resourceServer.createPaymentRequiredResponse(
-      [paymentRequirement],
+      allRequirements,
       { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
       'Payment required'
     );
@@ -1646,10 +1660,12 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
         },
         postingFlow: {
           description: 'Post an article using x402 payment protocol. NO JWT REQUIRED - payment signature proves wallet ownership.',
-          step1: 'POST /api/agent/postArticle with article JSON body (title, content, price, categories)',
-          step2: 'Receive 402 response with payment requirements',
-          step3: 'Sign the payment transaction with your wallet and retry request with payment-signature header',
-          step4: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }',
+          step1: 'GET /api/agent/postArticle to discover payment options (accepts array has both Solana and Base)',
+          step2: 'Choose a network from accepts array, note the payTo address',
+          step3: 'POST /api/agent/postArticle with article JSON body (title, content, price, categories) - receive 402',
+          step4: 'Sign the payment transaction to the payTo address for your chosen network',
+          step5: 'Retry POST with payment-signature header - server auto-detects network from payment',
+          step6: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }',
           note: 'Author = wallet address that signed the payment. New authors are auto-created on first post.'
         }
       }
@@ -1681,64 +1697,55 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
   try {
     const paymentHeader = req.headers['payment-signature'];
 
-    // Resolve network preference from query param
-    let networkPreference: SupportedX402Network;
-    try {
-      networkPreference = resolveNetworkPreference(req);
-    } catch (error) {
-      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
-        return res.status(400).json({
-          success: false,
-          error: 'Testnet payments are not accepted in production'
-        });
-      }
-      throw error;
-    }
-
-    // Determine platform payout address for this network
-    const payTo = isSolanaNetwork(networkPreference)
-      ? PLATFORM_SOLANA_ADDRESS
-      : PLATFORM_EVM_ADDRESS;
-
-    if (!payTo) {
-      return res.status(400).json({
-        success: false,
-        error: 'Platform does not accept payments on this network'
-      });
-    }
-
-    // Build payment requirements using SDK
-    const requirements = await resourceServer.buildPaymentRequirements({
-      scheme: 'exact',
-      network: networkPreference,
-      price: AGENT_POSTING_FEE,
-      payTo,
-      maxTimeoutSeconds: 900
-    });
-    const paymentRequirement = requirements[0];
-    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle?network=${networkPreference}`;
-
     // ============================================
     // DISCOVERY MODE: No payment header → 402
+    // Return both network options (canonical x402)
     // ============================================
     if (!paymentHeader) {
+      const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+      const evmNetwork: SupportedX402Network = 'eip155:8453';
+
+      if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
+        return res.status(500).json({
+          success: false,
+          error: 'Platform payout addresses not configured'
+        });
+      }
+
+      // Build requirements for both networks
+      const [solanaRequirements, evmRequirements] = await Promise.all([
+        resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: solanaNetwork,
+          price: AGENT_POSTING_FEE,
+          payTo: PLATFORM_SOLANA_ADDRESS,
+          maxTimeoutSeconds: 900
+        }),
+        resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: evmNetwork,
+          price: AGENT_POSTING_FEE,
+          payTo: PLATFORM_EVM_ADDRESS,
+          maxTimeoutSeconds: 900
+        })
+      ]);
+
+      const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
+
       const paymentRequired = resourceServer.createPaymentRequiredResponse(
-        [paymentRequirement],
+        allRequirements,
         { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
         'Payment required'
       );
 
-      // Add service info and discovery for agents
+      // Add service info for agents
       const responseWithDiscovery = {
         ...paymentRequired,
         service: {
           name: 'Readia Article Publisher',
-          description: 'Publish articles on Readia.io - a micropayment content platform. Your published articles become x402-enabled endpoints that other agents and humans can discover and purchase.',
+          description: 'Publish articles on Readia.io - a micropayment content platform.',
           website: 'https://readia.io'
-        },
-        discovery: {
-          requirementsUrl: `${req.protocol}://${req.get('host')}/api/agent/articleRequirements`,
-          description: 'GET this URL for full article requirements, validation rules, and posting instructions'
         }
       };
 
@@ -1766,7 +1773,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
 
     const { title, content, price, categories } = validationResult.data;
 
-    // Step 2: Decode payment header to get payer address
+    // Step 2: Decode payment header
     let paymentPayload: PaymentPayload;
     try {
       const decodedPayment = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
@@ -1779,11 +1786,36 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
+    // Step 3: Detect network from payment payload structure
+    // Solana payments have 'transaction' field, EVM payments don't
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
+    const detectedNetwork: SupportedX402Network = hasTransaction
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      : 'eip155:8453';
+
+    const payTo = hasTransaction ? PLATFORM_SOLANA_ADDRESS : PLATFORM_EVM_ADDRESS;
+    if (!payTo) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform payout address not configured for detected network'
+      });
+    }
+
+    // Build payment requirements for the detected network
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: detectedNetwork,
+      price: AGENT_POSTING_FEE,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+
     // ============================================
     // Payment Verification (no money moves yet)
     // ============================================
 
-    const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     // Basic amount guard
