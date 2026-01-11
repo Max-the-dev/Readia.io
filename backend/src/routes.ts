@@ -1940,7 +1940,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     // Log successful payment
     console.log(`[agent/postArticle] 💰 Payment settled:`, {
       txHash,
-      network: networkPreference,
+      network: detectedNetwork,
       amount: AGENT_POSTING_FEE,
       from: authorAddress,
       to: payTo
@@ -1951,7 +1951,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     // ============================================
 
     // Ensure author record exists (network from payment determines payout network)
-    const author = await ensureAuthorRecord(authorAddress, networkPreference);
+    const author = await ensureAuthorRecord(authorAddress, detectedNetwork);
 
     // Generate preview and read time
     const preview = generatePreview(content);
@@ -2005,7 +2005,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         articleUrl,
         purchaseUrl,
         authorAddress: author.address,
-        network: networkPreference,
+        network: detectedNetwork,
         txHash
       }
     });
