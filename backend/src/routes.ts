@@ -1779,39 +1779,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Extract payer address from payment (this is the author)
+    // ============================================
+    // Payment Verification (no money moves yet)
+    // ============================================
+
     const rawPayload = paymentPayload.payload as Record<string, unknown>;
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
-    const payerFromAuth = authorization?.from as string | undefined;
-
-    // Try to get payer from authorization.from first, fall back to payload-level from
-    let authorAddress = tryNormalizeFlexibleAddress(payerFromAuth || '');
-    if (!authorAddress) {
-      // For Solana, payer might be in a different location
-      const payloadFrom = rawPayload.from as string | undefined;
-      authorAddress = tryNormalizeFlexibleAddress(payloadFrom || '');
-    }
-
-    if (!authorAddress) {
-      return res.status(400).json({
-        success: false,
-        error: 'Could not extract payer address from payment'
-      });
-    }
-
-    // Step 3: Spam prevention check BEFORE payment verification
-    const spamCheck = await checkForSpam(authorAddress, title, content);
-    if (spamCheck.isSpam) {
-      return res.status(429).json({
-        success: false,
-        error: spamCheck.reason || 'Content blocked by spam filter',
-        details: spamCheck.details
-      });
-    }
-
-    // ============================================
-    // Payment Verification & Settlement
-    // ============================================
 
     // Basic amount guard
     const requiredAmount = BigInt(paymentRequirement.amount);
@@ -1826,7 +1799,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Verify payment with facilitator
+    // Verify payment with facilitator (checks signature, no money moves)
     let verification;
     try {
       verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
@@ -1892,7 +1865,33 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Settle payment
+    // Extract payer address from verification (this is the author)
+    const authorAddress =
+      tryNormalizeFlexibleAddress(verification.payer) ||
+      tryNormalizeFlexibleAddress(
+        typeof authorization?.from === 'string' ? authorization.from : ''
+      );
+
+    if (!authorAddress) {
+      console.error('[agent/postArticle] Could not extract payer:', { verification, authorization });
+      return res.status(400).json({
+        success: false,
+        error: 'Could not extract payer address from payment'
+      });
+    }
+
+    // Spam prevention check AFTER verification but BEFORE settlement
+    // (no money moves until spam check passes)
+    const spamCheck = await checkForSpam(authorAddress, title, content);
+    if (spamCheck.isSpam) {
+      return res.status(429).json({
+        success: false,
+        error: spamCheck.reason || 'Content blocked by spam filter',
+        details: spamCheck.details
+      });
+    }
+
+    // Settle payment (money moves now)
     const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
 
     if (!settlement.success) {
