@@ -1146,37 +1146,181 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       });
     }
 
-    let networkPreference: SupportedX402Network;
-    try {
-      networkPreference = resolveNetworkPreference(req);
-    } catch (error) {
-      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
-        return res.status(400).json({
-          success: false,
-          error: 'Testnet payments are not accepted'
-        });
-      }
-      throw error;
-    }
-
+    const paymentHeader = req.headers['payment-signature'];
     const authorRecord = await db.getAuthor(article.authorAddress);
     const payoutProfile = buildPayoutProfile(article, authorRecord);
 
-    // Resolve payout address for this network
-    let payTo: string;
-    try {
-      payTo = resolvePayTo(payoutProfile, networkPreference);
-    } catch (error) {
-      if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
-        return res.status(400).json({
-          success: false,
-          error: 'Author does not accept payments on this network'
+    // Check if ?network= param was explicitly provided
+    const networkParam = req.query.network as string | undefined;
+    const hasNetworkParam = !!networkParam;
+
+    // ============================================
+    // NO PAYMENT HEADER: Return 402 discovery
+    // ============================================
+    if (!paymentHeader) {
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${article.id}/purchase`;
+
+      // If network param provided, return single-network 402 (backward compatible)
+      if (hasNetworkParam) {
+        let networkPreference: SupportedX402Network;
+        try {
+          networkPreference = resolveNetworkPreference(req);
+        } catch (error) {
+          if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+            return res.status(400).json({
+              success: false,
+              error: 'Testnet payments are not accepted'
+            });
+          }
+          throw error;
+        }
+
+        let payTo: string;
+        try {
+          payTo = resolvePayTo(payoutProfile, networkPreference);
+        } catch (error) {
+          if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
+            return res.status(400).json({
+              success: false,
+              error: 'Author does not accept payments on this network'
+            });
+          }
+          throw error;
+        }
+
+        const requirements = await resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: networkPreference,
+          price: article.price,
+          payTo,
+          maxTimeoutSeconds: 900
         });
+
+        const paymentRequired = resourceServer.createPaymentRequiredResponse(
+          [requirements[0]],
+          { url: `${resourceUrl}?network=${networkPreference}`, description: `Purchase access to: ${article.title}`, mimeType: 'application/json' },
+          'Payment required'
+        );
+        res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+        return res.status(402).json(paymentRequired);
       }
-      throw error;
+
+      // No network param: Return canonical x402 with ALL networks author supports
+      const allRequirements: Awaited<ReturnType<typeof resourceServer.buildPaymentRequirements>>[0][] = [];
+
+      // Add primary network option
+      const primaryGroup = getNetworkGroup(payoutProfile.primaryNetwork);
+      const primaryNetwork: SupportedX402Network = primaryGroup === 'solana'
+        ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+        : 'eip155:8453';
+      const primaryPayTo = primaryGroup === 'solana'
+        ? normalizeSolanaAddress(payoutProfile.primaryAddress)
+        : normalizeAddress(payoutProfile.primaryAddress);
+
+      const primaryReqs = await resourceServer.buildPaymentRequirements({
+        scheme: 'exact',
+        network: primaryNetwork,
+        price: article.price,
+        payTo: primaryPayTo,
+        maxTimeoutSeconds: 900
+      });
+      allRequirements.push(primaryReqs[0]);
+
+      // Add secondary network option (if author has one)
+      if (payoutProfile.secondaryNetwork && payoutProfile.secondaryAddress) {
+        const secondaryGroup = getNetworkGroup(payoutProfile.secondaryNetwork);
+        const secondaryNetwork: SupportedX402Network = secondaryGroup === 'solana'
+          ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+          : 'eip155:8453';
+        const secondaryPayTo = secondaryGroup === 'solana'
+          ? normalizeSolanaAddress(payoutProfile.secondaryAddress)
+          : normalizeAddress(payoutProfile.secondaryAddress);
+
+        const secondaryReqs = await resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: secondaryNetwork,
+          price: article.price,
+          payTo: secondaryPayTo,
+          maxTimeoutSeconds: 900
+        });
+        allRequirements.push(secondaryReqs[0]);
+      }
+
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        allRequirements,
+        { url: resourceUrl, description: `Purchase access to: ${article.title}`, mimeType: 'application/json' },
+        'Payment required'
+      );
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
     }
 
-    // Build payment requirements using SDK (handles fee payer, asset, amount parsing)
+    // ============================================
+    // HAS PAYMENT HEADER: Verify and settle
+    // ============================================
+
+    // Detect network from payment structure OR use provided param
+    let networkPreference: SupportedX402Network;
+    let payTo: string;
+
+    if (hasNetworkParam) {
+      // Use provided network param (backward compatible)
+      try {
+        networkPreference = resolveNetworkPreference(req);
+      } catch (error) {
+        if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+          return res.status(400).json({
+            success: false,
+            error: 'Testnet payments are not accepted'
+          });
+        }
+        throw error;
+      }
+
+      try {
+        payTo = resolvePayTo(payoutProfile, networkPreference);
+      } catch (error) {
+        if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
+          return res.status(400).json({
+            success: false,
+            error: 'Author does not accept payments on this network'
+          });
+        }
+        throw error;
+      }
+    } else {
+      // Auto-detect network from payment structure (canonical x402)
+      let paymentPayloadForDetection: PaymentPayload;
+      try {
+        const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+        paymentPayloadForDetection = JSON.parse(decoded) as PaymentPayload;
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid x402 payment header'
+        });
+      }
+
+      const rawPayloadForDetection = paymentPayloadForDetection.payload as Record<string, unknown>;
+      const hasTransaction = typeof rawPayloadForDetection === 'object' && rawPayloadForDetection !== null && 'transaction' in rawPayloadForDetection;
+      networkPreference = hasTransaction
+        ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+        : 'eip155:8453';
+
+      try {
+        payTo = resolvePayTo(payoutProfile, networkPreference);
+      } catch (error) {
+        if ((error as Error).message === 'AUTHOR_NETWORK_UNSUPPORTED') {
+          return res.status(400).json({
+            success: false,
+            error: 'Author does not accept payments on this network'
+          });
+        }
+        throw error;
+      }
+    }
+
+    // Build payment requirements for verification
     const requirements = await resourceServer.buildPaymentRequirements({
       scheme: 'exact',
       network: networkPreference,
@@ -1185,20 +1329,6 @@ router.post('/articles/:id/purchase', criticalLimiter, async (req: Request, res:
       maxTimeoutSeconds: 900
     });
     const paymentRequirement = requirements[0];
-
-    const paymentHeader = req.headers['payment-signature'];  // v2: renamed from x-payment
-    const resourceUrl = `${req.protocol}://${req.get('host')}/api/articles/${article.id}/purchase?network=${networkPreference}`;
-
-    if (!paymentHeader) {
-      // v2 PaymentRequired response using SDK helper
-      const paymentRequired = resourceServer.createPaymentRequiredResponse(
-        [paymentRequirement],
-        { url: resourceUrl, description: `Purchase access to: ${article.title}`, mimeType: 'application/json' },
-        'Payment required'
-      );
-      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
-      return res.status(402).json(paymentRequired);
-    }
 
     let paymentPayload: PaymentPayload;
     try {
