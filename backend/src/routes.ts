@@ -267,6 +267,7 @@ const PLATFORM_SOLANA_ADDRESS = process.env.X402_PLATFORM_SOL_ADDRESS
 
 // Agent posting fee (USD) - paid to platform for programmatic article creation
 const AGENT_POSTING_FEE = parseFloat(process.env.AGENT_POSTING_FEE || '0.25');
+const AGENT_SECONDARY_WALLET_FEE = parseFloat(process.env.AGENT_SECONDARY_WALLET_FEE || '0.01');
 
 const getNetworkGroup = (network?: SupportedX402Network | string | null): NetworkGroup =>
   network && isSolanaNetwork(network) ? 'solana' : 'evm';
@@ -2319,9 +2320,418 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
   }
 });
 
+// ============================================
+// AGENT SECONDARY WALLET ENDPOINT
+// ============================================
 
+/**
+ * POST /api/agent/setSecondaryWallet - Add or update secondary payout wallet via x402 payment
+ *
+ * Allows agents to set (add or update) a secondary payout wallet after publishing their first article.
+ * Payment MUST come from the primary wallet to prove ownership.
+ * Calling this again with a different address will update the existing secondary wallet.
+ *
+ * Flow:
+ * - No payment header → 402
+ * - With payment header → verify payer is primary → set secondary wallet
+ */
+router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => {
+  try {
+    const paymentHeader = req.headers['payment-signature'];
 
+    // Validate body before anything else
+    const { network, payoutAddress } = req.body as {
+      network?: string;
+      payoutAddress?: string;
+    };
 
+    if (!network || !payoutAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        details: {
+          network: !network ? 'Required: CAIP-2 network identifier (e.g., solana:5eykt... or eip155:8453)' : undefined,
+          payoutAddress: !payoutAddress ? 'Required: Wallet address for secondary payout' : undefined
+        }
+      });
+    }
+
+    // Validate network is supported
+    if (!SUPPORTED_X402_NETWORKS.includes(network as SupportedX402Network)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid network',
+        details: `Network must be one of: ${SUPPORTED_X402_NETWORKS.join(', ')}`
+      });
+    }
+
+    const secondaryNetwork = network as SupportedX402Network;
+
+    // Reject testnet in production
+    if (isProduction) {
+      if (secondaryNetwork.includes('84532') || secondaryNetwork.includes('EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet wallets are not accepted in production'
+        });
+      }
+    }
+
+    // Validate address format for network
+    let normalizedPayoutAddress: string;
+    try {
+      if (isSolanaNetwork(secondaryNetwork)) {
+        normalizedPayoutAddress = normalizeSolanaAddress(payoutAddress);
+      } else {
+        normalizedPayoutAddress = normalizeAddress(payoutAddress);
+      }
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payout address format',
+        details: isSolanaNetwork(secondaryNetwork)
+          ? 'Expected a valid Solana address (base58 encoded)'
+          : 'Expected a valid EVM address (0x prefixed)'
+      });
+    }
+
+    // ============================================
+    // DISCOVERY MODE: No payment header → 402
+    // ============================================
+    if (!paymentHeader) {
+      const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+      const evmNetwork: SupportedX402Network = 'eip155:8453';
+
+      if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
+        return res.status(500).json({
+          success: false,
+          error: 'Platform payout addresses not configured'
+        });
+      }
+
+      // Build requirements for both networks
+      const [solanaRequirements, evmRequirements] = await Promise.all([
+        resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: solanaNetwork,
+          price: AGENT_SECONDARY_WALLET_FEE,
+          payTo: PLATFORM_SOLANA_ADDRESS,
+          maxTimeoutSeconds: 900
+        }),
+        resourceServer.buildPaymentRequirements({
+          scheme: 'exact',
+          network: evmNetwork,
+          price: AGENT_SECONDARY_WALLET_FEE,
+          payTo: PLATFORM_EVM_ADDRESS,
+          maxTimeoutSeconds: 900
+        })
+      ]);
+
+      const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
+
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        allRequirements,
+        { url: resourceUrl, description: `Set secondary payout wallet: $${AGENT_SECONDARY_WALLET_FEE}`, mimeType: 'application/json' },
+        'Payment required'
+      );
+
+      const responseWithDiscovery = {
+        ...paymentRequired,
+        service: {
+          name: 'Readia Secondary Wallet Manager',
+          description: 'Set (add or update) a secondary payout wallet to receive payments on both Solana and Base networks. Call again to change your secondary wallet.',
+          website: 'https://readia.io'
+        },
+        requirements: {
+          fee: AGENT_SECONDARY_WALLET_FEE,
+          supportedNetworks: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
+          body: {
+            network: 'CAIP-2 network identifier (must be different type than primary)',
+            payoutAddress: 'Your wallet address on the secondary network'
+          },
+          flow: {
+            step1: 'POST /api/agent/setSecondaryWallet with body { network, payoutAddress } - receive 402',
+            step2_add: 'To ADD secondary: sign payment with your PRIMARY wallet',
+            step2_update: 'To UPDATE secondary: sign payment with PRIMARY or current SECONDARY wallet',
+            step3: 'Retry POST with payment-signature header',
+            step4: 'Success: secondary wallet set'
+          },
+          authorization: {
+            add: 'To add a secondary wallet for the first time, payment must come from your PRIMARY wallet',
+            update: 'To update an existing secondary, payment can come from PRIMARY or current SECONDARY wallet'
+          },
+          errors: {
+            NO_AUTHOR: 'You must publish at least one article first',
+            WRONG_PAYER_ADD: 'To add secondary, payment must come from primary wallet',
+            WRONG_PAYER_UPDATE: 'To update secondary, payment must come from primary or current secondary',
+            SAME_NETWORK: 'Secondary must be different network type than primary',
+            INVALID_ADDRESS: 'Payout address must be valid for the specified network',
+            WALLET_TAKEN: 'The payout address is already associated with another author'
+          }
+        }
+      };
+
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+      return res.status(402).json(responseWithDiscovery);
+    }
+
+    // ============================================
+    // SUBMISSION MODE: Has payment header
+    // ============================================
+
+    // Decode payment header
+    let paymentPayload: PaymentPayload;
+    try {
+      const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment-signature header'
+      });
+    }
+
+    // Detect network from payment structure
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const hasTransaction = 'transaction' in rawPayload;
+
+    const detectedNetwork: SupportedX402Network = hasTransaction
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      : 'eip155:8453';
+
+    const networkGroup = getNetworkGroup(detectedNetwork);
+
+    // Build payment requirement for verification
+    const payTo = networkGroup === 'solana' ? PLATFORM_SOLANA_ADDRESS : PLATFORM_EVM_ADDRESS;
+
+    if (!payTo) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform payout address not configured for this network'
+      });
+    }
+
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: detectedNetwork,
+      price: AGENT_SECONDARY_WALLET_FEE,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+
+    // Verify payment
+    const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
+
+    if (!verification.isValid) {
+      console.log(`[agent/setSecondaryWallet] Payment verification failed: ${verification.invalidReason}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Payment verification failed',
+        details: verification.invalidReason
+      });
+    }
+
+    // Verify payment recipient is platform
+    let paymentRecipient: string;
+    if (networkGroup === 'solana') {
+      paymentRecipient = normalizeRecipientForNetwork(payTo, detectedNetwork);
+    } else {
+      paymentRecipient = normalizeRecipientForNetwork(
+        (authorization?.to as string) || '',
+        detectedNetwork
+      );
+    }
+    const expectedRecipient = normalizeRecipientForNetwork(payTo, detectedNetwork);
+
+    if (paymentRecipient !== expectedRecipient) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment recipient mismatch - must pay to platform'
+      });
+    }
+
+    // Extract payer address
+    const payerAddress =
+      tryNormalizeFlexibleAddress(verification.payer) ||
+      tryNormalizeFlexibleAddress(
+        typeof authorization?.from === 'string' ? authorization.from : ''
+      );
+
+    if (!payerAddress) {
+      console.error('[agent/setSecondaryWallet] Could not extract payer:', { verification, authorization });
+      return res.status(400).json({
+        success: false,
+        error: 'Could not extract payer address from payment'
+      });
+    }
+
+    // Look up author by payer address
+    const author = await db.getAuthorByWallet(payerAddress);
+
+    if (!author) {
+      return res.status(400).json({
+        success: false,
+        error: 'No author profile found for this wallet',
+        details: {
+          message: 'You must publish at least one article before adding a secondary wallet.',
+          action: 'POST /api/agent/postArticle to create your first article',
+          payer: payerAddress
+        }
+      });
+    }
+
+    // Verify payer is authorized to set secondary wallet
+    const primaryAddress = tryNormalizeFlexibleAddress(author.address);
+    const currentSecondaryAddress = author.secondaryPayoutAddress
+      ? tryNormalizeFlexibleAddress(author.secondaryPayoutAddress)
+      : null;
+
+    if (!currentSecondaryAddress) {
+      // No secondary exists yet - must pay from primary to ADD
+      if (payerAddress !== primaryAddress) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment must come from your primary wallet',
+          details: {
+            message: 'To add a secondary wallet, payment must come from your primary wallet.',
+            yourPrimaryWallet: author.address,
+            yourPrimaryNetwork: author.primaryPayoutNetwork,
+            payerWallet: payerAddress,
+            action: 'Sign the payment with your primary wallet'
+          }
+        });
+      }
+    } else {
+      // Secondary exists - allow payment from primary OR current secondary to UPDATE
+      if (payerAddress !== primaryAddress && payerAddress !== currentSecondaryAddress) {
+        return res.status(400).json({
+          success: false,
+          error: 'Payment must come from a wallet associated with your author profile',
+          details: {
+            message: 'To update your secondary wallet, payment must come from your primary or current secondary wallet.',
+            yourPrimaryWallet: author.address,
+            yourPrimaryNetwork: author.primaryPayoutNetwork,
+            yourSecondaryWallet: author.secondaryPayoutAddress,
+            yourSecondaryNetwork: author.secondaryPayoutNetwork,
+            payerWallet: payerAddress,
+            action: 'Sign the payment with either your primary or secondary wallet'
+          }
+        });
+      }
+    }
+
+    // Verify secondary network is different type than primary
+    const primaryNetworkGroup = getNetworkGroup(author.primaryPayoutNetwork);
+    const secondaryNetworkGroup = getNetworkGroup(secondaryNetwork);
+
+    if (primaryNetworkGroup === secondaryNetworkGroup) {
+      return res.status(400).json({
+        success: false,
+        error: 'Secondary wallet must be on a different network type',
+        details: {
+          message: `Your primary is on ${primaryNetworkGroup.toUpperCase()}. Secondary must be on ${primaryNetworkGroup === 'evm' ? 'Solana' : 'EVM'}.`,
+          yourPrimaryNetwork: author.primaryPayoutNetwork,
+          requestedSecondaryNetwork: secondaryNetwork,
+          suggestion: primaryNetworkGroup === 'evm'
+            ? 'Use network: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+            : 'Use network: eip155:8453'
+        }
+      });
+    }
+
+    // Settle payment
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
+
+    if (!settlement.success) {
+      console.error('[agent/setSecondaryWallet] Settlement failed:', settlement.errorReason);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed. Please try again.',
+        details: settlement.errorReason || 'Unknown settlement error'
+      });
+    }
+
+    const txHash = settlement.transaction;
+
+    console.log(`[agent/setSecondaryWallet] Payment settled:`, {
+      txHash,
+      network: detectedNetwork,
+      amount: AGENT_SECONDARY_WALLET_FEE,
+      from: payerAddress,
+      to: payTo
+    });
+
+    // Update author with secondary wallet
+    const authorUuid = author.authorUuid;
+    if (authorUuid) {
+      await db.setAuthorWallet({
+        authorUuid,
+        address: normalizedPayoutAddress,
+        network: secondaryNetwork,
+        isPrimary: false,
+      });
+    }
+
+    // Create USDC ATA for Solana secondary wallets (fire-and-forget)
+    if (isSolanaNetwork(secondaryNetwork)) {
+      ensureSolanaUsdcAta(normalizedPayoutAddress, secondaryNetwork, 'secondary_wallet').catch((error) => {
+        console.error('[agent/setSecondaryWallet] Background ATA creation failed:', error);
+      });
+    }
+
+    author.secondaryPayoutNetwork = secondaryNetwork;
+    author.secondaryPayoutAddress = normalizedPayoutAddress;
+
+    const updatedAuthor = await db.createOrUpdateAuthor(author);
+
+    console.log(`[agent/setSecondaryWallet] Secondary wallet added:`, {
+      author: author.address,
+      primaryNetwork: author.primaryPayoutNetwork,
+      secondaryNetwork: secondaryNetwork,
+      secondaryAddress: normalizedPayoutAddress,
+      txHash
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        message: 'Secondary payout wallet set successfully',
+        author: {
+          address: updatedAuthor.address,
+          primaryPayoutNetwork: updatedAuthor.primaryPayoutNetwork,
+          primaryPayoutAddress: updatedAuthor.primaryPayoutAddress || updatedAuthor.address,
+          secondaryPayoutNetwork: updatedAuthor.secondaryPayoutNetwork,
+          secondaryPayoutAddress: updatedAuthor.secondaryPayoutAddress,
+        },
+        txHash,
+        note: 'Buyers can now pay you on either network. Your articles will show both payment options in 402 responses. Call this endpoint again to update your secondary wallet.'
+      }
+    });
+
+  } catch (error: unknown) {
+    console.error('[agent/setSecondaryWallet] Error:', error);
+
+    // Handle unique constraint violation - wallet already associated with another author
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        error: 'This wallet is already associated with another author',
+        details: {
+          message: 'The payout address you specified is already linked to a different author profile.',
+          action: 'Use a different wallet address for your secondary payout'
+        }
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to process secondary wallet update'
+    });
+  }
+});
 
 // Draft Routes
 
