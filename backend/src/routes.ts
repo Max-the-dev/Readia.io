@@ -162,15 +162,30 @@ function parsePaymentHeader(header: string): OFPaymentPayload | null {
 type X402PaymentRequirement = OFPaymentRequirements & { x402Version: 2 };
 
 /**
+ * x402 v2 Payment Required response format
+ * - x402Version at top level tells client which protocol version to use
+ * - x402Version in each accepts item for per-network clarity
+ */
+interface X402PaymentRequiredResponse {
+  x402Version: 2;
+  accepts: X402PaymentRequirement[];
+  error: string;
+  resource: string;
+  description: string;
+  mimeType: string;
+}
+
+/**
  * Create 402 Payment Required response for agent endpoints
- * Adds x402Version: 2 to each requirement for @x402/core client compatibility
+ * Adds x402Version: 2 at top level AND to each requirement for @x402/core client compatibility
  */
 function createAgentPaymentRequiredResponse(
   accepts: OFPaymentRequirements[],
   resource: { url: string; description: string; mimeType: string },
   message: string
-): { accepts: X402PaymentRequirement[]; error: string; resource: string; description: string; mimeType: string } {
+): X402PaymentRequiredResponse {
   return {
+    x402Version: 2,
     accepts: accepts.map(req => ({ ...req, x402Version: 2 as const })),
     error: message,
     resource: resource.url,
