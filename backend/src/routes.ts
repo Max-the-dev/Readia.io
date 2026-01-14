@@ -530,10 +530,12 @@ async function ensureAuthorRecord(address: string, networkHint?: SupportedPayout
   const savedAuthor = await db.createOrUpdateAuthor(newAuthor);
 
   if (savedAuthor.authorUuid) {
+    // Use newAuthor.primaryPayoutNetwork (correctly set from networkHint/detection)
+    // NOT savedAuthor.primaryPayoutNetwork (hydrated from DB, defaults to EVM)
     await db.setAuthorWallet({
       authorUuid: savedAuthor.authorUuid,
       address: normalizedAddress,
-      network: savedAuthor.primaryPayoutNetwork,
+      network: newAuthor.primaryPayoutNetwork,
       isPrimary: true,
     });
     const refreshed = await db.getAuthorByUuid(savedAuthor.authorUuid);
