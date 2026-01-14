@@ -1862,7 +1862,8 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
  */
 router.post('/agent/postArticle', async (req: Request, res: Response) => {
   try {
-    const paymentHeader = req.headers['payment-signature'];
+    // Accept both x402 v1 (x-payment) and v2 (payment-signature) headers
+    const paymentHeader = req.headers['payment-signature'] || req.headers['x-payment'];
 
     // ============================================
     // DISCOVERY MODE: No payment header → 402
@@ -2429,7 +2430,8 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
  */
 router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => {
   try {
-    const paymentHeader = req.headers['payment-signature'];
+    // Accept both x402 v1 (x-payment) and v2 (payment-signature) headers
+    const paymentHeader = req.headers['payment-signature'] || req.headers['x-payment'];
 
     // ============================================
     // DISCOVERY MODE: No payment header → 402
