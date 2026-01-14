@@ -2339,64 +2339,10 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
   try {
     const paymentHeader = req.headers['payment-signature'];
 
-    // Validate body before anything else
-    const { network, payoutAddress } = req.body as {
-      network?: string;
-      payoutAddress?: string;
-    };
-
-    if (!network || !payoutAddress) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        details: {
-          network: !network ? 'Required: CAIP-2 network identifier (e.g., solana:5eykt... or eip155:8453)' : undefined,
-          payoutAddress: !payoutAddress ? 'Required: Wallet address for secondary payout' : undefined
-        }
-      });
-    }
-
-    // Validate network is supported
-    if (!SUPPORTED_X402_NETWORKS.includes(network as SupportedX402Network)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid network',
-        details: `Network must be one of: ${SUPPORTED_X402_NETWORKS.join(', ')}`
-      });
-    }
-
-    const secondaryNetwork = network as SupportedX402Network;
-
-    // Reject testnet in production
-    if (isProduction) {
-      if (secondaryNetwork.includes('84532') || secondaryNetwork.includes('EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) {
-        return res.status(400).json({
-          success: false,
-          error: 'Testnet wallets are not accepted in production'
-        });
-      }
-    }
-
-    // Validate address format for network
-    let normalizedPayoutAddress: string;
-    try {
-      if (isSolanaNetwork(secondaryNetwork)) {
-        normalizedPayoutAddress = normalizeSolanaAddress(payoutAddress);
-      } else {
-        normalizedPayoutAddress = normalizeAddress(payoutAddress);
-      }
-    } catch {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid payout address format',
-        details: isSolanaNetwork(secondaryNetwork)
-          ? 'Expected a valid Solana address (base58 encoded)'
-          : 'Expected a valid EVM address (0x prefixed)'
-      });
-    }
-
     // ============================================
     // DISCOVERY MODE: No payment header → 402
+    // Return 402 with full requirements regardless of body validity
+    // This allows x402 discovery/registration without knowing body params
     // ============================================
     if (!paymentHeader) {
       const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
@@ -2478,7 +2424,64 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
     // ============================================
     // SUBMISSION MODE: Has payment header
+    // Now validate body since we're actually processing a submission
     // ============================================
+
+    // Validate body
+    const { network, payoutAddress } = req.body as {
+      network?: string;
+      payoutAddress?: string;
+    };
+
+    if (!network || !payoutAddress) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        details: {
+          network: !network ? 'Required: CAIP-2 network identifier (e.g., solana:5eykt... or eip155:8453)' : undefined,
+          payoutAddress: !payoutAddress ? 'Required: Wallet address for secondary payout' : undefined
+        }
+      });
+    }
+
+    // Validate network is supported
+    if (!SUPPORTED_X402_NETWORKS.includes(network as SupportedX402Network)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid network',
+        details: `Network must be one of: ${SUPPORTED_X402_NETWORKS.join(', ')}`
+      });
+    }
+
+    const secondaryNetwork = network as SupportedX402Network;
+
+    // Reject testnet in production
+    if (isProduction) {
+      if (secondaryNetwork.includes('84532') || secondaryNetwork.includes('EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet wallets are not accepted in production'
+        });
+      }
+    }
+
+    // Validate address format for network
+    let normalizedPayoutAddress: string;
+    try {
+      if (isSolanaNetwork(secondaryNetwork)) {
+        normalizedPayoutAddress = normalizeSolanaAddress(payoutAddress);
+      } else {
+        normalizedPayoutAddress = normalizeAddress(payoutAddress);
+      }
+    } catch {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payout address format',
+        details: isSolanaNetwork(secondaryNetwork)
+          ? 'Expected a valid Solana address (base58 encoded)'
+          : 'Expected a valid EVM address (0x prefixed)'
+      });
+    }
 
     // Decode payment header
     let paymentPayload: PaymentPayload;
