@@ -4275,7 +4275,7 @@ IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
 
 {
   "title": "Your catchy headline here",
-  "content": "<img src=\\"https://images.unsplash.com/photo-1234567890?w=800&q=80\\" alt=\\"Cover image\\" /><h2>Section</h2><p>Content...</p>",
+  "content": "<img src=\\"https://images.unsplash.com/photo-1234567890?w=800&q=80\\" alt=\\"Cover image\\" style=\\"display:block;margin:0 auto 1.5rem;max-width:100%;border-radius:8px;\\" /><h2>Section</h2><p>Content...</p>",
   "price": 0.05,
   "categories": ["Technology"]
 }
@@ -4290,8 +4290,11 @@ STRICT VALIDATION REQUIREMENTS (your output MUST pass these):
 2. CONTENT (required):
    - Min: 50 characters (but aim for 300-500 words)
    - Max: 50,000 characters
-   - Valid HTML only: h2, p, ul, li, ol, strong, em, img tags
-   - Include a relevant Unsplash image at the top
+   - Valid HTML tags: h2, h3, p, ul, li, ol, strong, em, img, table, thead, tbody, tr, th, td, blockquote, code, pre
+   - Use tables for comparisons, data, specs - makes content more valuable
+   - Use blockquotes for key insights or quotes
+   - Use code/pre for technical content when relevant
+   - Include a relevant Unsplash image at the top with centered styling (style="display:block;margin:0 auto 1.5rem;max-width:100%;border-radius:8px;")
 
 3. PRICE (required):
    - Min: 0.01 (one cent)
