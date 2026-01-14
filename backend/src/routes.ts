@@ -409,6 +409,11 @@ const PLATFORM_SOLANA_ADDRESS = process.env.X402_PLATFORM_SOL_ADDRESS
 // Agent posting fee (USD) - paid to platform for programmatic article creation
 const AGENT_POSTING_FEE = parseFloat(process.env.AGENT_POSTING_FEE || '0.25');
 const AGENT_SECONDARY_WALLET_FEE = parseFloat(process.env.AGENT_SECONDARY_WALLET_FEE || '0.01');
+const AGENT_GENERATE_ARTICLE_FEE = parseFloat(process.env.AGENT_GENERATE_ARTICLE_FEE || '0.02');
+
+// Claude API configuration
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 const getNetworkGroup = (network?: SupportedX402Network | string | null): NetworkGroup =>
   network && isSolanaNetwork(network) ? 'solana' : 'evm';
@@ -2110,12 +2115,6 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
       : 'eip155:8453';
 
-    console.log('[agent/postArticle] Payload detection:', {
-      rawPayload: rawPayload ? Object.keys(rawPayload) : 'null/undefined',
-      hasTransaction,
-      detectedNetwork
-    });
-
     const payTo = hasTransaction ? PLATFORM_SOLANA_ADDRESS : PLATFORM_EVM_ADDRESS;
     if (!payTo) {
       return res.status(500).json({
@@ -2275,8 +2274,6 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         error: 'Payment settlement failed: ' + (err?.message || 'Unknown error')
       });
     }
-
-    console.log('[agent/postArticle] Settlement response:', JSON.stringify(settlement, null, 2));
 
     if (!settlement.success) {
       console.error('[agent/postArticle] Settlement returned success=false:', JSON.stringify(settlement, null, 2));
@@ -3953,6 +3950,486 @@ router.get('/users/me/favorites', readLimiter, requireAuth, async (req: Authenti
   } catch (error) {
     console.error('Error fetching favorites:', error);
     return res.status(500).json({ success: false, error: 'Failed to fetch favorites' });
+  }
+});
+
+// ============================================
+// GET /api/agent/generateArticle - x402 protected AI article generation
+// Accepts flexible instructions - Claude interprets and generates article
+// Output always formatted for postArticle endpoint
+// ============================================
+
+// Google News RSS for dynamic topic-based news
+const GOOGLE_NEWS_RSS_BASE = 'https://news.google.com/rss/search';
+
+// Helper to extract search keywords from instructions
+function extractSearchKeywords(instructions: string): string {
+  // Remove common filler words and extract key topics
+  const fillerWords = /\b(write|about|the|latest|news|article|blog|post|create|make|an?|and|or|for|with|from|today|current|recent|please|can|you|me|i|want|need|give|tell|summarize|analyze|cover|what|is|are|how|why|when|where)\b/gi;
+  const cleaned = instructions.replace(fillerWords, ' ').replace(/\s+/g, ' ').trim();
+
+  // Take first 3-5 meaningful words as search query (allow 2-char words like "AI")
+  const words = cleaned.split(' ').filter(w => w.length >= 2).slice(0, 5);
+  return words.length > 0 ? words.join(' ') : 'technology';
+}
+
+// Helper to parse Google News RSS XML
+function parseGoogleNewsRSS(xml: string): Array<{ title: string; link: string; pubDate: string; source: string }> {
+  const items: Array<{ title: string; link: string; pubDate: string; source: string }> = [];
+
+  // Simple regex-based XML parsing (no external dependency)
+  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  const titleRegex = /<title>([^<]+)<\/title>/;
+  const linkRegex = /<link>([^<]+)<\/link>/;
+  const pubDateRegex = /<pubDate>([^<]+)<\/pubDate>/;
+  const sourceRegex = /<source[^>]*>([^<]+)<\/source>/;
+
+  let match;
+  while ((match = itemRegex.exec(xml)) !== null && items.length < 10) {
+    const itemXml = match[1];
+    const title = titleRegex.exec(itemXml)?.[1] || '';
+    const link = linkRegex.exec(itemXml)?.[1] || '';
+    const pubDate = pubDateRegex.exec(itemXml)?.[1] || '';
+    // Extract source from title (format: "Title - Source Name")
+    const sourceParts = title.split(' - ');
+    const source = sourceParts.length > 1 ? sourceParts.pop() || 'Unknown' : 'Unknown';
+    const cleanTitle = sourceParts.join(' - ');
+
+    if (cleanTitle && link) {
+      items.push({ title: cleanTitle, link, pubDate, source });
+    }
+  }
+
+  return items;
+}
+
+router.post('/agent/generateArticle', async (req: Request, res: Response) => {
+  try {
+    // Check for x402 payment header
+    const paymentHeader = req.headers['x-payment'] || req.headers['x-payment-response'];
+
+    // Get prompt from body (optional)
+    const prompt = (req.body?.prompt as string) || '';
+
+    // ============================================
+    // DISCOVERY MODE: No payment header → return 402 with requirements
+    // ============================================
+
+    if (!paymentHeader) {
+      const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+      const evmNetwork: SupportedX402Network = 'eip155:8453';
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/generateArticle`;
+      const description = `AI article generation: $${AGENT_GENERATE_ARTICLE_FEE}`;
+
+      // Build payment requirements for both networks
+      if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
+        return res.status(500).json({
+          success: false,
+          error: 'Platform payout addresses not configured'
+        });
+      }
+
+      const [solanaRequirements, evmRequirements] = await Promise.all([
+        buildAgentPaymentRequirements(solanaNetwork, AGENT_GENERATE_ARTICLE_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+        buildAgentPaymentRequirements(evmNetwork, AGENT_GENERATE_ARTICLE_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
+      ]);
+
+      // Create 402 response with both network options
+      const paymentRequired = createAgentPaymentRequiredResponse(
+        [solanaRequirements, evmRequirements],
+        { url: resourceUrl, description, mimeType: 'application/json' },
+        'Payment required'
+      );
+
+      // x402Jobs format: outputSchema with prompt input
+      const x402OutputSchema = {
+        input: {
+          type: 'http',
+          method: 'POST',
+          bodyType: 'json',
+          bodyFields: {
+            prompt: {
+              type: 'string',
+              required: false,
+              description: 'What would you like to write about? Examples: "Write 3 healthy cake recipes", "Cover the latest AI news", "Create a React hooks tutorial", "Write a travel guide for Paris". If not provided, defaults to trending tech news.'
+            }
+          }
+        },
+        output: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Generated article title' },
+              content: { type: 'string', description: 'Generated HTML article content (compatible with postArticle)' },
+              price: { type: 'number', description: 'Suggested article price ($0.01-$1.00)' },
+              categories: { type: 'array', description: 'Article categories' },
+              sourceUrl: { type: 'string', description: 'Reference URL if applicable' },
+              sourceTitle: { type: 'string', description: 'Reference title if applicable' },
+              txHash: { type: 'string', description: 'Payment transaction hash' }
+            }
+          }
+        }
+      };
+
+      // Extra metadata for agents
+      const extraMetadata = {
+        serviceName: 'Readia AI Article Generator',
+        serviceUrl: 'https://readia.io',
+        generationFee: AGENT_GENERATE_ARTICLE_FEE,
+        description: 'General-purpose AI article generation. Write about anything: news, tutorials, recipes, opinion pieces, analysis, creative content, and more. For news-related prompts, live data is fetched from Google News. Output is formatted for direct use with postArticle endpoint.',
+        usage: 'POST with { "prompt": "your prompt here" }. Works for any topic.',
+        capabilities: [
+          'News articles (fetches live data from Google News)',
+          'Tutorials and how-to guides',
+          'Recipes and food content',
+          'Opinion pieces and analysis',
+          'Creative writing and storytelling',
+          'Technical explanations',
+          'Product reviews and comparisons',
+          'Any topic Claude has knowledge about'
+        ],
+        examples: [
+          'Write about the latest AI developments',
+          'Create 3 healthy cake recipes with nutritional info',
+          'Write a tutorial on React hooks for beginners',
+          'Explain quantum computing to a 10 year old',
+          'Write an op-ed about remote work culture',
+          'Cover the latest crypto market news',
+          'Create a travel guide for Tokyo',
+          'Write a product comparison: iPhone vs Android'
+        ],
+        validCategories: [
+          'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+          'Business', 'Startup', 'Finance', 'Marketing', 'Science', 'Health', 'Education',
+          'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+        ],
+        rateLimits: { maxPerHour: 10, maxPerDay: 50 }
+      };
+
+      // Add outputSchema and extra to each accepts item
+      const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
+        ...item,
+        outputSchema: x402OutputSchema,
+        extra: {
+          ...(item.extra || {}),
+          ...extraMetadata
+        }
+      }));
+
+      const responseWithDiscovery = {
+        ...paymentRequired,
+        accepts: acceptsWithSchemas
+      };
+
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+      return res.status(402).json(responseWithDiscovery);
+    }
+
+    // ============================================
+    // EXECUTION MODE: Has payment header
+    // ============================================
+
+    // Check Claude API key is configured
+    if (!ANTHROPIC_API_KEY) {
+      console.error('[agent/generateArticle] ANTHROPIC_API_KEY not configured');
+      return res.status(500).json({
+        success: false,
+        error: 'Article generation service not configured'
+      });
+    }
+
+    // Decode payment header
+    let paymentPayload: PaymentPayload;
+    try {
+      const decodedPayment = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = JSON.parse(decodedPayment) as PaymentPayload;
+    } catch (error) {
+      console.error('[agent/generateArticle] Invalid payment header:', error);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid x402 payment header'
+      });
+    }
+
+    // Detect network from payment payload
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const hasTransaction = typeof rawPayload === 'object' && rawPayload !== null && 'transaction' in rawPayload;
+    const detectedNetwork: SupportedX402Network = hasTransaction
+      ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
+      : 'eip155:8453';
+
+    const payTo = hasTransaction ? PLATFORM_SOLANA_ADDRESS : PLATFORM_EVM_ADDRESS;
+    if (!payTo) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform payout address not configured'
+      });
+    }
+
+    // Build payment requirements for verification
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/generateArticle`;
+    const paymentRequirement = await buildAgentPaymentRequirements(
+      detectedNetwork,
+      AGENT_GENERATE_ARTICLE_FEE,
+      payTo,
+      resourceUrl,
+      `Autonomous AI article generation: $${AGENT_GENERATE_ARTICLE_FEE}`
+    );
+
+    // Verify payment with OpenFacilitator
+    let verification;
+    try {
+      verification = await openFacilitator.verify(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
+    } catch (err) {
+      console.error('[agent/generateArticle] Verify error:', err);
+      return res.status(502).json({
+        success: false,
+        error: 'Payment verification failed: facilitator error'
+      });
+    }
+
+    if (!verification.valid) {
+      return res.status(400).json({
+        success: false,
+        error: `Payment verification failed: ${verification.error || 'unknown_reason'}`
+      });
+    }
+
+    // Settle payment
+    let settlement;
+    try {
+      settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
+    } catch (err) {
+      const error = err as Error;
+      console.error('[agent/generateArticle] Settle error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed: ' + (error?.message || 'Unknown error')
+      });
+    }
+
+    if (!settlement.success) {
+      console.error('[agent/generateArticle] Settlement failed:', JSON.stringify(settlement, null, 2));
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed. Please try again.'
+      });
+    }
+
+    const txHash = settlement.transactionHash;
+    console.log(`[agent/generateArticle] 💰 Payment settled:`, { txHash, network: detectedNetwork });
+
+    // ============================================
+    // Step 1: Fetch relevant news based on prompt
+    // ============================================
+
+    // Check if prompt mentions news/trending topics that benefit from live data
+    const needsNewsContext = !prompt ||
+      /\b(news|trending|latest|today|current|recent|headlines?|update|happening)\b/i.test(prompt);
+
+    let contextData = '';
+    let sourceStory: { title: string; url: string } | null = null;
+
+    if (needsNewsContext) {
+      // Extract search keywords from prompt
+      const searchQuery = extractSearchKeywords(prompt || 'technology trending');
+      const googleNewsUrl = `${GOOGLE_NEWS_RSS_BASE}?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+
+      console.log(`[agent/generateArticle] 🔍 Searching Google News for: "${searchQuery}"`);
+
+      try {
+        const newsResponse = await fetch(googleNewsUrl);
+        if (newsResponse.ok) {
+          const rssXml = await newsResponse.text();
+          const newsItems = parseGoogleNewsRSS(rssXml);
+
+          if (newsItems.length > 0) {
+            const storiesSummary = newsItems.map((s, i) =>
+              `${i + 1}. "${s.title}" (${s.source}, ${s.pubDate})`
+            ).join('\n');
+            contextData = `\n\nCURRENT NEWS (Search: "${searchQuery}"):\n${storiesSummary}`;
+            // Save first story as potential source reference
+            sourceStory = { title: newsItems[0].title, url: newsItems[0].link };
+            console.log(`[agent/generateArticle] 📰 Fetched ${newsItems.length} news items for "${searchQuery}"`);
+          }
+        }
+      } catch (err) {
+        console.log('[agent/generateArticle] Google News fetch failed, continuing with Claude knowledge:', err);
+      }
+    }
+
+    // ============================================
+    // Step 2: Build flexible prompt for Claude
+    // ============================================
+
+    const userPrompt = prompt || 'Write about the most interesting trending tech news. Pick a compelling story and provide insightful analysis.';
+
+    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+
+USER PROMPT:
+${userPrompt}
+${contextData}
+
+IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
+
+{
+  "title": "Your catchy headline here",
+  "content": "<img src=\\"https://images.unsplash.com/photo-1234567890?w=800&q=80\\" alt=\\"Cover image\\" /><h2>Section</h2><p>Content...</p>",
+  "price": 0.05,
+  "categories": ["Technology"]
+}
+
+STRICT VALIDATION REQUIREMENTS (your output MUST pass these):
+
+1. TITLE (required):
+   - Min: 1 character
+   - Max: 200 characters
+   - Make it catchy and descriptive
+
+2. CONTENT (required):
+   - Min: 50 characters (but aim for 300-500 words)
+   - Max: 50,000 characters
+   - Valid HTML only: h2, p, ul, li, ol, strong, em, img tags
+   - Include a relevant Unsplash image at the top
+
+3. PRICE (required):
+   - Min: 0.01 (one cent)
+   - Max: 1.00 (one dollar)
+   - Suggest based on content value/length
+
+4. CATEGORIES (required, pick 1-5):
+   ONLY use these exact values:
+   - Technology
+   - AI & Machine Learning
+   - Web Development
+   - Crypto & Blockchain
+   - Security
+   - Business
+   - Startup
+   - Finance
+   - Marketing
+   - Science
+   - Health
+   - Education
+   - Politics
+   - Sports
+   - Entertainment
+   - Gaming
+   - Art & Design
+   - Travel
+   - Food
+   - Other
+
+Write with authority and insight. Make it worth paying for.`;
+
+    let claudeResponse;
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 3000,
+          messages: [
+            { role: 'user', content: claudePrompt }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[agent/generateArticle] Claude API error:', response.status, errorText);
+        return res.status(502).json({
+          success: false,
+          error: 'AI generation failed',
+          txHash
+        });
+      }
+
+      claudeResponse = await response.json() as {
+        content: Array<{ type: string; text: string }>;
+      };
+    } catch (err) {
+      console.error('[agent/generateArticle] Claude API request failed:', err);
+      return res.status(502).json({
+        success: false,
+        error: 'AI generation service unavailable',
+        txHash
+      });
+    }
+
+    // Parse Claude's response
+    let generatedArticle: {
+      title?: string;
+      content?: string;
+      price?: number;
+      categories?: string[];
+      sourceReference?: string;
+    };
+    try {
+      const responseText = claudeResponse.content[0]?.text || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      generatedArticle = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      console.error('[agent/generateArticle] Failed to parse Claude response:', err);
+      console.error('[agent/generateArticle] Raw response:', claudeResponse.content[0]?.text);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to parse AI response',
+        txHash
+      });
+    }
+
+    // Validate required fields
+    if (!generatedArticle.title || !generatedArticle.content) {
+      console.error('[agent/generateArticle] Missing required fields:', generatedArticle);
+      return res.status(500).json({
+        success: false,
+        error: 'AI response missing required fields (title or content)',
+        txHash
+      });
+    }
+
+    // Ensure price is within valid range
+    let price = generatedArticle.price || 0.05;
+    if (price < 0.01) price = 0.01;
+    if (price > 1.00) price = 1.00;
+
+    console.log(`[agent/generateArticle] ✅ Article generated:`, {
+      prompt: userPrompt.substring(0, 50),
+      generatedTitle: generatedArticle.title.substring(0, 50),
+      contentLength: generatedArticle.content.length,
+      price,
+      txHash
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        title: generatedArticle.title,
+        content: generatedArticle.content,
+        price,
+        categories: generatedArticle.categories || ['Other'],
+        sourceUrl: sourceStory?.url || null,
+        sourceTitle: sourceStory?.title || generatedArticle.sourceReference || 'Original analysis',
+        txHash
+      }
+    });
+
+  } catch (error) {
+    console.error('[agent/generateArticle] Unexpected error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
 });
 
