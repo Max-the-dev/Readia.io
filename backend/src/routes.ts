@@ -109,9 +109,6 @@ function usdToUsdcBaseUnits(usdAmount: number): string {
  */
 type AgentPaymentRequirements = OFPaymentRequirements & {
   amount: string;
-  // EIP-712 domain params for EVM networks (required by @x402/evm)
-  name?: string;
-  version?: string;
 };
 
 async function buildAgentPaymentRequirements(
@@ -149,10 +146,14 @@ async function buildAgentPaymentRequirements(
   }
 
   // For EVM networks, add EIP-712 domain parameters required by @x402/evm
+  // These must be in the 'extra' field per @x402/evm client implementation
   if (network.startsWith('eip155:')) {
     // USDC on Base uses these EIP-712 domain parameters
-    requirements.name = 'USD Coin';
-    requirements.version = '2';
+    requirements.extra = {
+      ...requirements.extra,
+      name: 'USD Coin',
+      version: '2',
+    };
   }
 
   return requirements;
