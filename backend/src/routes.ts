@@ -82,7 +82,10 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
 import {
   OpenFacilitator,
   PaymentRequirements as OFPaymentRequirements,
-  PaymentPayload as OFPaymentPayload
+  PaymentPayload as OFPaymentPayload,
+  SettlementError,
+  VerificationError,
+  FacilitatorError
 } from '@openfacilitator/sdk';
 const openFacilitator = new OpenFacilitator();
 
@@ -2230,23 +2233,32 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     try {
       settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
     } catch (settleError: unknown) {
-      const err = settleError as { message?: string; response?: { data?: unknown } };
-      console.error('[agent/postArticle] Settlement threw:', {
-        message: err?.message,
-        response: err?.response?.data,
-        full: settleError
-      });
+      if (settleError instanceof SettlementError) {
+        console.error('[agent/postArticle] SettlementError:', {
+          message: settleError.message,
+          code: settleError.code,
+          statusCode: settleError.statusCode,
+          details: settleError.details
+        });
+        return res.status(500).json({
+          success: false,
+          error: `Settlement failed: ${settleError.message}`,
+          details: settleError.details
+        });
+      }
+      // Generic error fallback
+      const err = settleError as Error;
+      console.error('[agent/postArticle] Settlement threw:', err.message, settleError);
       return res.status(500).json({
         success: false,
-        error: 'Payment settlement failed: ' + (err?.message || 'Unknown error'),
-        details: err?.response?.data
+        error: 'Payment settlement failed: ' + (err?.message || 'Unknown error')
       });
     }
 
     console.log('[agent/postArticle] Settlement response:', JSON.stringify(settlement, null, 2));
 
     if (!settlement.success) {
-      console.error('[agent/postArticle] Settlement failed:', JSON.stringify(settlement, null, 2));
+      console.error('[agent/postArticle] Settlement returned success=false:', JSON.stringify(settlement, null, 2));
       return res.status(500).json({
         success: false,
         error: 'Payment settlement failed. Please try again.',
