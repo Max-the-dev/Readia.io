@@ -157,15 +157,21 @@ function parsePaymentHeader(header: string): OFPaymentPayload | null {
 }
 
 /**
+ * Payment requirement with x402 version for client compatibility
+ */
+type X402PaymentRequirement = OFPaymentRequirements & { x402Version: 2 };
+
+/**
  * Create 402 Payment Required response for agent endpoints
+ * Adds x402Version: 2 to each requirement for @x402/core client compatibility
  */
 function createAgentPaymentRequiredResponse(
   accepts: OFPaymentRequirements[],
   resource: { url: string; description: string; mimeType: string },
   message: string
-): { accepts: OFPaymentRequirements[]; error: string; resource: string; description: string; mimeType: string } {
+): { accepts: X402PaymentRequirement[]; error: string; resource: string; description: string; mimeType: string } {
   return {
-    accepts,
+    accepts: accepts.map(req => ({ ...req, x402Version: 2 as const })),
     error: message,
     resource: resource.url,
     description: resource.description,
