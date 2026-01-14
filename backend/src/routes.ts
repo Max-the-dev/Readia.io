@@ -2226,14 +2226,31 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     }
 
     // Settle payment with OpenFacilitator (money moves now)
-    const settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
+    let settlement;
+    try {
+      settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
+    } catch (settleError: unknown) {
+      const err = settleError as { message?: string; response?: { data?: unknown } };
+      console.error('[agent/postArticle] Settlement threw:', {
+        message: err?.message,
+        response: err?.response?.data,
+        full: settleError
+      });
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed: ' + (err?.message || 'Unknown error'),
+        details: err?.response?.data
+      });
+    }
+
+    console.log('[agent/postArticle] Settlement response:', JSON.stringify(settlement, null, 2));
 
     if (!settlement.success) {
-      console.error('[agent/postArticle] Settlement failed:', settlement.error);
+      console.error('[agent/postArticle] Settlement failed:', JSON.stringify(settlement, null, 2));
       return res.status(500).json({
         success: false,
         error: 'Payment settlement failed. Please try again.',
-        details: settlement.error || 'Unknown settlement error'
+        details: settlement
       });
     }
 
