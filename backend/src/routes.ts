@@ -26,6 +26,7 @@ import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
 import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { ExactSvmScheme } from '@x402/svm/exact/server';
+import { getTokenPayerFromTransaction, decodeTransactionFromPayload } from '@x402/svm';
 // @ts-ignore - CDP SDK has type issues in v0.x
 import { generateJwt } from '@coinbase/cdp-sdk/auth';
 import {
@@ -2175,15 +2176,33 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Extract payer address from verification (this is the author)
-    const authorAddress =
-      tryNormalizeFlexibleAddress(verification.payer) ||
-      tryNormalizeFlexibleAddress(
-        typeof authorization?.from === 'string' ? authorization.from : ''
-      );
+    // Extract payer address from payment payload (this is the author)
+    // For Solana: extract from transaction using getTokenPayerFromTransaction
+    // For EVM: extract from authorization.from
+    let authorAddress: string | null = null;
+
+    if (hasTransaction && rawPayload.transaction) {
+      // Solana payment - extract payer from transaction
+      try {
+        const transaction = decodeTransactionFromPayload({ transaction: rawPayload.transaction as string });
+        const solanaPayer = getTokenPayerFromTransaction(transaction);
+        authorAddress = tryNormalizeSolanaAddress(solanaPayer);
+      } catch (e) {
+        console.error('[agent/postArticle] Failed to extract Solana payer:', e);
+      }
+    }
+
+    // Fallback to verification.payer or authorization.from (EVM)
+    if (!authorAddress) {
+      authorAddress =
+        tryNormalizeFlexibleAddress(verification.payer) ||
+        tryNormalizeFlexibleAddress(
+          typeof authorization?.from === 'string' ? authorization.from : ''
+        );
+    }
 
     if (!authorAddress) {
-      console.error('[agent/postArticle] Could not extract payer:', { verification, authorization });
+      console.error('[agent/postArticle] Could not extract payer:', { verification, authorization, hasTransaction });
       return res.status(400).json({
         success: false,
         error: 'Could not extract payer address from payment'
@@ -2734,15 +2753,33 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       });
     }
 
-    // Extract payer address
-    const payerAddress =
-      tryNormalizeFlexibleAddress(verification.payer) ||
-      tryNormalizeFlexibleAddress(
-        typeof authorization?.from === 'string' ? authorization.from : ''
-      );
+    // Extract payer address from payment payload
+    // For Solana: extract from transaction using getTokenPayerFromTransaction
+    // For EVM: extract from authorization.from
+    let payerAddress: string | null = null;
+
+    if (hasTransaction && rawPayload.transaction) {
+      // Solana payment - extract payer from transaction
+      try {
+        const transaction = decodeTransactionFromPayload({ transaction: rawPayload.transaction as string });
+        const solanaPayer = getTokenPayerFromTransaction(transaction);
+        payerAddress = tryNormalizeSolanaAddress(solanaPayer);
+      } catch (e) {
+        console.error('[agent/setSecondaryWallet] Failed to extract Solana payer:', e);
+      }
+    }
+
+    // Fallback to verification.payer or authorization.from (EVM)
+    if (!payerAddress) {
+      payerAddress =
+        tryNormalizeFlexibleAddress(verification.payer) ||
+        tryNormalizeFlexibleAddress(
+          typeof authorization?.from === 'string' ? authorization.from : ''
+        );
+    }
 
     if (!payerAddress) {
-      console.error('[agent/setSecondaryWallet] Could not extract payer:', { verification, authorization });
+      console.error('[agent/setSecondaryWallet] Could not extract payer:', { verification, authorization, hasTransaction });
       return res.status(400).json({
         success: false,
         error: 'Could not extract payer address from payment'
