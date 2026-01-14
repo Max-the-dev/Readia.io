@@ -2029,7 +2029,11 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       payTo,
       maxTimeoutSeconds: 900
     });
-    const paymentRequirement = requirements[0];
+    // Add maxAmountRequired for OpenFacilitator compatibility
+    const paymentRequirement = {
+      ...requirements[0],
+      maxAmountRequired: requirements[0].amount
+    };
 
     // ============================================
     // Payment Verification (no money moves yet)
@@ -2637,7 +2641,11 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       payTo,
       maxTimeoutSeconds: 900
     });
-    const paymentRequirement = requirements[0];
+    // Add maxAmountRequired for OpenFacilitator compatibility
+    const paymentRequirement = {
+      ...requirements[0],
+      maxAmountRequired: requirements[0].amount
+    };
 
     // Verify payment with OpenFacilitator
     const verification = await agentResourceServer.verifyPayment(paymentPayload, paymentRequirement);
