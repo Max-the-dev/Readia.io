@@ -1765,7 +1765,11 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
     ]);
 
     // Combine both network options in accepts array
-    const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+    // Add maxAmountRequired for OpenFacilitator compatibility (it expects this field)
+    const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
+      ...req,
+      maxAmountRequired: req.amount  // OpenFacilitator expects maxAmountRequired, not just amount
+    }));
 
     // Resource URL without network param - agent adds ?network=X when they POST
     const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
@@ -1893,7 +1897,11 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         })
       ]);
 
-      const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+      // Add maxAmountRequired for OpenFacilitator compatibility
+      const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
+        ...req,
+        maxAmountRequired: req.amount
+      }));
       const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
 
       const paymentRequired = agentResourceServer.createPaymentRequiredResponse(
@@ -2453,7 +2461,11 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
         })
       ]);
 
-      const allRequirements = [solanaRequirements[0], evmRequirements[0]];
+      // Add maxAmountRequired for OpenFacilitator compatibility
+      const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
+        ...req,
+        maxAmountRequired: req.amount
+      }));
       const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
 
       const paymentRequired = agentResourceServer.createPaymentRequiredResponse(
