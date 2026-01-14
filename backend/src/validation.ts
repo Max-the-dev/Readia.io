@@ -112,13 +112,18 @@ export const createAgentArticleSchema = z.object({
     .max(50000, 'Content must be 50,000 characters or less')
     .trim(),
 
-  price: z.number()
+  // Coerce string to number (x402Jobs sends all inputs as strings)
+  price: z.coerce.number()
     .min(0.01, 'Price must be at least $0.01')
     .max(1.00, 'Price must be $1.00 or less')
     .refine(val => Number.isFinite(val), 'Price must be a valid number'),
 
-  categories: z.array(categorySchema)
-    .max(5, 'Maximum 5 categories allowed')
+  // Accept array OR comma-separated string (x402Jobs sends strings)
+  categories: z.union([
+    z.array(categorySchema),
+    z.string().transform(str => str.split(',').map(s => s.trim()).filter(Boolean))
+  ])
+    .pipe(z.array(categorySchema).max(5, 'Maximum 5 categories allowed'))
     .optional()
     .default([])
 });
