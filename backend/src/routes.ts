@@ -78,82 +78,112 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
   .register('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', new ExactSvmScheme())
   .register('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', new ExactSvmScheme());
 
-// OpenFacilitator for agent endpoints (x402Jobs compatible, no auth required)
-// Wrapper to translate OpenFacilitator response format to @x402/core format
-// OpenFacilitator: { valid, invalidReason, payer } / { success, transactionHash, errorMessage }
-// @x402/core:     { isValid, invalidReason, payer } / { success, transaction, errorReason }
-const OPENFACILITATOR_URL = 'https://pay.openfacilitator.io';
+// OpenFacilitator SDK for agent endpoints (x402Jobs compatible)
+import {
+  OpenFacilitator,
+  PaymentRequirements as OFPaymentRequirements,
+  PaymentPayload as OFPaymentPayload
+} from '@openfacilitator/sdk';
+const openFacilitator = new OpenFacilitator();
 
-// OpenFacilitator response types (from packages/core/src/types.ts)
-interface OpenFacilitatorVerifyResponse {
-  valid: boolean;
-  invalidReason?: string;
-  payer?: string;
+// USDC asset addresses per network
+const USDC_ASSETS: Record<string, string> = {
+  'eip155:8453': process.env.X402_MAINNET_USDC_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  'eip155:84532': process.env.X402_TESTNET_USDC_ADDRESS || '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': process.env.X402_SOLANA_MAINNET_USDC_ADDRESS || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1': process.env.X402_SOLANA_DEVNET_USDC_ADDRESS || '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+};
+
+/**
+ * Convert USD amount to USDC base units (6 decimals)
+ */
+function usdToUsdcBaseUnits(usdAmount: number): string {
+  return Math.round(usdAmount * 1_000_000).toString();
 }
 
-interface OpenFacilitatorSettleResponse {
-  success: boolean;
-  transactionHash?: string;
-  errorMessage?: string;
-  network?: string;
+/**
+ * Build payment requirements for OpenFacilitator
+ */
+async function buildAgentPaymentRequirements(
+  network: string,
+  priceUsd: number,
+  payTo: string,
+  resource?: string,
+  description?: string
+): Promise<OFPaymentRequirements> {
+  const asset = USDC_ASSETS[network];
+  if (!asset) {
+    throw new Error(`Unsupported network: ${network}`);
+  }
+
+  const requirements: OFPaymentRequirements = {
+    scheme: 'exact',
+    network,
+    maxAmountRequired: usdToUsdcBaseUnits(priceUsd),
+    asset,
+    payTo,
+    resource,
+    description,
+    maxTimeoutSeconds: 900,
+  };
+
+  // For Solana networks, add fee payer from OpenFacilitator
+  if (network.startsWith('solana:')) {
+    const feePayer = await openFacilitator.getFeePayer(network);
+    if (feePayer) {
+      requirements.extra = { feePayer };
+    }
+  }
+
+  return requirements;
 }
 
-class OpenFacilitatorClient {
-  private client: HTTPFacilitatorClient;
-
-  constructor() {
-    this.client = new HTTPFacilitatorClient({
-      url: OPENFACILITATOR_URL,
-      // OpenFacilitator doesn't require authentication
-    });
-  }
-
-  async verify(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements) {
-    // OpenFacilitator returns { valid } but @x402/core expects { isValid }
-    const result = await this.client.verify(paymentPayload, paymentRequirements) as unknown as OpenFacilitatorVerifyResponse;
-    return {
-      isValid: result.valid,
-      invalidReason: result.invalidReason,
-      payer: result.payer
-    };
-  }
-
-  async settle(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements) {
-    // OpenFacilitator returns { transactionHash, errorMessage }
-    // @x402/core expects { transaction, errorReason } where transaction is required
-    const result = await this.client.settle(paymentPayload, paymentRequirements) as unknown as OpenFacilitatorSettleResponse;
-    return {
-      success: result.success,
-      transaction: result.transactionHash || '',
-      network: (result.network || paymentRequirements.network) as `${string}:${string}`,
-      errorReason: result.errorMessage
-    };
-  }
-
-  async getSupported() {
-    return this.client.getSupported();
+/**
+ * Parse payment header (supports both x402 v1 and v2)
+ */
+function parsePaymentHeader(header: string): OFPaymentPayload | null {
+  try {
+    // Try base64 decode first (standard x402)
+    const decoded = Buffer.from(header, 'base64').toString('utf-8');
+    return JSON.parse(decoded) as OFPaymentPayload;
+  } catch {
+    try {
+      // Try direct JSON (some clients send raw JSON)
+      return JSON.parse(header) as OFPaymentPayload;
+    } catch {
+      return null;
+    }
   }
 }
 
-const agentFacilitatorClient = new OpenFacilitatorClient();
-
-// Agent resource server (uses OpenFacilitator instead of PayAI/CDP)
-const agentResourceServer = new x402ResourceServer(agentFacilitatorClient)
-  .register('eip155:8453', new ExactEvmScheme())
-  .register('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', new ExactSvmScheme());
-// Note: Agent endpoints only support mainnet networks (Base + Solana mainnet)
+/**
+ * Create 402 Payment Required response for agent endpoints
+ */
+function createAgentPaymentRequiredResponse(
+  accepts: OFPaymentRequirements[],
+  resource: { url: string; description: string; mimeType: string },
+  message: string
+): { accepts: OFPaymentRequirements[]; error: string; resource: string; description: string; mimeType: string } {
+  return {
+    accepts,
+    error: message,
+    resource: resource.url,
+    description: resource.description,
+    mimeType: resource.mimeType
+  };
+}
 
 /**
  * Initialize the x402 resource servers
  * Must be called on app startup before handling payment requests
  */
 export async function initializeResourceServer(): Promise<void> {
-  await Promise.all([
-    resourceServer.initialize(),
-    agentResourceServer.initialize()
-  ]);
+  await resourceServer.initialize();
   console.log('[x402] ✅ Resource server initialized (PayAI/CDP for purchases)');
-  console.log('[x402] ✅ Agent resource server initialized (OpenFacilitator for agent endpoints)');
+
+  // Verify OpenFacilitator is reachable and cache fee payers
+  const supported = await openFacilitator.supported();
+  console.log(`[x402] ✅ OpenFacilitator connected (${supported.kinds.length} networks)`);
 }
 
 // CAIP-2 network identifiers for x402 v2
@@ -1799,37 +1829,20 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Build requirements for both networks (using OpenFacilitator for agent endpoints)
+    // Resource URL for discovery
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
+    const description = `Agent article posting fee: $${AGENT_POSTING_FEE}`;
+
+    // Build requirements for both networks using OpenFacilitator SDK
     const [solanaRequirements, evmRequirements] = await Promise.all([
-      agentResourceServer.buildPaymentRequirements({
-        scheme: 'exact',
-        network: solanaNetwork,
-        price: AGENT_POSTING_FEE,
-        payTo: PLATFORM_SOLANA_ADDRESS,
-        maxTimeoutSeconds: 900
-      }),
-      agentResourceServer.buildPaymentRequirements({
-        scheme: 'exact',
-        network: evmNetwork,
-        price: AGENT_POSTING_FEE,
-        payTo: PLATFORM_EVM_ADDRESS,
-        maxTimeoutSeconds: 900
-      })
+      buildAgentPaymentRequirements(solanaNetwork, AGENT_POSTING_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+      buildAgentPaymentRequirements(evmNetwork, AGENT_POSTING_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
     ]);
 
-    // Combine both network options in accepts array
-    // Add maxAmountRequired for OpenFacilitator compatibility (it expects this field)
-    const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
-      ...req,
-      maxAmountRequired: req.amount  // OpenFacilitator expects maxAmountRequired, not just amount
-    }));
-
-    // Resource URL without network param - agent adds ?network=X when they POST
-    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
-
-    const paymentRequired = agentResourceServer.createPaymentRequiredResponse(
-      allRequirements,
-      { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
+    // Create 402 response with both network options
+    const paymentRequired = createAgentPaymentRequiredResponse(
+      [solanaRequirements, evmRequirements],
+      { url: resourceUrl, description, mimeType: 'application/json' },
       'Payment required'
     );
 
@@ -1877,11 +1890,11 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
     };
 
     // Add outputSchema and extra to each accepts item (x402Jobs format)
-    const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+    const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
       ...item,
       outputSchema: x402OutputSchema,
       extra: {
-        ...(item.extra as Record<string, unknown> || {}),
+        ...(item.extra || {}),
         ...extraMetadata
       }
     }));
@@ -1933,34 +1946,20 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         });
       }
 
-      // Build requirements for both networks (using OpenFacilitator for agent endpoints)
+      // Resource URL for discovery
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
+      const description = `Agent article posting fee: $${AGENT_POSTING_FEE}`;
+
+      // Build requirements for both networks using OpenFacilitator SDK
       const [solanaRequirements, evmRequirements] = await Promise.all([
-        agentResourceServer.buildPaymentRequirements({
-          scheme: 'exact',
-          network: solanaNetwork,
-          price: AGENT_POSTING_FEE,
-          payTo: PLATFORM_SOLANA_ADDRESS,
-          maxTimeoutSeconds: 900
-        }),
-        agentResourceServer.buildPaymentRequirements({
-          scheme: 'exact',
-          network: evmNetwork,
-          price: AGENT_POSTING_FEE,
-          payTo: PLATFORM_EVM_ADDRESS,
-          maxTimeoutSeconds: 900
-        })
+        buildAgentPaymentRequirements(solanaNetwork, AGENT_POSTING_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+        buildAgentPaymentRequirements(evmNetwork, AGENT_POSTING_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
       ]);
 
-      // Add maxAmountRequired for OpenFacilitator compatibility
-      const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
-        ...req,
-        maxAmountRequired: req.amount
-      }));
-      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
-
-      const paymentRequired = agentResourceServer.createPaymentRequiredResponse(
-        allRequirements,
-        { url: resourceUrl, description: `Agent article posting fee: $${AGENT_POSTING_FEE}`, mimeType: 'application/json' },
+      // Create 402 response with both network options
+      const paymentRequired = createAgentPaymentRequiredResponse(
+        [solanaRequirements, evmRequirements],
+        { url: resourceUrl, description, mimeType: 'application/json' },
         'Payment required'
       );
 
@@ -2008,11 +2007,11 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       };
 
       // Add outputSchema and extra to each accepts item (x402Jobs format)
-      const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+      const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
         ...item,
         outputSchema: x402OutputSchema,
         extra: {
-          ...(item.extra as Record<string, unknown> || {}),
+          ...(item.extra || {}),
           ...extraMetadata
         }
       }));
@@ -2075,19 +2074,15 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    // Build payment requirements for the detected network (using OpenFacilitator)
-    const requirements = await agentResourceServer.buildPaymentRequirements({
-      scheme: 'exact',
-      network: detectedNetwork,
-      price: AGENT_POSTING_FEE,
+    // Build payment requirements for the detected network using OpenFacilitator SDK
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/postArticle`;
+    const paymentRequirement = await buildAgentPaymentRequirements(
+      detectedNetwork,
+      AGENT_POSTING_FEE,
       payTo,
-      maxTimeoutSeconds: 900
-    });
-    // Add maxAmountRequired for OpenFacilitator compatibility
-    const paymentRequirement = {
-      ...requirements[0],
-      maxAmountRequired: requirements[0].amount
-    };
+      resourceUrl,
+      `Agent article posting fee: $${AGENT_POSTING_FEE}`
+    );
 
     // ============================================
     // Payment Verification (no money moves yet)
@@ -2096,7 +2091,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
 
     // Basic amount guard
-    const requiredAmount = BigInt(paymentRequirement.amount);
+    const requiredAmount = BigInt(paymentRequirement.maxAmountRequired);
     const providedAmount = authorization && typeof authorization.value !== 'undefined'
       ? BigInt(authorization.value as string)
       : requiredAmount;
@@ -2111,28 +2106,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     // Verify payment with OpenFacilitator (checks signature, no money moves)
     let verification;
     try {
-      verification = await agentResourceServer.verifyPayment(paymentPayload, paymentRequirement);
-    } catch (error: any) {
-      let responseBody;
-      let correlationId: string | undefined;
-      if (error?.response?.text) {
-        try {
-          responseBody = await error.response.text();
-        } catch (bodyError) {
-          responseBody = `Failed to read response body: ${bodyError}`;
-        }
-      }
-      if (error?.response?.headers?.get) {
-        correlationId =
-          error.response.headers.get('correlation-id') ||
-          error.response.headers.get('x-correlation-id');
-      }
-
+      verification = await openFacilitator.verify(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
+    } catch (error: unknown) {
+      const err = error as { message?: string; response?: { status?: number } };
       console.error('[agent/postArticle] Facilitator verify failed:', {
-        message: error?.message,
-        status: error?.response?.status,
-        correlationId,
-        body: responseBody,
+        message: err?.message,
+        status: err?.response?.status,
       });
       return res.status(502).json({
         success: false,
@@ -2140,12 +2119,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    if (!verification.isValid) {
+    if (!verification.valid) {
       console.log(`[agent/postArticle] ❌ Verify failed:`, JSON.stringify(verification, null, 2));
       console.log(`[agent/postArticle] Payment requirement:`, JSON.stringify(paymentRequirement, null, 2));
       return res.status(400).json({
         success: false,
-        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`,
+        error: `Payment verification failed: ${verification.error || 'unknown_reason'}`,
         debug: { verification, requirement: paymentRequirement }
       });
     }
@@ -2155,7 +2134,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     let paymentRecipient: string;
     if (networkGroup === 'solana') {
       paymentRecipient = normalizeRecipientForNetwork(
-        paymentRequirement.payTo,
+        paymentRequirement.payTo || '',
         paymentRequirement.network
       );
     } else {
@@ -2165,7 +2144,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       );
     }
     const expectedRecipient = normalizeRecipientForNetwork(
-      paymentRequirement.payTo,
+      paymentRequirement.payTo || '',
       paymentRequirement.network
     );
 
@@ -2192,10 +2171,10 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       }
     }
 
-    // Fallback to verification.payer or authorization.from (EVM)
+    // Fallback to verification.details.recipient or authorization.from (EVM)
     if (!authorAddress) {
       authorAddress =
-        tryNormalizeFlexibleAddress(verification.payer) ||
+        tryNormalizeFlexibleAddress(verification.details?.recipient || '') ||
         tryNormalizeFlexibleAddress(
           typeof authorization?.from === 'string' ? authorization.from : ''
         );
@@ -2221,18 +2200,18 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     }
 
     // Settle payment with OpenFacilitator (money moves now)
-    const settlement = await agentResourceServer.settlePayment(paymentPayload, paymentRequirement);
+    const settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
 
     if (!settlement.success) {
-      console.error('[agent/postArticle] Settlement failed:', settlement.errorReason);
+      console.error('[agent/postArticle] Settlement failed:', settlement.error);
       return res.status(500).json({
         success: false,
         error: 'Payment settlement failed. Please try again.',
-        details: settlement.errorReason || 'Unknown settlement error'
+        details: settlement.error || 'Unknown settlement error'
       });
     }
 
-    const txHash = settlement.transaction;
+    const txHash = settlement.transactionHash;
 
     // Log successful payment
     console.log(`[agent/postArticle] 💰 Payment settled:`, {
@@ -2522,34 +2501,20 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
         });
       }
 
-      // Build requirements for both networks (using OpenFacilitator for agent endpoints)
+      // Resource URL for discovery
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
+      const description = `Set secondary payout wallet: $${AGENT_SECONDARY_WALLET_FEE}`;
+
+      // Build requirements for both networks using OpenFacilitator SDK
       const [solanaRequirements, evmRequirements] = await Promise.all([
-        agentResourceServer.buildPaymentRequirements({
-          scheme: 'exact',
-          network: solanaNetwork,
-          price: AGENT_SECONDARY_WALLET_FEE,
-          payTo: PLATFORM_SOLANA_ADDRESS,
-          maxTimeoutSeconds: 900
-        }),
-        agentResourceServer.buildPaymentRequirements({
-          scheme: 'exact',
-          network: evmNetwork,
-          price: AGENT_SECONDARY_WALLET_FEE,
-          payTo: PLATFORM_EVM_ADDRESS,
-          maxTimeoutSeconds: 900
-        })
+        buildAgentPaymentRequirements(solanaNetwork, AGENT_SECONDARY_WALLET_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+        buildAgentPaymentRequirements(evmNetwork, AGENT_SECONDARY_WALLET_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
       ]);
 
-      // Add maxAmountRequired for OpenFacilitator compatibility
-      const allRequirements = [solanaRequirements[0], evmRequirements[0]].map(req => ({
-        ...req,
-        maxAmountRequired: req.amount
-      }));
-      const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
-
-      const paymentRequired = agentResourceServer.createPaymentRequiredResponse(
-        allRequirements,
-        { url: resourceUrl, description: `Set secondary payout wallet: $${AGENT_SECONDARY_WALLET_FEE}`, mimeType: 'application/json' },
+      // Create 402 response with both network options
+      const paymentRequired = createAgentPaymentRequiredResponse(
+        [solanaRequirements, evmRequirements],
+        { url: resourceUrl, description, mimeType: 'application/json' },
         'Payment required'
       );
 
@@ -2597,11 +2562,11 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       };
 
       // Add outputSchema and extra to each accepts item (x402Jobs format)
-      const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+      const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
         ...item,
         outputSchema: x402OutputSchema,
         extra: {
-          ...(item.extra as Record<string, unknown> || {}),
+          ...(item.extra || {}),
           ...extraMetadata
         }
       }));
@@ -2709,28 +2674,25 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       });
     }
 
-    const requirements = await agentResourceServer.buildPaymentRequirements({
-      scheme: 'exact',
-      network: detectedNetwork,
-      price: AGENT_SECONDARY_WALLET_FEE,
+    // Build payment requirements using OpenFacilitator SDK
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
+    const paymentRequirement = await buildAgentPaymentRequirements(
+      detectedNetwork,
+      AGENT_SECONDARY_WALLET_FEE,
       payTo,
-      maxTimeoutSeconds: 900
-    });
-    // Add maxAmountRequired for OpenFacilitator compatibility
-    const paymentRequirement = {
-      ...requirements[0],
-      maxAmountRequired: requirements[0].amount
-    };
+      resourceUrl,
+      `Set secondary payout wallet: $${AGENT_SECONDARY_WALLET_FEE}`
+    );
 
     // Verify payment with OpenFacilitator
-    const verification = await agentResourceServer.verifyPayment(paymentPayload, paymentRequirement);
+    const verification = await openFacilitator.verify(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
 
-    if (!verification.isValid) {
-      console.log(`[agent/setSecondaryWallet] Payment verification failed: ${verification.invalidReason}`);
+    if (!verification.valid) {
+      console.log(`[agent/setSecondaryWallet] Payment verification failed: ${verification.error}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
-        details: verification.invalidReason
+        details: verification.error
       });
     }
 
@@ -2769,10 +2731,10 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       }
     }
 
-    // Fallback to verification.payer or authorization.from (EVM)
+    // Fallback to verification.details.recipient or authorization.from (EVM)
     if (!payerAddress) {
       payerAddress =
-        tryNormalizeFlexibleAddress(verification.payer) ||
+        tryNormalizeFlexibleAddress(verification.details?.recipient || '') ||
         tryNormalizeFlexibleAddress(
           typeof authorization?.from === 'string' ? authorization.from : ''
         );
@@ -2861,18 +2823,18 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
     }
 
     // Settle payment with OpenFacilitator
-    const settlement = await agentResourceServer.settlePayment(paymentPayload, paymentRequirement);
+    const settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
 
     if (!settlement.success) {
-      console.error('[agent/setSecondaryWallet] Settlement failed:', settlement.errorReason);
+      console.error('[agent/setSecondaryWallet] Settlement failed:', settlement.error);
       return res.status(500).json({
         success: false,
         error: 'Payment settlement failed. Please try again.',
-        details: settlement.errorReason || 'Unknown settlement error'
+        details: settlement.error || 'Unknown settlement error'
       });
     }
 
-    const txHash = settlement.transaction;
+    const txHash = settlement.transactionHash;
 
     console.log(`[agent/setSecondaryWallet] Payment settled:`, {
       txHash,
