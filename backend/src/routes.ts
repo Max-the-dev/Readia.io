@@ -1789,53 +1789,33 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
       }
     };
 
-    // Add outputSchema to each accepts item (x402Jobs format)
+    // Extra metadata for agents (x402Jobs format - everything in extra)
+    const extraMetadata = {
+      serviceName: 'Readia Article Publisher',
+      serviceUrl: 'https://readia.io',
+      postingFee: AGENT_POSTING_FEE,
+      validCategories: [
+        'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+        'Business', 'Startup', 'Finance', 'Marketing',
+        'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+      ],
+      rateLimits: { maxPerHour: 5, maxPerDay: 20 },
+      usage: 'POST with JSON body: {title, content, price, categories?}'
+    };
+
+    // Add outputSchema and extra to each accepts item (x402Jobs format)
     const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
       ...item,
-      outputSchema: x402OutputSchema
+      outputSchema: x402OutputSchema,
+      extra: {
+        ...(item.extra as Record<string, unknown> || {}),
+        ...extraMetadata
+      }
     }));
 
     const responseWithDiscovery = {
       ...paymentRequired,
-      accepts: acceptsWithSchemas,
-      service: {
-        name: 'Readia Article Publisher',
-        description: 'Publish articles on Readia.io - a micropayment content platform. Your published articles become x402-enabled endpoints that other agents and humans can discover and purchase.',
-        website: 'https://readia.io'
-      },
-      requirements: {
-        postingFee: AGENT_POSTING_FEE,
-        supportedNetworks: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
-        article: {
-          title: { minLength: 1, maxLength: 200 },
-          content: { minLength: 50, maxLength: 50000, minUniqueWords: 30 },
-          price: { min: 0.01, max: 1.00 },
-          categories: {
-            maxCount: 5,
-            validValues: [
-              'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
-              'Business', 'Startup', 'Finance', 'Marketing',
-              'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
-            ]
-          }
-        },
-        rateLimits: {
-          maxPerHour: 5,
-          maxPerDay: 20,
-          minIntervalSeconds: 60,
-          duplicateThreshold: 0.85
-        },
-        postingFlow: {
-          description: 'Post an article using x402 payment protocol. NO JWT REQUIRED - payment signature proves wallet ownership.',
-          step1: 'GET /api/agent/postArticle to discover payment options (accepts array has both Solana and Base)',
-          step2: 'Choose a network from accepts array, note the payTo address',
-          step3: 'POST /api/agent/postArticle with article JSON body (title, content, price, categories) - receive 402',
-          step4: 'Sign the payment transaction to the payTo address for your chosen network',
-          step5: 'Retry POST with payment-signature header - server auto-detects network from payment',
-          step6: 'Success: receive { articleId, articleUrl, purchaseUrl, txHash }',
-          note: 'Author = wallet address that signed the payment. New authors are auto-created on first post.'
-        }
-      }
+      accepts: acceptsWithSchemas
     };
 
     res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -1935,20 +1915,33 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         }
       };
 
-      // Add outputSchema to each accepts item (x402Jobs format)
+      // Extra metadata for agents (x402Jobs format - everything in extra)
+      const extraMetadata = {
+        serviceName: 'Readia Article Publisher',
+        serviceUrl: 'https://readia.io',
+        postingFee: AGENT_POSTING_FEE,
+        validCategories: [
+          'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+          'Business', 'Startup', 'Finance', 'Marketing',
+          'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+        ],
+        rateLimits: { maxPerHour: 5, maxPerDay: 20 },
+        usage: 'POST with JSON body: {title, content, price, categories?}'
+      };
+
+      // Add outputSchema and extra to each accepts item (x402Jobs format)
       const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
         ...item,
-        outputSchema: x402OutputSchema
+        outputSchema: x402OutputSchema,
+        extra: {
+          ...(item.extra as Record<string, unknown> || {}),
+          ...extraMetadata
+        }
       }));
 
       const responseWithDiscovery = {
         ...paymentRequired,
-        accepts: acceptsWithSchemas,
-        service: {
-          name: 'Readia Article Publisher',
-          description: 'Publish articles on Readia.io - a micropayment content platform.',
-          website: 'https://readia.io'
-        }
+        accepts: acceptsWithSchemas
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -2487,47 +2480,28 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
         }
       };
 
-      // Add outputSchema to each accepts item (x402Jobs format)
+      // Extra metadata for agents (x402Jobs format - everything in extra)
+      const extraMetadata = {
+        serviceName: 'Readia Secondary Wallet Manager',
+        serviceUrl: 'https://readia.io',
+        fee: AGENT_SECONDARY_WALLET_FEE,
+        usage: 'POST with JSON body: {network, payoutAddress}',
+        authorization: 'To ADD: pay with PRIMARY wallet. To UPDATE: pay with PRIMARY or current SECONDARY wallet.'
+      };
+
+      // Add outputSchema and extra to each accepts item (x402Jobs format)
       const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
         ...item,
-        outputSchema: x402OutputSchema
+        outputSchema: x402OutputSchema,
+        extra: {
+          ...(item.extra as Record<string, unknown> || {}),
+          ...extraMetadata
+        }
       }));
 
       const responseWithDiscovery = {
         ...paymentRequired,
-        accepts: acceptsWithSchemas,
-        service: {
-          name: 'Readia Secondary Wallet Manager',
-          description: 'Set (add or update) a secondary payout wallet to receive payments on both Solana and Base networks. Call again to change your secondary wallet.',
-          website: 'https://readia.io'
-        },
-        requirements: {
-          fee: AGENT_SECONDARY_WALLET_FEE,
-          supportedNetworks: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
-          body: {
-            network: 'CAIP-2 network identifier (must be different type than primary)',
-            payoutAddress: 'Your wallet address on the secondary network'
-          },
-          flow: {
-            step1: 'POST /api/agent/setSecondaryWallet with body { network, payoutAddress } - receive 402',
-            step2_add: 'To ADD secondary: sign payment with your PRIMARY wallet',
-            step2_update: 'To UPDATE secondary: sign payment with PRIMARY or current SECONDARY wallet',
-            step3: 'Retry POST with payment-signature header',
-            step4: 'Success: secondary wallet set'
-          },
-          authorization: {
-            add: 'To add a secondary wallet for the first time, payment must come from your PRIMARY wallet',
-            update: 'To update an existing secondary, payment can come from PRIMARY or current SECONDARY wallet'
-          },
-          errors: {
-            NO_AUTHOR: 'You must publish at least one article first',
-            WRONG_PAYER_ADD: 'To add secondary, payment must come from primary wallet',
-            WRONG_PAYER_UPDATE: 'To update secondary, payment must come from primary or current secondary',
-            SAME_NETWORK: 'Secondary must be different network type than primary',
-            INVALID_ADDRESS: 'Payout address must be valid for the specified network',
-            WALLET_TAKEN: 'The payout address is already associated with another author'
-          }
-        }
+        accepts: acceptsWithSchemas
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
