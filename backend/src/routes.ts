@@ -4005,8 +4005,8 @@ function parseGoogleNewsRSS(xml: string): Array<{ title: string; link: string; p
 
 router.post('/agent/generateArticle', async (req: Request, res: Response) => {
   try {
-    // Check for x402 payment header
-    const paymentHeader = req.headers['x-payment'] || req.headers['x-payment-response'];
+    // Check for x402 payment header (v2 uses payment-signature)
+    const paymentHeader = req.headers['payment-signature'] || req.headers['x-payment'];
 
     // Get prompt from body (optional)
     const prompt = (req.body?.prompt as string) || '';
