@@ -107,7 +107,12 @@ function usdToUsdcBaseUnits(usdAmount: number): string {
 /**
  * Extended payment requirements with both amount (x402 v2 client) and maxAmountRequired (OpenFacilitator)
  */
-type AgentPaymentRequirements = OFPaymentRequirements & { amount: string };
+type AgentPaymentRequirements = OFPaymentRequirements & {
+  amount: string;
+  // EIP-712 domain params for EVM networks (required by @x402/evm)
+  name?: string;
+  version?: string;
+};
 
 async function buildAgentPaymentRequirements(
   network: string,
@@ -141,6 +146,13 @@ async function buildAgentPaymentRequirements(
     if (feePayer) {
       requirements.extra = { feePayer };
     }
+  }
+
+  // For EVM networks, add EIP-712 domain parameters required by @x402/evm
+  if (network.startsWith('eip155:')) {
+    // USDC on Base uses these EIP-712 domain parameters
+    requirements.name = 'USD Coin';
+    requirements.version = '2';
   }
 
   return requirements;
