@@ -2095,6 +2095,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       ? 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'
       : 'eip155:8453';
 
+    console.log('[agent/postArticle] Payload detection:', {
+      rawPayload: rawPayload ? Object.keys(rawPayload) : 'null/undefined',
+      hasTransaction,
+      detectedNetwork
+    });
+
     const payTo = hasTransaction ? PLATFORM_SOLANA_ADDRESS : PLATFORM_EVM_ADDRESS;
     if (!payTo) {
       return res.status(500).json({
