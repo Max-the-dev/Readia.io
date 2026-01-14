@@ -102,24 +102,29 @@ function usdToUsdcBaseUnits(usdAmount: number): string {
 }
 
 /**
- * Build payment requirements for OpenFacilitator
+ * Extended payment requirements with both amount (x402 v2 client) and maxAmountRequired (OpenFacilitator)
  */
+type AgentPaymentRequirements = OFPaymentRequirements & { amount: string };
+
 async function buildAgentPaymentRequirements(
   network: string,
   priceUsd: number,
   payTo: string,
   resource?: string,
   description?: string
-): Promise<OFPaymentRequirements> {
+): Promise<AgentPaymentRequirements> {
   const asset = USDC_ASSETS[network];
   if (!asset) {
     throw new Error(`Unsupported network: ${network}`);
   }
 
-  const requirements: OFPaymentRequirements = {
+  const amountInBaseUnits = usdToUsdcBaseUnits(priceUsd);
+
+  const requirements: AgentPaymentRequirements = {
     scheme: 'exact',
     network,
-    maxAmountRequired: usdToUsdcBaseUnits(priceUsd),
+    maxAmountRequired: amountInBaseUnits,  // OpenFacilitator SDK
+    amount: amountInBaseUnits,              // @x402/core v2 client
     asset,
     payTo,
     resource,
