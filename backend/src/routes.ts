@@ -1760,66 +1760,77 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
       'Payment required'
     );
 
+    // Define schemas separately so we can inject into each accepts item (x402Jobs compatibility)
+    const articleInputSchema = {
+      type: 'object',
+      required: ['title', 'content', 'price'],
+      properties: {
+        title: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 200,
+          description: 'Article title'
+        },
+        content: {
+          type: 'string',
+          minLength: 50,
+          maxLength: 50000,
+          description: 'Article content (HTML supported)'
+        },
+        price: {
+          type: 'number',
+          minimum: 0.01,
+          maximum: 1.00,
+          description: 'Article price in USD'
+        },
+        categories: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: [
+              'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+              'Business', 'Startup', 'Finance', 'Marketing',
+              'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+            ]
+          },
+          maxItems: 5,
+          description: 'Article categories (optional)'
+        }
+      }
+    };
+
+    const articleOutputSchema = {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', description: 'Whether the request succeeded' },
+        data: {
+          type: 'object',
+          properties: {
+            articleId: { type: 'number', description: 'Unique article ID' },
+            articleUrl: { type: 'string', description: 'Full URL to view the article' },
+            purchaseUrl: { type: 'string', description: 'x402 endpoint for purchasing article access' },
+            authorAddress: { type: 'string', description: 'Wallet address of the article author' },
+            network: { type: 'string', description: 'Network used for payment' },
+            txHash: { type: 'string', description: 'Blockchain transaction hash' }
+          }
+        }
+      }
+    };
+
+    // Add schemas to each accepts item (v1 style - where x402Jobs looks for them)
+    const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+      ...item,
+      inputSchema: articleInputSchema,
+      outputSchema: articleOutputSchema
+    }));
+
     const responseWithDiscovery = {
       ...paymentRequired,
+      accepts: acceptsWithSchemas,
       service: {
         name: 'Readia Article Publisher',
         description: 'Publish articles on Readia.io - a micropayment content platform. Your published articles become x402-enabled endpoints that other agents and humans can discover and purchase.',
         website: 'https://readia.io'
-      },
-      inputSchema: {
-        type: 'object',
-        required: ['title', 'content', 'price'],
-        properties: {
-          title: {
-            type: 'string',
-            minLength: 1,
-            maxLength: 200,
-            description: 'Article title'
-          },
-          content: {
-            type: 'string',
-            minLength: 50,
-            maxLength: 50000,
-            description: 'Article content (HTML supported)'
-          },
-          price: {
-            type: 'number',
-            minimum: 0.01,
-            maximum: 1.00,
-            description: 'Article price in USD'
-          },
-          categories: {
-            type: 'array',
-            items: {
-              type: 'string',
-              enum: [
-                'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
-                'Business', 'Startup', 'Finance', 'Marketing',
-                'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
-              ]
-            },
-            maxItems: 5,
-            description: 'Article categories (optional)'
-          }
-        }
-      },
-      outputSchema: {
-        type: 'object',
-        properties: {
-          success: { type: 'boolean', description: 'Whether the request succeeded' },
-          data: {
-            type: 'object',
-            properties: {
-              articleId: { type: 'number', description: 'Unique article ID' },
-              articleUrl: { type: 'string', description: 'Full URL to view the article' },
-              purchaseUrl: { type: 'string', description: 'x402 endpoint for purchasing article access' },
-              authorAddress: { type: 'string', description: 'Wallet address of the article author' },
-              network: { type: 'string', description: 'Network used for payment' },
-              txHash: { type: 'string', description: 'Blockchain transaction hash' }
-            }
-          }
-        }
       },
       requirements: {
         postingFee: AGENT_POSTING_FEE,
@@ -1924,67 +1935,78 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
         'Payment required'
       );
 
+      // Define schemas separately so we can inject into each accepts item (x402Jobs compatibility)
+      const articleInputSchema = {
+        type: 'object',
+        required: ['title', 'content', 'price'],
+        properties: {
+          title: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 200,
+            description: 'Article title'
+          },
+          content: {
+            type: 'string',
+            minLength: 50,
+            maxLength: 50000,
+            description: 'Article content (HTML supported)'
+          },
+          price: {
+            type: 'number',
+            minimum: 0.01,
+            maximum: 1.00,
+            description: 'Article price in USD'
+          },
+          categories: {
+            type: 'array',
+            items: {
+              type: 'string',
+              enum: [
+                'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
+                'Business', 'Startup', 'Finance', 'Marketing',
+                'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
+              ]
+            },
+            maxItems: 5,
+            description: 'Article categories (optional)'
+          }
+        }
+      };
+
+      const articleOutputSchema = {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', description: 'Whether the request succeeded' },
+          data: {
+            type: 'object',
+            properties: {
+              articleId: { type: 'number', description: 'Unique article ID' },
+              articleUrl: { type: 'string', description: 'Full URL to view the article' },
+              purchaseUrl: { type: 'string', description: 'x402 endpoint for purchasing article access' },
+              authorAddress: { type: 'string', description: 'Wallet address of the article author' },
+              network: { type: 'string', description: 'Network used for payment' },
+              txHash: { type: 'string', description: 'Blockchain transaction hash' }
+            }
+          }
+        }
+      };
+
+      // Add schemas to each accepts item (v1 style - where x402Jobs looks for them)
+      const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+        ...item,
+        inputSchema: articleInputSchema,
+        outputSchema: articleOutputSchema
+      }));
+
       // Add service info and inputSchema for agents
       const responseWithDiscovery = {
         ...paymentRequired,
+        accepts: acceptsWithSchemas,
         service: {
           name: 'Readia Article Publisher',
           description: 'Publish articles on Readia.io - a micropayment content platform.',
           website: 'https://readia.io'
-        },
-        inputSchema: {
-          type: 'object',
-          required: ['title', 'content', 'price'],
-          properties: {
-            title: {
-              type: 'string',
-              minLength: 1,
-              maxLength: 200,
-              description: 'Article title'
-            },
-            content: {
-              type: 'string',
-              minLength: 50,
-              maxLength: 50000,
-              description: 'Article content (HTML supported)'
-            },
-            price: {
-              type: 'number',
-              minimum: 0.01,
-              maximum: 1.00,
-              description: 'Article price in USD'
-            },
-            categories: {
-              type: 'array',
-              items: {
-                type: 'string',
-                enum: [
-                  'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
-                  'Business', 'Startup', 'Finance', 'Marketing',
-                  'Science', 'Health', 'Education', 'Politics', 'Sports', 'Entertainment', 'Gaming', 'Art & Design', 'Travel', 'Food', 'Other'
-                ]
-              },
-              maxItems: 5,
-              description: 'Article categories (optional)'
-            }
-          }
-        },
-        outputSchema: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', description: 'Whether the request succeeded' },
-            data: {
-              type: 'object',
-              properties: {
-                articleId: { type: 'number', description: 'Unique article ID' },
-                articleUrl: { type: 'string', description: 'Full URL to view the article' },
-                purchaseUrl: { type: 'string', description: 'x402 endpoint for purchasing article access' },
-                authorAddress: { type: 'string', description: 'Wallet address of the article author' },
-                network: { type: 'string', description: 'Network used for payment' },
-                txHash: { type: 'string', description: 'Blockchain transaction hash' }
-              }
-            }
-          }
         }
       };
 
@@ -2490,51 +2512,62 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
         'Payment required'
       );
 
+      // Define schemas separately so we can inject into each accepts item (x402Jobs compatibility)
+      const walletInputSchema = {
+        type: 'object',
+        required: ['network', 'payoutAddress'],
+        properties: {
+          network: {
+            type: 'string',
+            enum: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
+            description: 'CAIP-2 network identifier for the secondary wallet (must be different type than primary)'
+          },
+          payoutAddress: {
+            type: 'string',
+            description: 'Your wallet address on the secondary network'
+          }
+        }
+      };
+
+      const walletOutputSchema = {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', description: 'Whether the request succeeded' },
+          data: {
+            type: 'object',
+            properties: {
+              message: { type: 'string', description: 'Success message' },
+              author: {
+                type: 'object',
+                properties: {
+                  address: { type: 'string', description: 'Primary wallet address' },
+                  primaryPayoutNetwork: { type: 'string', description: 'Primary network CAIP-2 identifier' },
+                  primaryPayoutAddress: { type: 'string', description: 'Primary payout address' },
+                  secondaryPayoutNetwork: { type: 'string', description: 'Secondary network CAIP-2 identifier' },
+                  secondaryPayoutAddress: { type: 'string', description: 'Secondary payout address' }
+                }
+              },
+              txHash: { type: 'string', description: 'Blockchain transaction hash' },
+              note: { type: 'string', description: 'Additional information' }
+            }
+          }
+        }
+      };
+
+      // Add schemas to each accepts item (v1 style - where x402Jobs looks for them)
+      const acceptsWithSchemas = paymentRequired.accepts.map((item: Record<string, unknown>) => ({
+        ...item,
+        inputSchema: walletInputSchema,
+        outputSchema: walletOutputSchema
+      }));
+
       const responseWithDiscovery = {
         ...paymentRequired,
+        accepts: acceptsWithSchemas,
         service: {
           name: 'Readia Secondary Wallet Manager',
           description: 'Set (add or update) a secondary payout wallet to receive payments on both Solana and Base networks. Call again to change your secondary wallet.',
           website: 'https://readia.io'
-        },
-        inputSchema: {
-          type: 'object',
-          required: ['network', 'payoutAddress'],
-          properties: {
-            network: {
-              type: 'string',
-              enum: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp', 'eip155:8453'],
-              description: 'CAIP-2 network identifier for the secondary wallet (must be different type than primary)'
-            },
-            payoutAddress: {
-              type: 'string',
-              description: 'Your wallet address on the secondary network'
-            }
-          }
-        },
-        outputSchema: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', description: 'Whether the request succeeded' },
-            data: {
-              type: 'object',
-              properties: {
-                message: { type: 'string', description: 'Success message' },
-                author: {
-                  type: 'object',
-                  properties: {
-                    address: { type: 'string', description: 'Primary wallet address' },
-                    primaryPayoutNetwork: { type: 'string', description: 'Primary network CAIP-2 identifier' },
-                    primaryPayoutAddress: { type: 'string', description: 'Primary payout address' },
-                    secondaryPayoutNetwork: { type: 'string', description: 'Secondary network CAIP-2 identifier' },
-                    secondaryPayoutAddress: { type: 'string', description: 'Secondary payout address' }
-                  }
-                },
-                txHash: { type: 'string', description: 'Blockchain transaction hash' },
-                note: { type: 'string', description: 'Additional information' }
-              }
-            }
-          }
         },
         requirements: {
           fee: AGENT_SECONDARY_WALLET_FEE,
