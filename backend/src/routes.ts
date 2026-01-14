@@ -23,7 +23,7 @@ import {
 import { checkForSpam, checkContentQuality } from './spamPrevention';
 // x402 v2 imports
 import { HTTPFacilitatorClient, x402ResourceServer } from '@x402/core/server';
-import { PaymentPayload } from '@x402/core/types';
+import { PaymentPayload, PaymentRequirements } from '@x402/core/types';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { ExactSvmScheme } from '@x402/svm/exact/server';
 // @ts-ignore - CDP SDK has type issues in v0.x
@@ -78,11 +78,63 @@ const resourceServer = new x402ResourceServer(facilitatorClient)
   .register('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1', new ExactSvmScheme());
 
 // OpenFacilitator for agent endpoints (x402Jobs compatible, no auth required)
+// Wrapper to translate OpenFacilitator response format to @x402/core format
+// OpenFacilitator: { valid, invalidReason, payer } / { success, transactionHash, errorMessage }
+// @x402/core:     { isValid, invalidReason, payer } / { success, transaction, errorReason }
 const OPENFACILITATOR_URL = 'https://pay.openfacilitator.io';
-const agentFacilitatorClient = new HTTPFacilitatorClient({
-  url: OPENFACILITATOR_URL,
-  // OpenFacilitator doesn't require authentication - no createAuthHeaders needed
-});
+
+// OpenFacilitator response types (from packages/core/src/types.ts)
+interface OpenFacilitatorVerifyResponse {
+  valid: boolean;
+  invalidReason?: string;
+  payer?: string;
+}
+
+interface OpenFacilitatorSettleResponse {
+  success: boolean;
+  transactionHash?: string;
+  errorMessage?: string;
+  network?: string;
+}
+
+class OpenFacilitatorClient {
+  private client: HTTPFacilitatorClient;
+
+  constructor() {
+    this.client = new HTTPFacilitatorClient({
+      url: OPENFACILITATOR_URL,
+      // OpenFacilitator doesn't require authentication
+    });
+  }
+
+  async verify(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements) {
+    // OpenFacilitator returns { valid } but @x402/core expects { isValid }
+    const result = await this.client.verify(paymentPayload, paymentRequirements) as unknown as OpenFacilitatorVerifyResponse;
+    return {
+      isValid: result.valid,
+      invalidReason: result.invalidReason,
+      payer: result.payer
+    };
+  }
+
+  async settle(paymentPayload: PaymentPayload, paymentRequirements: PaymentRequirements) {
+    // OpenFacilitator returns { transactionHash, errorMessage }
+    // @x402/core expects { transaction, errorReason } where transaction is required
+    const result = await this.client.settle(paymentPayload, paymentRequirements) as unknown as OpenFacilitatorSettleResponse;
+    return {
+      success: result.success,
+      transaction: result.transactionHash || '',
+      network: (result.network || paymentRequirements.network) as `${string}:${string}`,
+      errorReason: result.errorMessage
+    };
+  }
+
+  async getSupported() {
+    return this.client.getSupported();
+  }
+}
+
+const agentFacilitatorClient = new OpenFacilitatorClient();
 
 // Agent resource server (uses OpenFacilitator instead of PayAI/CDP)
 const agentResourceServer = new x402ResourceServer(agentFacilitatorClient)
@@ -2088,10 +2140,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     }
 
     if (!verification.isValid) {
-      console.log(`[agent/postArticle] ❌ Verify failed: ${verification.invalidReason || 'unknown'}`);
+      console.log(`[agent/postArticle] ❌ Verify failed:`, JSON.stringify(verification, null, 2));
+      console.log(`[agent/postArticle] Payment requirement:`, JSON.stringify(paymentRequirement, null, 2));
       return res.status(400).json({
         success: false,
-        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
+        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`,
+        debug: { verification, requirement: paymentRequirement }
       });
     }
 
