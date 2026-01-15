@@ -26,6 +26,7 @@ import {
   Trash2,
   WalletMinimal,
   Sparkles,
+  Bot,
 } from 'lucide-react';
 import { x402PaymentService, PaymentExecutionContext, SupportedNetwork, SolanaWalletProvider } from '../services/x402PaymentService';
 import { useAccount, useWalletClient } from 'wagmi';
@@ -1374,12 +1375,22 @@ function Write() {
 
             {/* AI Generate Modal */}
             {showAIGenerateModal && (
-              <div className="modal-overlay">
-                <div className="confirm-modal ai-generate-modal">
+              <div
+                className="modal-overlay"
+                onClick={() => {
+                  if (!isGenerating) {
+                    setShowAIGenerateModal(false);
+                    setAIPrompt('');
+                    setGenerateError('');
+                    setSelectedAINetworkFamily('base');
+                  }
+                }}
+              >
+                <div className="confirm-modal ai-generate-modal" onClick={(e) => e.stopPropagation()}>
                   <div className="confirm-modal-header">
                     <h3>
-                      <Sparkles size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                      AI Article Generator
+                      <Bot size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                      Readia Agent
                     </h3>
                     <button
                       type="button"
@@ -1396,77 +1407,77 @@ function Write() {
                   </div>
                   <div className="confirm-content">
                     <p className="ai-generate-description">
-                      Enter a topic or idea and Claude will generate a complete article for you.
-                      This service costs <strong>$0.10 USDC</strong> per generation.
+                      Enter a topic and our AI will generate a complete article.
                     </p>
                     <div className="ai-prompt-input-container">
-                      <label htmlFor="ai-prompt" className="input-label">What would you like to write about?</label>
                       <textarea
                         id="ai-prompt"
                         value={aiPrompt}
                         onChange={(e) => setAIPrompt(e.target.value)}
-                        placeholder="e.g., Write about the latest AI developments, Create 3 healthy cake recipes, Explain quantum computing to beginners..."
+                        placeholder="Write an op-ed about the future of AI, analyze today's crypto news, create healthy recipes..."
                         className="ai-prompt-textarea"
-                        rows={4}
+                        rows={3}
                         disabled={isGenerating}
                       />
                     </div>
-                    <div className="ai-prompt-examples">
-                      <span className="ai-examples-label">Examples:</span>
-                      <div className="ai-example-chips">
-                        <button
-                          type="button"
-                          className="ai-example-chip"
-                          onClick={() => setAIPrompt('Write about the latest AI developments')}
-                          disabled={isGenerating}
-                        >
-                          AI news
-                        </button>
-                        <button
-                          type="button"
-                          className="ai-example-chip"
-                          onClick={() => setAIPrompt('Create a React hooks tutorial for beginners')}
-                          disabled={isGenerating}
-                        >
-                          React tutorial
-                        </button>
-                        <button
-                          type="button"
-                          className="ai-example-chip"
-                          onClick={() => setAIPrompt('Write 3 healthy cake recipes with nutritional info')}
-                          disabled={isGenerating}
-                        >
-                          Recipes
-                        </button>
-                        <button
-                          type="button"
-                          className="ai-example-chip"
-                          onClick={() => setAIPrompt('Cover the latest crypto market news')}
-                          disabled={isGenerating}
-                        >
-                          Crypto news
-                        </button>
+                    <div className="ai-options-row">
+                      <div className="ai-prompt-examples">
+                        <span className="ai-examples-label">Get Inspired</span>
+                        <div className="ai-example-chips">
+                          <button
+                            type="button"
+                            className="ai-example-chip"
+                            onClick={() => setAIPrompt('Write an op-ed about the future of decentralized social media')}
+                            disabled={isGenerating}
+                          >
+                            Op-Ed
+                          </button>
+                          <button
+                            type="button"
+                            className="ai-example-chip"
+                            onClick={() => setAIPrompt("Analyze today's crypto market news and key price movements")}
+                            disabled={isGenerating}
+                          >
+                            News Analysis
+                          </button>
+                          <button
+                            type="button"
+                            className="ai-example-chip"
+                            onClick={() => setAIPrompt('Create 3 healthy cake recipes with nutritional info and tips')}
+                            disabled={isGenerating}
+                          >
+                            Recipes
+                          </button>
+                          <button
+                            type="button"
+                            className="ai-example-chip"
+                            onClick={() => setAIPrompt('Write a beginner-friendly tutorial on React hooks with code examples')}
+                            disabled={isGenerating}
+                          >
+                            Tutorial
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="ai-network-selection">
-                      <span className="ai-examples-label">Pay with:</span>
-                      <div className="ai-network-buttons">
-                        <button
-                          type="button"
-                          className={`ai-network-btn ${selectedAINetworkFamily === 'base' ? 'active' : ''}`}
-                          onClick={() => setSelectedAINetworkFamily('base')}
-                          disabled={isGenerating}
-                        >
-                          Base USDC
-                        </button>
-                        <button
-                          type="button"
-                          className={`ai-network-btn ${selectedAINetworkFamily === 'solana' ? 'active' : ''}`}
-                          onClick={() => setSelectedAINetworkFamily('solana')}
-                          disabled={isGenerating}
-                        >
-                          Solana USDC
-                        </button>
+                      <div className="ai-network-selection">
+                        <span className="ai-examples-label">Pay with</span>
+                        <div className="ai-network-buttons">
+                          <button
+                            type="button"
+                            className={`ai-network-btn ${selectedAINetworkFamily === 'base' ? 'active' : ''}`}
+                            onClick={() => setSelectedAINetworkFamily('base')}
+                            disabled={isGenerating}
+                          >
+                            Base
+                          </button>
+                          <button
+                            type="button"
+                            className={`ai-network-btn ${selectedAINetworkFamily === 'solana' ? 'active' : ''}`}
+                            onClick={() => setSelectedAINetworkFamily('solana')}
+                            disabled={isGenerating}
+                          >
+                            Solana
+                          </button>
+                        </div>
                       </div>
                     </div>
                     {generateError && (
@@ -1476,38 +1487,41 @@ function Write() {
                       </div>
                     )}
                   </div>
-                  <div className="confirm-actions">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAIGenerateModal(false);
-                        setAIPrompt('');
-                        setGenerateError('');
-                        setSelectedAINetworkFamily('base');
-                      }}
-                      className="action-btn secondary-btn"
-                      disabled={isGenerating}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAIGenerate}
-                      className="action-btn publish-btn ai-generate-btn"
-                      disabled={isGenerating || !aiPrompt.trim()}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 size={18} className="spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={18} />
-                          Generate ($0.10)
-                        </>
-                      )}
-                    </button>
+                  <div className="confirm-actions ai-modal-actions">
+                    <span className="ai-powered-by">Claude Opus 4.5 · x402 · PayAI Network</span>
+                    <div className="ai-action-buttons">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAIGenerateModal(false);
+                          setAIPrompt('');
+                          setGenerateError('');
+                          setSelectedAINetworkFamily('base');
+                        }}
+                        className="action-btn secondary-btn"
+                        disabled={isGenerating}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAIGenerate}
+                        className="action-btn publish-btn ai-generate-btn"
+                        disabled={isGenerating || !aiPrompt.trim()}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 size={18} className="spin" />
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={18} />
+                            <span>Generate ($0.10)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

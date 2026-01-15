@@ -2638,15 +2638,14 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     }
 
     const txHash = settlement.transactionHash;
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     // Log successful payment
-    console.log(`[agent/postArticle] 💰 Payment settled:`, {
-      txHash,
-      network: detectedNetwork,
-      amount: AGENT_POSTING_FEE,
-      from: authorAddress,
-      to: payTo
-    });
+    console.log(`[agent/postArticle] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_POSTING_FEE}
+  Payer: ${authorAddress}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // ============================================
     // Create Article
@@ -3261,14 +3260,13 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
     }
 
     const txHash = settlement.transactionHash;
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
-    console.log(`[agent/setSecondaryWallet] Payment settled:`, {
-      txHash,
-      network: detectedNetwork,
-      amount: AGENT_SECONDARY_WALLET_FEE,
-      from: payerAddress,
-      to: payTo
-    });
+    console.log(`[agent/setSecondaryWallet] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_SECONDARY_WALLET_FEE}
+  Payer: ${payerAddress}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // Update author with secondary wallet
     const authorUuid = author.authorUuid;
@@ -3293,7 +3291,7 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
     const updatedAuthor = await db.createOrUpdateAuthor(author);
 
-    console.log(`[agent/setSecondaryWallet] Secondary wallet added:`, {
+    console.log(`[agent/setSecondaryWallet] ✅ Secondary wallet added:`, {
       author: author.address,
       primaryNetwork: author.primaryPayoutNetwork,
       secondaryNetwork: secondaryNetwork,
@@ -4571,7 +4569,37 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
     }
 
     const txHash = settlement.transactionHash;
-    console.log(`[agent/generateArticle] 💰 Payment settled:`, { txHash, network: detectedNetwork });
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
+
+    // Extract payer address for logging
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    let payerAddress: string | null = null;
+
+    if (hasTransaction && rawPayload.transaction) {
+      // Solana payment - extract payer from transaction
+      try {
+        const transaction = decodeTransactionFromPayload({ transaction: rawPayload.transaction as string });
+        const solanaPayer = getTokenPayerFromTransaction(transaction);
+        payerAddress = tryNormalizeSolanaAddress(solanaPayer);
+      } catch (e) {
+        console.error('[agent/generateArticle] Failed to extract Solana payer:', e);
+      }
+    }
+
+    // Fallback to verification.details.recipient or authorization.from (EVM)
+    if (!payerAddress) {
+      payerAddress =
+        tryNormalizeFlexibleAddress(verification.details?.recipient || '') ||
+        tryNormalizeFlexibleAddress(
+          typeof authorization?.from === 'string' ? authorization.from : ''
+        );
+    }
+
+    console.log(`[agent/generateArticle] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_GENERATE_ARTICLE_FEE}
+  Payer: ${payerAddress || 'unknown'}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // ============================================
     // Step 1: Fetch relevant news based on prompt

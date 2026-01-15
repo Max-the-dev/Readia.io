@@ -5505,43 +5505,74 @@ w3m-input:focus {
 
 /* AI Generate Modal Styles */
 .ai-generate-modal {
-  max-width: 560px;
+  max-width: 720px !important;
+  width: 90%;
 }
 
 .ai-generate-modal .confirm-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 16px 24px 12px;
 }
 
 .ai-generate-modal .confirm-modal-header h3 {
   display: flex;
   align-items: center;
+  font-size: 1.1rem;
+}
+
+.ai-generate-modal .confirm-content {
+  padding: 16px 24px 20px;
 }
 
 .ai-generate-description {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  margin: 0 0 20px 0;
-  line-height: 1.5;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+}
+
+/* Footer with powered-by and buttons */
+.ai-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px !important;
+}
+
+.ai-powered-by {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+.ai-action-buttons {
+  display: flex;
+  gap: 12px;
 }
 
 .ai-prompt-input-container {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.ai-prompt-input-container .input-label {
+  font-size: 0.85rem;
+  margin-bottom: 6px;
 }
 
 .ai-prompt-textarea {
   width: 100%;
-  min-height: 100px;
-  padding: 14px;
-  font-size: 0.95rem;
+  min-height: 80px;
+  padding: 12px;
+  font-size: 0.9rem;
   border: 1px solid var(--border-medium);
   border-radius: 8px;
   background: var(--bg-secondary);
   color: var(--text-primary);
   resize: vertical;
   font-family: inherit;
-  line-height: 1.5;
+  line-height: 1.4;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -5560,38 +5591,50 @@ w3m-input:focus {
   color: var(--text-tertiary);
 }
 
+/* Side-by-side layout for examples and network */
+.ai-options-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
 .ai-prompt-examples {
-  margin-bottom: 16px;
+  flex: 1;
+}
+
+.ai-network-selection {
+  flex-shrink: 0;
 }
 
 .ai-examples-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-tertiary);
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .ai-example-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ai-example-chip {
   background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 5px 12px;
   font-size: 0.8rem;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .ai-example-chip:hover:not(:disabled) {
-  background: var(--accent-primary);
-  color: white;
-  border-color: var(--accent-primary);
+  background: var(--bg-tertiary, var(--bg-secondary));
+  color: var(--text-primary);
 }
 
 .ai-example-chip:disabled {
@@ -5617,27 +5660,61 @@ w3m-input:focus {
 }
 
 .ai-generate-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  background: var(--contrast-bg) !important;
+  color: var(--contrast-text) !important;
   border: none !important;
+  box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.15);
+  transition: background-color 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-generate-btn::before {
+  content: "";
+  position: absolute;
+  width: calc(100% + 40px);
+  height: 100%;
+  left: -20px;
+  top: 0;
+  background: var(--contrast-inverse-bg) !important;
+  border-radius: 8px;
+  transform: translateX(-120%);
+  transition: transform 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ai-generate-btn > * {
+  position: relative;
+  z-index: 1;
 }
 
 .ai-generate-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: var(--contrast-inverse-text) !important;
+  background-color: transparent !important;
+}
+
+.ai-generate-btn:hover:not(:disabled)::before {
+  transform: translateX(0);
 }
 
 .ai-generate-btn:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* AI Button in action bar */
 .action-btn.ai-btn {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  border: none;
-  color: white;
+  background: var(--contrast-bg);
+  color: var(--contrast-text);
+  border: 1px solid var(--contrast-bg);
 }
 
 .action-btn.ai-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: var(--contrast-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .action-btn.ai-btn:disabled {
@@ -5647,42 +5724,91 @@ w3m-input:focus {
 
 /* AI Network Selection */
 .ai-network-selection {
-  margin-bottom: 16px;
+  /* positioned inside ai-options-row */
 }
 
 .ai-network-buttons {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
 }
 
 .ai-network-btn {
-  flex: 1;
-  padding: 10px 16px;
-  border: 1px solid var(--border-medium);
-  border-radius: 8px;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: var(--bg-secondary);
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
 }
 
-.ai-network-btn:hover:not(:disabled) {
-  border-color: var(--accent-primary);
+.ai-network-btn:hover:not(:disabled):not(.active) {
+  background: var(--bg-tertiary, var(--bg-secondary));
   color: var(--text-primary);
 }
 
 .ai-network-btn.active {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-  color: white;
+  background: var(--bg-tertiary, var(--bg-secondary));
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .ai-network-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* AI Modal Mobile Responsiveness */
+@media (max-width: 600px) {
+  .ai-generate-modal {
+    max-width: 95% !important;
+    margin: 16px;
+  }
+
+  .ai-generate-modal .confirm-modal-header {
+    padding: 14px 16px 10px;
+  }
+
+  .ai-generate-modal .confirm-content {
+    padding: 14px 16px 18px;
+  }
+
+  .ai-options-row {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ai-network-selection {
+    width: 100%;
+  }
+
+  .ai-network-buttons {
+    justify-content: flex-start;
+  }
+
+  .ai-modal-actions {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch !important;
+    padding: 14px 16px !important;
+  }
+
+  .ai-powered-by {
+    text-align: center;
+    order: 2;
+  }
+
+  .ai-action-buttons {
+    order: 1;
+    width: 100%;
+  }
+
+  .ai-action-buttons .action-btn {
+    flex: 1;
+  }
 }
 
 /* Spin animation for loader */
