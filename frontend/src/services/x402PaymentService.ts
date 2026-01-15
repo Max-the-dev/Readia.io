@@ -597,6 +597,172 @@ class X402PaymentService {
     }
   }
 
+  /**
+   * Generate an article using AI (paid via x402)
+   * Uses the same payment flow as purchase/tip/donate.
+   *
+   * @param prompt - What to write about (optional, defaults to trending tech news)
+   * @param context - Wallet context for payment
+   * @returns Generated article data { title, content, price, categories }
+   */
+  async generateArticle(
+    prompt: string,
+    context: PaymentExecutionContext
+  ): Promise<PaymentResponse & { article?: { title: string; content: string; price: number; categories: string[] } }> {
+    const url = this.buildRequestUrl('/generate-article', context.network);
+
+    try {
+      // ============================================
+      // SOLANA PATH - Use PayAI's x402-solana client
+      // ============================================
+      if (isSolanaNetwork(context.network) && context.solanaProvider) {
+        const providerAddress = typeof context.solanaProvider.publicKey === 'string'
+          ? context.solanaProvider.publicKey
+          : context.solanaProvider.publicKey?.toString();
+
+        if (!providerAddress || !context.solanaProvider.signTransaction) {
+          return { success: false, error: 'Solana wallet not properly connected' };
+        }
+
+        const rpcUrl = this.getSolanaRpcUrl(context.network);
+        const payaiNetwork = toPayAISolanaNetwork(context.network);
+
+        const payaiWallet: PayAIWalletAdapter = {
+          address: providerAddress,
+          signTransaction: async (tx: VersionedTransaction) => {
+            return await context.solanaProvider!.signTransaction!(tx);
+          },
+        };
+
+        const payaiClient = createPayAISolanaClient({
+          wallet: payaiWallet,
+          network: payaiNetwork,
+          rpcUrl,
+        });
+
+        const response = await payaiClient.fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          return {
+            success: true,
+            receipt: result.data?.txHash || 'Article generated',
+            rawResponse: result,
+            article: result.data ? {
+              title: result.data.title,
+              content: result.data.content,
+              price: result.data.price,
+              categories: result.data.categories,
+            } : undefined
+          };
+        }
+
+        return {
+          success: false,
+          error: result?.error || `Generation failed with status ${response.status}`,
+          rawResponse: result
+        };
+      }
+
+      // ============================================
+      // EVM PATH - Use Coinbase client
+      // ============================================
+      const client = new x402Client();
+      if (context.evmWalletClient && context.evmWalletClient.account) {
+        const evmSigner = {
+          address: context.evmWalletClient.account.address,
+          signTypedData: (params: { domain: Record<string, unknown>; types: Record<string, unknown>; primaryType: string; message: Record<string, unknown> }) =>
+            context.evmWalletClient!.signTypedData({
+              account: context.evmWalletClient!.account!,
+              domain: params.domain as any,
+              types: params.types as any,
+              primaryType: params.primaryType as any,
+              message: params.message as any,
+            }),
+        };
+        registerExactEvmScheme(client, { signer: evmSigner });
+      }
+
+      const httpClient = new x402HTTPClient(client);
+
+      const initialResponse = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      if (initialResponse.status !== 402) {
+        const body = await initialResponse.json();
+        if (initialResponse.ok && body.success) {
+          return {
+            success: true,
+            receipt: body.data?.txHash || 'Article generated',
+            article: body.data ? {
+              title: body.data.title,
+              content: body.data.content,
+              price: body.data.price,
+              categories: body.data.categories,
+            } : undefined
+          };
+        }
+        return { success: false, error: body.error || `Unexpected status: ${initialResponse.status}` };
+      }
+
+      const responseBody = await initialResponse.json();
+      const sanitizedBody = sanitizeForBase64(responseBody);
+      const paymentRequired = httpClient.getPaymentRequiredResponse(
+        (name) => initialResponse.headers.get(name),
+        sanitizedBody
+      );
+
+      const paymentPayload = await client.createPaymentPayload(paymentRequired);
+      const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+
+      const paymentResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...paymentHeaders,
+        },
+        body: JSON.stringify({ prompt })
+      });
+
+      const result = await paymentResponse.json();
+
+      if (paymentResponse.ok && result.success) {
+        return {
+          success: true,
+          receipt: result.data?.txHash || 'Article generated',
+          rawResponse: result,
+          article: result.data ? {
+            title: result.data.title,
+            content: result.data.content,
+            price: result.data.price,
+            categories: result.data.categories,
+          } : undefined
+        };
+      }
+
+      return {
+        success: false,
+        error: result?.error || 'Article generation failed. Please try again.',
+        rawResponse: result
+      };
+
+    } catch (error) {
+      console.error('Article generation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Article generation failed',
+      };
+    }
+  }
+
   async checkPaymentStatus(articleId: number, userAddress: string): Promise<boolean> {
     if (!userAddress) {
       return false;

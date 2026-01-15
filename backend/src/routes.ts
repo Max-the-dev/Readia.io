@@ -410,6 +410,7 @@ const PLATFORM_SOLANA_ADDRESS = process.env.X402_PLATFORM_SOL_ADDRESS
 const AGENT_POSTING_FEE = parseFloat(process.env.AGENT_POSTING_FEE || '0.25');
 const AGENT_SECONDARY_WALLET_FEE = parseFloat(process.env.AGENT_SECONDARY_WALLET_FEE || '0.01');
 const AGENT_GENERATE_ARTICLE_FEE = parseFloat(process.env.AGENT_GENERATE_ARTICLE_FEE || '0.02');
+const UI_GENERATE_ARTICLE_FEE = parseFloat(process.env.UI_GENERATE_ARTICLE_FEE || '0.10');
 
 // Claude API configuration
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -1814,6 +1815,358 @@ router.post('/donate', criticalLimiter, async (req: Request, res: Response) => {
 });
 
 // ============================================
+// UI GENERATE ARTICLE (PayAI/CDP path - same as purchase/tip/donate)
+// ============================================
+
+/**
+ * POST /api/generate-article - AI article generation for UI
+ *
+ * Uses PayAI/CDP facilitator (same path as purchase/tip/donate).
+ * For programmatic agents, use /api/agent/generateArticle (OpenFacilitator path).
+ *
+ * Flow:
+ * 1. POST with { prompt: "topic" } → 402 with payment requirements
+ * 2. POST with payment-signature header → Claude generates article
+ * 3. Returns { title, content, price, categories }
+ */
+router.post('/generate-article', criticalLimiter, async (req: Request, res: Response) => {
+  try {
+    const paymentHeader = req.headers['payment-signature'];
+    const { prompt } = req.body;
+
+    // Resolve network preference
+    let networkPreference: SupportedX402Network;
+    try {
+      networkPreference = resolveNetworkPreference(req);
+    } catch (error) {
+      if ((error as Error).message === 'TESTNET_NOT_ALLOWED') {
+        return res.status(400).json({
+          success: false,
+          error: 'Testnet payments are not accepted'
+        });
+      }
+      throw error;
+    }
+
+    const payTo = isSolanaNetwork(networkPreference)
+      ? PLATFORM_SOLANA_ADDRESS
+      : PLATFORM_EVM_ADDRESS;
+
+    if (!payTo) {
+      return res.status(400).json({
+        success: false,
+        error: 'Platform does not accept payments on this network'
+      });
+    }
+
+    // Build payment requirements using SDK (PayAI/CDP path)
+    const requirements = await resourceServer.buildPaymentRequirements({
+      scheme: 'exact',
+      network: networkPreference,
+      price: UI_GENERATE_ARTICLE_FEE,
+      payTo,
+      maxTimeoutSeconds: 900
+    });
+    const paymentRequirement = requirements[0];
+    const networkGroup = getNetworkGroup(networkPreference);
+
+    // ============================================
+    // NO PAYMENT HEADER → Return 402
+    // ============================================
+    if (!paymentHeader) {
+      const resourceUrl = `${req.protocol}://${req.get('host')}/api/generate-article?network=${networkPreference}`;
+      const paymentRequired = resourceServer.createPaymentRequiredResponse(
+        [paymentRequirement],
+        {
+          url: resourceUrl,
+          description: `AI article generation - $${UI_GENERATE_ARTICLE_FEE}`,
+          mimeType: 'application/json'
+        },
+        'Payment required'
+      );
+      res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+      return res.status(402).json(paymentRequired);
+    }
+
+    // ============================================
+    // HAS PAYMENT HEADER → Verify, settle, generate
+    // ============================================
+
+    // Check Claude API key is configured
+    if (!ANTHROPIC_API_KEY) {
+      console.error('[generate-article] ANTHROPIC_API_KEY not configured');
+      return res.status(500).json({
+        success: false,
+        error: 'Article generation service not configured'
+      });
+    }
+
+    // Decode payment header
+    let paymentPayload: PaymentPayload;
+    try {
+      const decoded = Buffer.from(paymentHeader as string, 'base64').toString('utf8');
+      paymentPayload = JSON.parse(decoded) as PaymentPayload;
+    } catch (error) {
+      console.error('[generate-article] Invalid x402 payment header:', error);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid x402 payment header'
+      });
+    }
+
+    // Verify payment
+    const verification = await resourceServer.verifyPayment(paymentPayload, paymentRequirement);
+
+    if (!verification.isValid) {
+      console.log(`[generate-article] ❌ Verify failed: ${verification.invalidReason || 'unknown'}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Payment verification failed',
+        details: verification.invalidReason
+      });
+    }
+
+    // Get payer address for logging
+    const rawPayload = paymentPayload.payload as Record<string, unknown>;
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    const payerAddress =
+      tryNormalizeFlexibleAddress(verification.payer) ||
+      tryNormalizeFlexibleAddress(
+        typeof authorization?.from === 'string' ? authorization.from : ''
+      );
+
+    // Settle payment
+    const settlement = await resourceServer.settlePayment(paymentPayload, paymentRequirement);
+
+    if (!settlement.success) {
+      console.error('[generate-article] Settlement failed:', settlement.errorReason);
+      return res.status(500).json({
+        success: false,
+        error: 'Payment settlement failed. Please try again.',
+        details: settlement.errorReason || 'Unknown settlement error'
+      });
+    }
+
+    const txHash = settlement.transaction;
+    const networkType = networkGroup === 'solana' ? 'SVM' : 'EVM';
+
+    console.log(`[generate-article] 💰 Payment settled
+  Network: ${networkPreference} | ${networkType}
+  Amount: $${UI_GENERATE_ARTICLE_FEE}
+  Payer: ${payerAddress || 'unknown'}
+  Tx Hash: ${txHash || 'N/A'}`);
+
+    // ============================================
+    // GENERATE ARTICLE WITH CLAUDE
+    // ============================================
+
+    // Check if prompt mentions news/trending topics that benefit from live data
+    const userPrompt = prompt || 'Write about the most interesting trending tech news. Pick a compelling story and provide insightful analysis.';
+    const needsNewsContext = !prompt ||
+      /\b(news|trending|latest|today|current|recent|headlines?|update|happening)\b/i.test(prompt);
+
+    let contextData = '';
+    let sourceStory: { title: string; url: string } | null = null;
+
+    if (needsNewsContext) {
+      const searchQuery = extractSearchKeywords(prompt || 'technology trending');
+      const googleNewsUrl = `${GOOGLE_NEWS_RSS_BASE}?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+
+      console.log(`[generate-article] 🔍 Searching Google News for: "${searchQuery}"`);
+
+      try {
+        const newsResponse = await fetch(googleNewsUrl);
+        if (newsResponse.ok) {
+          const rssXml = await newsResponse.text();
+          const newsItems = parseGoogleNewsRSS(rssXml);
+
+          if (newsItems.length > 0) {
+            const storiesSummary = newsItems.map((s, i) =>
+              `${i + 1}. "${s.title}" (${s.source}, ${s.pubDate})`
+            ).join('\n');
+            contextData = `\n\nCURRENT NEWS (Search: "${searchQuery}"):\n${storiesSummary}`;
+            sourceStory = { title: newsItems[0].title, url: newsItems[0].link };
+            console.log(`[generate-article] 📰 Fetched ${newsItems.length} news items`);
+          }
+        }
+      } catch (err) {
+        console.log('[generate-article] Google News fetch failed, continuing with Claude knowledge:', err);
+      }
+    }
+
+    // Build Claude prompt
+    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+
+USER PROMPT:
+${userPrompt}
+${contextData}
+
+IMPORTANT: Return ONLY valid JSON in this exact format, no other text:
+
+{
+  "title": "Your catchy headline here",
+  "content": "<img src=\\"https://images.unsplash.com/photo-1234567890?w=800&q=80\\" alt=\\"Cover image\\" style=\\"display:block;margin:0 auto 1.5rem;max-width:100%;border-radius:8px;\\" /><h2>Section</h2><p>Content...</p>",
+  "price": 0.05,
+  "categories": ["Technology"]
+}
+
+STRICT VALIDATION REQUIREMENTS (your output MUST pass these):
+
+1. TITLE (required):
+   - Min: 1 character
+   - Max: 200 characters
+   - Make it catchy and descriptive
+
+2. CONTENT (required):
+   - Min: 50 characters (but aim for 300-500 words)
+   - Max: 50,000 characters
+   - Valid HTML tags: h2, h3, p, ul, li, ol, strong, em, img, table, thead, tbody, tr, th, td, blockquote, code, pre
+   - Use tables for comparisons, data, specs - makes content more valuable
+   - Use blockquotes for key insights or quotes
+   - Use code/pre for technical content when relevant
+   - Include a relevant Unsplash image at the top with centered styling (style="display:block;margin:0 auto 1.5rem;max-width:100%;border-radius:8px;")
+
+3. PRICE (required):
+   - Min: 0.01 (one cent)
+   - Max: 1.00 (one dollar)
+   - Suggest based on content value/length
+
+4. CATEGORIES (required, pick 1-5):
+   ONLY use these exact values:
+   - Technology
+   - AI & Machine Learning
+   - Web Development
+   - Crypto & Blockchain
+   - Security
+   - Business
+   - Startup
+   - Finance
+   - Marketing
+   - Science
+   - Health
+   - Education
+   - Politics
+   - Sports
+   - Entertainment
+   - Gaming
+   - Art & Design
+   - Travel
+   - Food
+   - Other
+
+Write with authority and insight. Make it worth paying for.`;
+
+    let claudeResponse;
+    try {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 3000,
+          messages: [
+            { role: 'user', content: claudePrompt }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[generate-article] Claude API error:', response.status, errorText);
+        return res.status(502).json({
+          success: false,
+          error: 'AI generation failed',
+          txHash
+        });
+      }
+
+      claudeResponse = await response.json() as {
+        content: Array<{ type: string; text: string }>;
+      };
+    } catch (err) {
+      console.error('[generate-article] Claude API request failed:', err);
+      return res.status(502).json({
+        success: false,
+        error: 'AI generation service unavailable',
+        txHash
+      });
+    }
+
+    // Parse Claude's response
+    let generatedArticle: {
+      title?: string;
+      content?: string;
+      price?: number;
+      categories?: string[];
+      sourceReference?: string;
+    };
+    try {
+      const responseText = claudeResponse.content[0]?.text || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+      generatedArticle = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      console.error('[generate-article] Failed to parse Claude response:', err);
+      console.error('[generate-article] Raw response:', claudeResponse.content[0]?.text);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to parse AI response',
+        txHash
+      });
+    }
+
+    // Validate required fields
+    if (!generatedArticle.title || !generatedArticle.content) {
+      console.error('[generate-article] Missing required fields:', generatedArticle);
+      return res.status(500).json({
+        success: false,
+        error: 'AI response missing required fields (title or content)',
+        txHash
+      });
+    }
+
+    // Ensure price is within valid range
+    let price = generatedArticle.price || 0.05;
+    if (price < 0.01) price = 0.01;
+    if (price > 1.00) price = 1.00;
+
+    console.log(`[generate-article] ✅ Article generated:`, {
+      prompt: userPrompt.substring(0, 50),
+      generatedTitle: generatedArticle.title.substring(0, 50),
+      contentLength: generatedArticle.content.length,
+      price,
+      txHash
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        title: generatedArticle.title,
+        content: generatedArticle.content,
+        price,
+        categories: generatedArticle.categories || ['Other'],
+        sourceUrl: sourceStory?.url || null,
+        sourceTitle: sourceStory?.title || generatedArticle.sourceReference || 'Original analysis',
+        txHash
+      }
+    });
+
+  } catch (error) {
+    console.error('[generate-article] Unexpected error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
+// ============================================
 // AGENT ENDPOINTS (x402 + JWT auth)
 // ============================================
 
@@ -2308,15 +2661,14 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
     }
 
     const txHash = settlement.transactionHash;
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     // Log successful payment
-    console.log(`[agent/postArticle] 💰 Payment settled:`, {
-      txHash,
-      network: detectedNetwork,
-      amount: AGENT_POSTING_FEE,
-      from: authorAddress,
-      to: payTo
-    });
+    console.log(`[agent/postArticle] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_POSTING_FEE}
+  Payer: ${authorAddress}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // ============================================
     // Create Article
@@ -2931,14 +3283,13 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
     }
 
     const txHash = settlement.transactionHash;
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
 
-    console.log(`[agent/setSecondaryWallet] Payment settled:`, {
-      txHash,
-      network: detectedNetwork,
-      amount: AGENT_SECONDARY_WALLET_FEE,
-      from: payerAddress,
-      to: payTo
-    });
+    console.log(`[agent/setSecondaryWallet] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_SECONDARY_WALLET_FEE}
+  Payer: ${payerAddress}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // Update author with secondary wallet
     const authorUuid = author.authorUuid;
@@ -2963,7 +3314,7 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
     const updatedAuthor = await db.createOrUpdateAuthor(author);
 
-    console.log(`[agent/setSecondaryWallet] Secondary wallet added:`, {
+    console.log(`[agent/setSecondaryWallet] ✅ Secondary wallet added:`, {
       author: author.address,
       primaryNetwork: author.primaryPayoutNetwork,
       secondaryNetwork: secondaryNetwork,
@@ -4241,7 +4592,37 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
     }
 
     const txHash = settlement.transactionHash;
-    console.log(`[agent/generateArticle] 💰 Payment settled:`, { txHash, network: detectedNetwork });
+    const networkType = hasTransaction ? 'SVM' : 'EVM';
+
+    // Extract payer address for logging
+    const authorization = rawPayload.authorization as Record<string, unknown> | undefined;
+    let payerAddress: string | null = null;
+
+    if (hasTransaction && rawPayload.transaction) {
+      // Solana payment - extract payer from transaction
+      try {
+        const transaction = decodeTransactionFromPayload({ transaction: rawPayload.transaction as string });
+        const solanaPayer = getTokenPayerFromTransaction(transaction);
+        payerAddress = tryNormalizeSolanaAddress(solanaPayer);
+      } catch (e) {
+        console.error('[agent/generateArticle] Failed to extract Solana payer:', e);
+      }
+    }
+
+    // Fallback to verification.details.recipient or authorization.from (EVM)
+    if (!payerAddress) {
+      payerAddress =
+        tryNormalizeFlexibleAddress(verification.details?.recipient || '') ||
+        tryNormalizeFlexibleAddress(
+          typeof authorization?.from === 'string' ? authorization.from : ''
+        );
+    }
+
+    console.log(`[agent/generateArticle] 💰 Payment settled
+  Network: ${detectedNetwork} | ${networkType}
+  Amount: $${AGENT_GENERATE_ARTICLE_FEE}
+  Payer: ${payerAddress || 'unknown'}
+  Tx Hash: ${txHash || 'N/A'}`);
 
     // ============================================
     // Step 1: Fetch relevant news based on prompt
