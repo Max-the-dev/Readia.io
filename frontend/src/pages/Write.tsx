@@ -1794,6 +1794,8 @@ function Write() {
                       'image', 'link', 'lists', 'code', 'table', 'media', 'codesample', 'autolink', 'wordcount', 'nonbreaking'
                     ],
                     toolbar: 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright alignjustify | link image media table | code codesample | bullist numlist outdent indent | removeformat',
+                    // Allow img tags with all attributes (for AI-generated content with inline styles)
+                    extended_valid_elements: 'img[src|alt|title|width|height|style|class|loading|decoding]',
 
                     // Image upload handler with authentication
                     automatic_uploads: true,
