@@ -25,17 +25,44 @@ import {
   Edit,
   Trash2,
   WalletMinimal,
+  Sparkles,
 } from 'lucide-react';
+import { x402PaymentService, PaymentExecutionContext, SupportedNetwork, SolanaWalletProvider } from '../services/x402PaymentService';
+import { useAccount, useWalletClient } from 'wagmi';
+import { useAppKitProvider, useAppKitNetwork } from '@reown/appkit/react';
 import { apiService, Draft, CreateArticleRequest, API_BASE_URL } from '../services/api';
 import { Editor } from '@tinymce/tinymce-react';
 import { extractPlainText } from '../utils/htmlUtils';
 import { generateSlug } from '../utils/slug';
+
+type NetworkFamily = 'base' | 'solana';
 
 function Write() {
   const { isConnected, isConnecting, address } = useWallet();
   const { login, isAuthenticated, isAuthenticating, error: authError, handleAuthError, getAuthHeaders } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
+
+  // Wallet clients for x402 payments
+  const { data: evmWalletClient } = useWalletClient();
+  const { chain } = useAccount();
+  const { walletProvider: rawSolanaProvider } = useAppKitProvider('solana');
+  const solanaProvider = rawSolanaProvider as SolanaWalletProvider | undefined;
+  const { caipNetworkId } = useAppKitNetwork();
+
+  // Network detection helpers
+  const getNetworkFromChain = (chainId: number | undefined): SupportedNetwork => {
+    if (chainId === 8453) return 'eip155:8453';
+    if (chainId === 84532) return 'eip155:84532';
+    return 'eip155:8453'; // Default to Base mainnet
+  };
+
+  const detectSolanaNetwork = (): SupportedNetwork => {
+    if (caipNetworkId?.startsWith('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp')) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    if (caipNetworkId?.startsWith('solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1')) return 'solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1';
+    if (solanaProvider?.publicKey) return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    return 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+  };
 
   // Category emojis for visual enhancement
   const categoryEmojis: Record<string, string> = {
@@ -93,6 +120,13 @@ function Write() {
   const [publishedArticleTitle, setPublishedArticleTitle] = useState<string>('');
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  // AI Generate state
+  const [showAIGenerateModal, setShowAIGenerateModal] = useState(false);
+  const [aiPrompt, setAIPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
+  const [selectedAINetworkFamily, setSelectedAINetworkFamily] = useState<NetworkFamily>('base');
 
   // Content limits
   const MAX_TITLE_LENGTH = 200;
@@ -821,6 +855,74 @@ function Write() {
   }, [address, location.search, isAuthenticated]);
 
 
+  // AI Generate handler
+  const handleAIGenerate = async () => {
+    if (!address || !isConnected) {
+      setGenerateError('Please connect your wallet first');
+      return;
+    }
+
+    const isSolana = selectedAINetworkFamily === 'solana';
+
+    // Build payment context based on selected network
+    let paymentContext: PaymentExecutionContext;
+
+    if (isSolana) {
+      // Solana payment context
+      if (!solanaProvider?.publicKey || !solanaProvider?.signTransaction) {
+        setGenerateError('Solana wallet not connected. Please connect a Solana wallet or switch to Base.');
+        return;
+      }
+      const solanaNetwork = detectSolanaNetwork();
+      paymentContext = {
+        network: solanaNetwork,
+        solanaProvider: solanaProvider
+      };
+    } else {
+      // EVM payment context
+      if (!evmWalletClient || !evmWalletClient.account) {
+        setGenerateError('EVM wallet not connected. Please connect a wallet or switch to Solana.');
+        return;
+      }
+      paymentContext = {
+        network: getNetworkFromChain(chain?.id),
+        evmWalletClient
+      };
+    }
+
+    setIsGenerating(true);
+    setGenerateError('');
+
+    try {
+      const result = await x402PaymentService.generateArticle(aiPrompt, paymentContext);
+
+      if (result.success && result.article) {
+        // Prefill the form with generated content
+        setTitle(result.article.title);
+        setContent(result.article.content);
+        setPrice(result.article.price.toFixed(2));
+        setSelectedCategories(result.article.categories || []);
+
+        // Close modal and reset
+        setShowAIGenerateModal(false);
+        setAIPrompt('');
+        setGenerateError('');
+        setSelectedAINetworkFamily('base');
+
+        // Clear any validation errors
+        setShowValidationSummary(false);
+        setSubmitError('');
+      } else {
+        setGenerateError(result.error || 'Failed to generate article');
+      }
+    } catch (error) {
+      console.error('AI generation error:', error);
+      setGenerateError(error instanceof Error ? error.message : 'Failed to generate article');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const wordCount = content.trim().split(/\s+/).filter(word => word.length > 0).length;
   const charCount = content.length;
   const plainTextContent = useMemo(() => extractPlainText(content).trim(), [content]);
@@ -1244,26 +1346,167 @@ function Write() {
                       </div>
                     </div>
                     <p className="confirm-message">
-                      Once published, your article will be available for readers to discover and purchase. 
+                      Once published, your article will be available for readers to discover and purchase.
                       You'll earn <strong>${parseFloat(price).toFixed(2)}</strong> each time someone reads your article.
                     </p>
                   </div>
                   <div className="confirm-actions">
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setShowPublishConfirm(false)}
                       className="action-btn secondary-btn"
                     >
                       Cancel
                     </button>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handlePublishConfirm}
                       className="action-btn publish-btn"
                       disabled={isSubmitting}
                     >
                       <CheckCircle size={18} />
                       {isSubmitting ? 'Publishing...' : 'Confirm & Publish'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Generate Modal */}
+            {showAIGenerateModal && (
+              <div className="modal-overlay">
+                <div className="confirm-modal ai-generate-modal">
+                  <div className="confirm-modal-header">
+                    <h3>
+                      <Sparkles size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                      AI Article Generator
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAIGenerateModal(false);
+                        setAIPrompt('');
+                        setGenerateError('');
+                        setSelectedAINetworkFamily('base');
+                      }}
+                      className="close-btn"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="confirm-content">
+                    <p className="ai-generate-description">
+                      Enter a topic or idea and Claude will generate a complete article for you.
+                      This service costs <strong>$0.10 USDC</strong> per generation.
+                    </p>
+                    <div className="ai-prompt-input-container">
+                      <label htmlFor="ai-prompt" className="input-label">What would you like to write about?</label>
+                      <textarea
+                        id="ai-prompt"
+                        value={aiPrompt}
+                        onChange={(e) => setAIPrompt(e.target.value)}
+                        placeholder="e.g., Write about the latest AI developments, Create 3 healthy cake recipes, Explain quantum computing to beginners..."
+                        className="ai-prompt-textarea"
+                        rows={4}
+                        disabled={isGenerating}
+                      />
+                    </div>
+                    <div className="ai-prompt-examples">
+                      <span className="ai-examples-label">Examples:</span>
+                      <div className="ai-example-chips">
+                        <button
+                          type="button"
+                          className="ai-example-chip"
+                          onClick={() => setAIPrompt('Write about the latest AI developments')}
+                          disabled={isGenerating}
+                        >
+                          AI news
+                        </button>
+                        <button
+                          type="button"
+                          className="ai-example-chip"
+                          onClick={() => setAIPrompt('Create a React hooks tutorial for beginners')}
+                          disabled={isGenerating}
+                        >
+                          React tutorial
+                        </button>
+                        <button
+                          type="button"
+                          className="ai-example-chip"
+                          onClick={() => setAIPrompt('Write 3 healthy cake recipes with nutritional info')}
+                          disabled={isGenerating}
+                        >
+                          Recipes
+                        </button>
+                        <button
+                          type="button"
+                          className="ai-example-chip"
+                          onClick={() => setAIPrompt('Cover the latest crypto market news')}
+                          disabled={isGenerating}
+                        >
+                          Crypto news
+                        </button>
+                      </div>
+                    </div>
+                    <div className="ai-network-selection">
+                      <span className="ai-examples-label">Pay with:</span>
+                      <div className="ai-network-buttons">
+                        <button
+                          type="button"
+                          className={`ai-network-btn ${selectedAINetworkFamily === 'base' ? 'active' : ''}`}
+                          onClick={() => setSelectedAINetworkFamily('base')}
+                          disabled={isGenerating}
+                        >
+                          Base USDC
+                        </button>
+                        <button
+                          type="button"
+                          className={`ai-network-btn ${selectedAINetworkFamily === 'solana' ? 'active' : ''}`}
+                          onClick={() => setSelectedAINetworkFamily('solana')}
+                          disabled={isGenerating}
+                        >
+                          Solana USDC
+                        </button>
+                      </div>
+                    </div>
+                    {generateError && (
+                      <div className="ai-generate-error">
+                        <AlertTriangle size={16} />
+                        <span>{generateError}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="confirm-actions">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAIGenerateModal(false);
+                        setAIPrompt('');
+                        setGenerateError('');
+                        setSelectedAINetworkFamily('base');
+                      }}
+                      className="action-btn secondary-btn"
+                      disabled={isGenerating}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAIGenerate}
+                      className="action-btn publish-btn ai-generate-btn"
+                      disabled={isGenerating || !aiPrompt.trim()}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 size={18} className="spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={18} />
+                          Generate ($0.10)
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -1747,6 +1990,16 @@ function Write() {
                 </div>
               </div>
               <div className="actions-bar-right">
+                <button
+                  type="button"
+                  onClick={() => setShowAIGenerateModal(true)}
+                  className="action-btn ai-btn"
+                  disabled={isGenerating}
+                  title="Generate article with AI ($0.10)"
+                >
+                  <Sparkles size={18} />
+                  AI Generate
+                </button>
                 <button
                   type="button"
                   onClick={() => {

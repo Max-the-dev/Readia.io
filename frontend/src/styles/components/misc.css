@@ -5503,6 +5503,202 @@ w3m-input:focus {
   border-top: 1px solid var(--border-light);
 }
 
+/* AI Generate Modal Styles */
+.ai-generate-modal {
+  max-width: 560px;
+}
+
+.ai-generate-modal .confirm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-generate-modal .confirm-modal-header h3 {
+  display: flex;
+  align-items: center;
+}
+
+.ai-generate-description {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.ai-prompt-input-container {
+  margin-bottom: 16px;
+}
+
+.ai-prompt-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 14px;
+  font-size: 0.95rem;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-prompt-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.ai-prompt-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-prompt-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.ai-prompt-examples {
+  margin-bottom: 16px;
+}
+
+.ai-examples-label {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.ai-example-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-example-chip {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-example-chip:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.ai-example-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-generate-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #ef4444;
+  font-size: 0.9rem;
+}
+
+.ai-generate-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ai-generate-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  border: none !important;
+}
+
+.ai-generate-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+}
+
+.ai-generate-btn:disabled {
+  opacity: 0.6;
+}
+
+/* AI Button in action bar */
+.action-btn.ai-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  color: white;
+}
+
+.action-btn.ai-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+}
+
+.action-btn.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* AI Network Selection */
+.ai-network-selection {
+  margin-bottom: 16px;
+}
+
+.ai-network-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ai-network-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-network-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.ai-network-btn.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.ai-network-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Spin animation for loader */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 
 .close-btn {
   background: none;

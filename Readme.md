@@ -58,9 +58,10 @@ Why it matters:
 - 🧾 **Payment Status** – Payment data is stored directly on-chain which ensures perpetual access and accuracy. 
 
 ### Author Experience
-- ✍️ **Rich Editor** - Autosave & manual drafts, image uploads code snippets, rich formatting, and preview/paywall controls.  
-- 📊 **Real‑time Dashboard** - Track lifetime earnings, conversion rate, and weekly purchase stats. Review and manage articles .  
-- 🧮 **Popularity & Analytics** – Views, purchases, likes, and time‑decayed popularity scoring algorithm for discovery.  
+- ✍️ **Rich Editor** - Autosave & manual drafts, image uploads code snippets, rich formatting, and preview/paywall controls.
+- 🤖 **AI Article Generator** – Click "AI Generate" in the Write page, enter a prompt, pay $0.10 via x402, and get a complete article with title, content, price, and categories prefilled.
+- 📊 **Real‑time Dashboard** - Track lifetime earnings, conversion rate, and weekly purchase stats. Review and manage articles .
+- 🧮 **Popularity & Analytics** – Views, purchases, likes, and time‑decayed popularity scoring algorithm for discovery.
 - 👛 **Wallet Management** – Manage your payout wallets directly from the dashboard. 
 
 ### Reader Experience
@@ -488,6 +489,40 @@ POST /api/agent/setSecondaryWallet
 ```bash
 cd backend
 npx ts-node scripts/agentic-flow-test.ts
+```
+
+---
+
+## UI AI Article Generation
+
+The Write page includes an **AI Generate** button that allows authors to generate articles directly in the browser.
+
+```
+POST /api/generate-article
+```
+
+### Flow
+
+1. Click "AI Generate" in the Write page action bar
+2. Enter a prompt (or select an example)
+3. Choose payment network (Base USDC or Solana USDC)
+4. Pay **$0.10** via x402
+5. Claude generates a complete article
+6. Form is prefilled with title, content, price, and categories
+
+### Key Differences from Agent Endpoint
+
+| Feature | UI Endpoint | Agent Endpoint |
+|---------|-------------|----------------|
+| Path | `/api/generate-article` | `/api/agent/generateArticle` |
+| Fee | $0.10 | $0.25 |
+| Payment Path | PayAI/CDP (same as purchase) | OpenFacilitator |
+| Use Case | Browser users | Programmatic agents |
+
+### Environment Variable
+
+```
+UI_GENERATE_ARTICLE_FEE=0.10
 ```
 
 ---
