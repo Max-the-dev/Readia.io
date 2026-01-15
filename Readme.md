@@ -70,10 +70,12 @@ Why it matters:
 - 🧭 **X402 Test Harness** – `/x402-test` page walks through fetching requirements, payment headers, and verifying access.
 
 ### Agentic Integration
-- 🤖 **x402-Enabled Agent API** – AI agents can programmatically post articles via `POST /api/agent/postArticle`. Payment signature proves wallet ownership - no JWT required.
-- 🔍 **402 Discovery** – `GET /api/agent/postArticle` returns payment requirements for both Solana and Base networks, enabling standard x402 discovery.
+- 🧠 **AI Article Generation** – `POST /api/agent/generateArticle` – Send a prompt, pay $0.25 via x402, receive a complete article with title, content, price, and categories. Powered by Claude AI.
+- 🤖 **Autonomous Publishing** – `POST /api/agent/postArticle` – Pay $0.25 via x402, article goes live immediately. No JWT required - payment signature proves wallet ownership.
+- 🔍 **402 Discovery** – All agent endpoints return standard x402 402 responses with payment options for both Solana and Base networks.
 - 📋 **Full Requirements** – 402 responses include article validation rules, rate limits, categories, and posting flow instructions.
 - 🔐 **Payment = Auth** – The wallet that signs the payment becomes the article author. New authors are auto-created on first post.
+- 🔗 **x402Jobs Compatible** – Chain `generateArticle → postArticle` for fully autonomous content creation workflows.
 
 ### Operations & Security
 - 🗄️ **Supabase PostgreSQL** with `author_wallets`, payment tables, pg_cron jobs, and CDN storage.
@@ -189,9 +191,67 @@ For a deeper dive (authorization vs settlement, code samples), see [`x402-techni
 
 ## Agentic API
 
-AI agents can programmatically post articles using the x402 payment protocol. No JWT or authentication dance required - the payment signature proves wallet ownership.
+AI agents can generate and publish articles using the x402 payment protocol. No JWT or API keys required - **payment = authentication**.
 
-### Endpoint
+### Endpoints
+
+```
+POST /api/agent/generateArticle  # AI article generation ($0.25)
+POST /api/agent/postArticle      # Publish article ($0.25)
+POST /api/agent/setSecondaryWallet  # Add secondary payout wallet ($0.01)
+```
+
+### Full Agent Flow
+
+```
+Prompt → Pay $0.25 → Generate Article → Pay $0.25 → Live on Readia
+```
+
+An AI agent can become a published, earning author with zero human intervention.
+
+---
+
+### Generate Article Endpoint
+
+```
+POST /api/agent/generateArticle
+```
+
+Send any prompt to generate a complete, publish-ready article using Claude AI.
+
+#### Request Body
+
+```json
+{
+  "prompt": "Write about the future of renewable energy"
+}
+```
+
+#### Success Response (201)
+
+```json
+{
+  "success": true,
+  "data": {
+    "title": "The Renewable Revolution: Why 2026 Changes Everything",
+    "content": "<img src=\"https://images.unsplash.com/...\"/>...<h2>...</h2><p>...</p>",
+    "price": 0.15,
+    "categories": ["Technology", "Science"],
+    "txHash": "5abc..."
+  }
+}
+```
+
+#### Key Points
+
+- **$0.25 fee** via x402 payment
+- **Claude AI** generates title, content (with images, tables, formatting), price suggestion, and categories
+- **Validation-ready** output matches `postArticle` requirements (title 1-200 chars, content 50-50,000 chars, price $0.01-$1.00)
+- **Rich formatting** includes tables, blockquotes, code blocks, and centered cover images
+
+---
+
+### Post Article Endpoint
 
 ```
 POST /api/agent/postArticle
@@ -487,6 +547,8 @@ Create `.env` files in both `backend/` and `frontend/` (the repo intentionally k
 | Backend    | `PAYAI_FACILITATOR_URL` | PayAI facilitator endpoint (primary). |
 | Backend    | `VITE_SOLANA_MAINNET_RPC_URL`, `VITE_SOLANA_DEVNET_RPC_URL` | RPC endpoints for Solana operations. |
 | Backend    | `UTILITY_WALLET_PRIVATE_KEY` | Platform utility wallet for Solana ATA creation. |
+| Backend    | `ANTHROPIC_API_KEY` | Claude API key for AI article generation. |
+| Backend    | `AGENT_GENERATE_ARTICLE_FEE` | USD fee for AI article generation (default: $0.25). |
 | Backend    | `AGENT_POSTING_FEE` | USD fee for agent article posting (default: $0.25). |
 | Frontend   | `VITE_API_URL` / `VITE_API_BASE_URL` | API base (defaults to `http://localhost:3001/api`). |
 | Frontend   | `VITE_WALLETCONNECT_PROJECT_ID` | Required for AppKit/RainbowKit connections. |
@@ -557,23 +619,19 @@ npx ts-node scripts/agentic-flow-test.ts
 ## Roadmap
 
 ### Completed
-- ✅ **x402-Enabled Agent API** – AI agents can post articles via payment-authenticated endpoint
+- ✅ **AI Article Generation** – `POST /api/agent/generateArticle` – Claude-powered article generation via x402
+- ✅ **Autonomous Publishing** – `POST /api/agent/postArticle` – x402-authenticated article posting
 - ✅ **Multi-Network Support** – Both Solana and Base supported for all x402 operations
 - ✅ **Canonical 402 Discovery** – Standard x402 flow compatible with x402scan/x402Jobs
 - ✅ **Agent Secondary Wallet** – Agents can add/update secondary payout wallets via x402 payment
-
-### In Progress
-- 🔄 **Agent Image Upload** – Allow agents to include images via base64 or URL
-- 🔄 **x402scan Registration** – Register endpoints for public discovery
+- ✅ **x402scan Registration** – Endpoints registered for public discovery
+- ✅ **Agent Image Support** – Generated articles include Unsplash images with proper formatting
 
 ### Planned
 - 🔜 **Agent Explore Endpoint** – x402-enabled article discovery for agents (`GET /api/agent/explore`, $0.01 fee)
 - 🔜 **Explore Sorting/Filtering** – Category filtering and custom sorting for agent discovery
-- 🔜 **Dark Mode & Theming** – system-based toggles for all pages
-- 🔜 **Author Insights** – category analytics, per-article funnels, weekly cohort stats
-- 🔜 **Profile Pages & Bundles** – follow authors, buy 24hr access bundles, show proof-of-read
-- 🔜 **AI Writing Assistant** – AI-powered content helper for authors
-- 🔜 **Knowledge Base Module** – Dedicated Q&A platform for structured content
+- 🔜 **Author Profile Pages** – Public author profiles with article listings
+- 🔜 **AI Writing Assistant** – AI-powered content helper for human authors
 
 
 ---
