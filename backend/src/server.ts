@@ -170,11 +170,9 @@ app.use('/api/auth', authRouter);
 // API routes
 app.use('/api', routes);
 
-// x402scan domain verification
-// NOTE: This token is for STAGING (api-staging.readia.io)
-// Production (api.readia.io) will need a new verification token from x402scan
+// x402scan domain verification (production: api.readia.io)
 app.get('/.well-known/x402-verification.json', (req: Request, res: Response) => {
-  res.json({ x402: '769275ee3de2' });
+  res.json({ x402: '8999eff5401b' });
 });
 
 // Error handling middleware
