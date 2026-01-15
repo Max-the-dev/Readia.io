@@ -2094,6 +2094,29 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
 
     const { title, content, price, categories } = validationResult.data;
 
+    // Step 1b: Reject if content is raw JSON (common mistake: dumping entire response)
+    try {
+      JSON.parse(content);
+      // If we get here, entire content is valid JSON - reject it
+      return res.status(400).json({
+        success: false,
+        error: 'Content must be HTML article content, not raw JSON.',
+        hint: {
+          message: 'The content field should contain your article text with HTML formatting.',
+          expected: '<h2>Title</h2><p>Your article content...</p>',
+          received: 'JSON object',
+          fields: {
+            title: 'Article title (string)',
+            content: 'Article body in HTML (string)',
+            price: 'Price in USD, 0.01-1.00 (number)',
+            categories: 'Array of category strings (optional)'
+          }
+        }
+      });
+    } catch {
+      // Not valid JSON = good, it's normal content
+    }
+
     // Step 2: Decode payment header
     let paymentPayload: PaymentPayload;
     try {
