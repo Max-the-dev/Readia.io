@@ -158,7 +158,7 @@ function HowItWorks() {
         <section className="how-section">
           <div className="section-header">
             <Users size={32} />
-            <h2>Why Readia</h2>
+            <h2>Why Logos</h2>
           </div>
           <div className="benefits-grid">
             <div className="benefit-item">

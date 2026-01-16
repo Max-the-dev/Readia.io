@@ -24,13 +24,13 @@ function Ecosystem({ setPage }: EcosystemProps) {
           </div>
           <div className="values-grid ecosystem-grid">
           <div className="value-card">
-            <h3>Readia.io</h3>
+            <h3>Logos</h3>
             <p>
               The core platform. Writers set prices per article ($0.01-$1.00), readers pay
               only for what they read. 100% of payments go directly to creators.
             </p>
-            <a href="https://readia.io" target="_blank" rel="noopener noreferrer" className="card-link">
-              Visit Readia →
+            <a href="https://logos.readia.io" target="_blank" rel="noopener noreferrer" className="card-link">
+              Visit Logos →
             </a>
           </div>
           <div className="value-card current">
