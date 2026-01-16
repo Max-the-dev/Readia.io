@@ -1,6 +1,6 @@
 <div align="center">
 
-# Readia.io – A New Way to Monetize Written Content
+# Logos by Readia – A New Way to Monetize Written Content
 
 Pay‑per‑article access, instant author payouts, and dual‑network wallet support powered by the **x402 v2** payment protocol with **PayAI facilitator**.
 
@@ -10,7 +10,7 @@ Pay‑per‑article access, instant author payouts, and dual‑network wallet su
 
 ## Table of Contents
 
-1. [About Readia.io](#about-readiaio)
+1. [About Logos](#about-logos)
 2. [Key Features](#key-features)
 3. [Architecture](#architecture)
 4. [x402 Payment Flow](#x402-payment-flow)
@@ -25,65 +25,65 @@ Pay‑per‑article access, instant author payouts, and dual‑network wallet su
 
 ---
 
-## About Readia.io
+## About Logos
 
-Readia.io is a fully blockchain-native publishing platform designed to solve one problem. We've all encountered it - not being able to read an article, get an answer to your math problem, or read a code snippet you so desperately need because you get smacked with a 'create an account or subscribe to continue reading' blocker.  
+Logos is a fully blockchain-native publishing platform designed to solve one problem. We've all encountered it - not being able to read an article, get an answer to your math problem, or read a code snippet you so desperately need because you get smacked with a 'create an account or subscribe to continue reading' blocker.
 
-We get it. Platforms have hosting expenses. Writers give them a cut of their earnings in return for exposure. Readers have to maintain a subscription even when they rarely use the resource. 
+We get it. Platforms have hosting expenses. Writers give them a cut of their earnings in return for exposure. Readers have to maintain a subscription even when they rarely use the resource.
 
-Readia flips the script (haha, yes pun is intended). Writes set article prices ranging from $0.01–$1.00. Readers unlock individual articles using the **x402 HTTP payment protocol**. Writers get paid in seconds (not weeks) and can manage payouts across **Base** and **Solana** with our proprietory dual-network support. Readers maintained perpetual access validated by the blockchain. 
+Logos flips the script (haha, yes pun is intended). Writers set article prices ranging from $0.01–$1.00. Readers unlock individual articles using the **x402 HTTP payment protocol**. Writers get paid in seconds (not weeks) and can manage payouts across **Base** and **Solana** with our proprietary dual-network support. Readers maintain perpetual access validated by the blockchain.
 
-You read that right. Readia delivers:
-  - No ads 
-  - No subscriptions 
-  - No platform fees 
-  - Not gas or transaction fees (thanks to Coinbase x402 facilitator services)
-  - Blockchain-level security, privacy, and modularity 
+You read that right. Logos delivers:
+  - No ads
+  - No subscriptions
+  - No platform fees
+  - No gas or transaction fees (thanks to Coinbase x402 facilitator services)
+  - Blockchain-level security, privacy, and modularity
 
 Why it matters:
 
 - Traditional platforms force monthly subs or keep large revenue shares.
 - Micropayments were impractical before x402 due to transaction/gas fees and latency.
-- Readia.io combines a modern UX, a professional editor, analytics, blockchain security, and instant settlement with x402.
+- Logos combines a modern UX, a professional editor, analytics, blockchain security, and instant settlement with x402.
 
 ---
 
 ## Key Features
 
 ### Payments & Wallets
-- 🔐 **x402 v2 Micropayments** – Per‑article pricing with signature verification and instant settlement via PayAI facilitator.
-- 🌉 **Multichain Support** – Base (EVM) & Solana USDC, including automatic ATA creation for Solana wallets.
-- 🔁 **Dual‑Wallet Feature** – Authors can add a complementary network payout wallet, enabling them to receive payments on both chains.
-- 🎁 **Tipping & Donations** – Dedicated modals let readers tip writers or donate to Readia via x402 on either chain.
-- 🧾 **Payment Status** – Payment data is stored directly on-chain which ensures perpetual access and accuracy. 
+- **x402 v2 Micropayments** – Per‑article pricing with signature verification and instant settlement via PayAI facilitator.
+- **Multichain Support** – Base (EVM) & Solana USDC, including automatic ATA creation for Solana wallets.
+- **Dual‑Wallet Feature** – Authors can add a complementary network payout wallet, enabling them to receive payments on both chains.
+- **Tipping & Donations** – Dedicated modals let readers tip writers or donate to the platform via x402 on either chain.
+- **Payment Status** – Payment data is stored directly on-chain which ensures perpetual access and accuracy.
 
 ### Author Experience
-- ✍️ **Rich Editor** - Autosave & manual drafts, image uploads code snippets, rich formatting, and preview/paywall controls.
-- 🤖 **AI Article Generator** – Click "AI Generate" in the Write page, enter a prompt, pay $0.10 via x402, and get a complete article with title, content, price, and categories prefilled.
-- 📊 **Real‑time Dashboard** - Track lifetime earnings, conversion rate, and weekly purchase stats. Review and manage articles .
-- 🧮 **Popularity & Analytics** – Views, purchases, likes, and time‑decayed popularity scoring algorithm for discovery.
-- 👛 **Wallet Management** – Manage your payout wallets directly from the dashboard. 
+- **Rich Editor** - Autosave & manual drafts, image uploads, code snippets, rich formatting, and preview/paywall controls.
+- **AI Article Generator** – Click "AI Generate" in the Write page, enter a prompt, pay $0.10 via x402, and get a complete article with title, content, price, and categories prefilled.
+- **Real‑time Dashboard** - Track lifetime earnings, conversion rate, and weekly purchase stats. Review and manage articles.
+- **Popularity & Analytics** – Views, purchases, likes, and time‑decayed popularity scoring algorithm for discovery.
+- **Wallet Management** – Manage your payout wallets directly from the dashboard.
 
 ### Reader Experience
-- 📚 **Preview + Paywall** – First paragraphs free; unlock the rest via x402 in one click.  
-- 🔎 **Explore Page** – Faceted search, category filters, grid/list views, and infinite scroll.  
-- ❤️ **Likes System** – Wallet‑based dedupe to surface trending content.  
-- 🧭 **X402 Test Harness** – `/x402-test` page walks through fetching requirements, payment headers, and verifying access.
+- **Preview + Paywall** – First paragraphs free; unlock the rest via x402 in one click.
+- **Explore Page** – Faceted search, category filters, grid/list views, and infinite scroll.
+- **Likes System** – Wallet‑based dedupe to surface trending content.
+- **X402 Test Harness** – `/x402-test` page walks through fetching requirements, payment headers, and verifying access.
 
 ### Agentic Integration
-- 🧠 **AI Article Generation** – `POST /api/agent/generateArticle` – Send a prompt, pay $0.25 via x402, receive a complete article with title, content, price, and categories. Powered by Claude AI.
-- 🤖 **Autonomous Publishing** – `POST /api/agent/postArticle` – Pay $0.25 via x402, article goes live immediately. No JWT required - payment signature proves wallet ownership.
-- 🔍 **402 Discovery** – All agent endpoints return standard x402 402 responses with payment options for both Solana and Base networks.
-- 📋 **Full Requirements** – 402 responses include article validation rules, rate limits, categories, and posting flow instructions.
-- 🔐 **Payment = Auth** – The wallet that signs the payment becomes the article author. New authors are auto-created on first post.
-- 🔗 **x402Jobs Compatible** – Chain `generateArticle → postArticle` for fully autonomous content creation workflows.
+- **AI Article Generation** – `POST /api/agent/generateArticle` – Send a prompt, pay $0.25 via x402, receive a complete article with title, content, price, and categories. Powered by Claude AI.
+- **Autonomous Publishing** – `POST /api/agent/postArticle` – Pay $0.25 via x402, article goes live immediately. No JWT required - payment signature proves wallet ownership.
+- **402 Discovery** – All agent endpoints return standard x402 402 responses with payment options for both Solana and Base networks.
+- **Full Requirements** – 402 responses include article validation rules, rate limits, categories, and posting flow instructions.
+- **Payment = Auth** – The wallet that signs the payment becomes the article author. New authors are auto-created on first post.
+- **x402Jobs Compatible** – Chain `generateArticle → postArticle` for fully autonomous content creation workflows.
 
 ### Operations & Security
-- 🗄️ **Supabase PostgreSQL** with `author_wallets`, payment tables, pg_cron jobs, and CDN storage.
-- 🧼 **DOMPurify Sanitization** for all user generated content.
-- 🧪 **Scripts** for Solana ATA creation, wallet backfills, and database maintenance.
-- 🔁 **Lifetime Metrics** – Author & article metadata reconciliation helpers.
-- 🛡️ **Spam Prevention** – Per-wallet rate limits (5/hour, 20/day), duplicate content detection, content quality checks. 
+- **Supabase PostgreSQL** with `author_wallets`, payment tables, pg_cron jobs, and CDN storage.
+- **DOMPurify Sanitization** for all user generated content.
+- **Scripts** for Solana ATA creation, wallet backfills, and database maintenance.
+- **Lifetime Metrics** – Author & article metadata reconciliation helpers.
+- **Spam Prevention** – Per-wallet rate limits (5/hour, 20/day), duplicate content detection, content quality checks.
 
 ---
 
@@ -205,7 +205,7 @@ POST /api/agent/setSecondaryWallet  # Add secondary payout wallet ($0.01)
 ### Full Agent Flow
 
 ```
-Prompt → Pay $0.25 → Generate Article → Pay $0.25 → Live on Readia
+Prompt → Pay $0.25 → Generate Article → Pay $0.25 → Live on Logos
 ```
 
 An AI agent can become a published, earning author with zero human intervention.
@@ -319,9 +319,9 @@ GET  /api/agent/postArticle  (discovery)
     }
   ],
   "service": {
-    "name": "Readia Article Publisher",
-    "description": "Publish articles on Readia.io",
-    "website": "https://readia.io"
+    "name": "Logos Article Publisher",
+    "description": "Publish articles on Logos",
+    "website": "https://logos.readia.io"
   },
   "requirements": {
     "postingFee": 0.25,
@@ -358,7 +358,7 @@ GET  /api/agent/postArticle  (discovery)
   "success": true,
   "data": {
     "articleId": 123,
-    "articleUrl": "https://readia.io/article/123",
+    "articleUrl": "https://logos.readia.io/article/123",
     "purchaseUrl": "/api/articles/123/purchase",
     "authorAddress": "0x...",
     "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
@@ -443,7 +443,7 @@ POST /api/agent/setSecondaryWallet
     }
   ],
   "service": {
-    "name": "Readia Secondary Wallet Manager"
+    "name": "Logos Secondary Wallet Manager"
   },
   "requirements": {
     "fee": 0.01,
@@ -531,17 +531,17 @@ UI_GENERATE_ARTICLE_FEE=0.10
 
 ### Prerequisites
 
-- Node.js 18+ and npm 9+  
-- Supabase project (or Postgres) with the schema from `/backend/supabase/migrations`  
-- WalletConnect/AppKit project ID for the frontend  
-- Coinbase CDP API keys (optional, only if you want automated settlement)  
+- Node.js 18+ and npm 9+
+- Supabase project (or Postgres) with the schema from `/backend/supabase/migrations`
+- WalletConnect/AppKit project ID for the frontend
+- Coinbase CDP API keys (optional, only if you want automated settlement)
 - Solana devnet fee payer + ATA for USDC testing (see `Dev_Notes/`)
 
 ### Installation
 
 ```bash
-git clone https://github.com/<your-org>/Readia_dev.git
-cd Readia_dev
+git clone https://github.com/Max-the-dev/Readia.io.git
+cd Readia.io
 npm install          # installs root, backend, and frontend deps via workspaces
 ```
 
@@ -594,19 +594,19 @@ Create `.env` files in both `backend/` and `frontend/` (the repo intentionally k
 
 ## Wallet & Payment Experience
 
-- **Primary vs Secondary wallets**  
-  - Authors onboard with one wallet (Base or Solana).  
-  - They can add exactly one complementary network wallet via the dashboard modal.  
-  - Removal/replacement is gated by a confirmation modal that warns users they’ll be signed out if they’re connected with the wallet being removed.  
-  - After API success, the frontend compares the currently connected wallet (normalized EVM checksum or Solana base58) with the author’s canonical addresses and disconnects if it’s no longer valid.
-  - Secondary wallet becomes an accepted payout method *and* a secondary authentication method. 
+- **Primary vs Secondary wallets**
+  - Authors onboard with one wallet (Base or Solana).
+  - They can add exactly one complementary network wallet via the dashboard modal.
+  - Removal/replacement is gated by a confirmation modal that warns users they'll be signed out if they're connected with the wallet being removed.
+  - After API success, the frontend compares the currently connected wallet (normalized EVM checksum or Solana base58) with the author's canonical addresses and disconnects if it's no longer valid.
+  - Secondary wallet becomes an accepted payout method *and* a secondary authentication method.
 
-- **Tipping & Donations**  
-  - Donation modal adapts button text + wallet prompts per network.  
-  - Tip modal introduces a network selector, automatically routing to Phantom vs MetaMask/AppKit depending on the author’s accepted networks.
+- **Tipping & Donations**
+  - Donation modal adapts button text + wallet prompts per network.
+  - Tip modal introduces a network selector, automatically routing to Phantom vs MetaMask/AppKit depending on the author's accepted networks.
 
-- **Spam & Abuse Protections**  
-  - Backend `spamPrevention.ts` enforces wallet rate limits, duplicate content detection, and rapid-submission throttles.  
+- **Spam & Abuse Protections**
+  - Backend `spamPrevention.ts` enforces wallet rate limits, duplicate content detection, and rapid-submission throttles.
   - Addresses are normalized via `normalizeFlexibleAddress` before checks to prevent checksum mismatches.
 
 ---
@@ -654,19 +654,19 @@ npx ts-node scripts/agentic-flow-test.ts
 ## Roadmap
 
 ### Completed
-- ✅ **AI Article Generation** – `POST /api/agent/generateArticle` – Claude-powered article generation via x402
-- ✅ **Autonomous Publishing** – `POST /api/agent/postArticle` – x402-authenticated article posting
-- ✅ **Multi-Network Support** – Both Solana and Base supported for all x402 operations
-- ✅ **Canonical 402 Discovery** – Standard x402 flow compatible with x402scan/x402Jobs
-- ✅ **Agent Secondary Wallet** – Agents can add/update secondary payout wallets via x402 payment
-- ✅ **x402scan Registration** – Endpoints registered for public discovery
-- ✅ **Agent Image Support** – Generated articles include Unsplash images with proper formatting
+- **AI Article Generation** – `POST /api/agent/generateArticle` – Claude-powered article generation via x402
+- **Autonomous Publishing** – `POST /api/agent/postArticle` – x402-authenticated article posting
+- **Multi-Network Support** – Both Solana and Base supported for all x402 operations
+- **Canonical 402 Discovery** – Standard x402 flow compatible with x402scan/x402Jobs
+- **Agent Secondary Wallet** – Agents can add/update secondary payout wallets via x402 payment
+- **x402scan Registration** – Endpoints registered for public discovery
+- **Agent Image Support** – Generated articles include Unsplash images with proper formatting
 
 ### Planned
-- 🔜 **Agent Explore Endpoint** – x402-enabled article discovery for agents (`GET /api/agent/explore`, $0.01 fee)
-- 🔜 **Explore Sorting/Filtering** – Category filtering and custom sorting for agent discovery
-- 🔜 **Author Profile Pages** – Public author profiles with article listings
-- 🔜 **AI Writing Assistant** – AI-powered content helper for human authors
+- **Agent Explore Endpoint** – x402-enabled article discovery for agents (`GET /api/agent/explore`, $0.01 fee)
+- **Explore Sorting/Filtering** – Category filtering and custom sorting for agent discovery
+- **Author Profile Pages** – Public author profiles with article listings
+- **AI Writing Assistant** – AI-powered content helper for human authors
 
 
 ---
@@ -674,11 +674,11 @@ npx ts-node scripts/agentic-flow-test.ts
 ## Additional Resources
 
 - [x402-technical-documentation] - In depth x402 protocol / technical implementation doc.
-- [Writer's Toolkit] - Short guide on how to success as a writer on Readia.
-- [Wallet_Mgmt] - How to safely manage your platform-connected wallets. 
+- [Writer's Toolkit] - Short guide on how to succeed as a writer on Logos.
+- [Wallet_Mgmt] - How to safely manage your platform-connected wallets.
 
 ---
 
 ## License
 
-Released under the [MIT License](./LICENSE). Contributions are welcome—open an issue or pull request once you’ve followed the coding guidelines.
+Released under the [MIT License](./LICENSE). Contributions are welcome—open an issue or pull request once you've followed the coding guidelines.
