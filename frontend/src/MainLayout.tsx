@@ -21,6 +21,7 @@ import X402Test from './pages/X402Test';
 import Ecosystem from './pages/Ecosystem';
 import Explore from './pages/Explore';
 import Whitepaper from './pages/Whitepaper';
+import Agents from './pages/Agents';
 import NotFound from './pages/NotFound';
 import { useWalletConnectionManager } from './hooks/useWalletConnectionManager';
 
@@ -41,6 +42,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/contact': 'Contact Logos',
   '/x402-test': 'Logos x402 Test',
   '/explore': 'Explore Logos',
+  '/agents': 'Logos for Agents',
 };
 
 function usePageTitle() {
@@ -89,6 +91,7 @@ function MainLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/x402-test" element={<X402Test />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Info, BookOpen, PenTool, HelpCircle, Mail, Shield, FileText, LayoutDashboard, Library, Laptop, HeartHandshake, Copy, Check, Coins, ChevronDown } from 'lucide-react';
+import { Info, BookOpen, PenTool, HelpCircle, Mail, Shield, FileText, LayoutDashboard, Library, Laptop, HeartHandshake, Copy, Check, Coins, ChevronDown, Bot } from 'lucide-react';
 import { useAppKitProvider } from '@reown/appkit/react';
 import { x402PaymentService, type SupportedNetwork, type SolanaWalletProvider } from '../services/x402PaymentService';
 import { useAppKitNetwork } from '@reown/appkit/react';
@@ -449,6 +449,7 @@ function Footer() {
               <li><Link to="/mission"><Info size={16} /> Mission</Link></li>
               <li><Link to="/how-it-works"><BookOpen size={16} /> How it works</Link></li>
               <li><Link to="/pricing"><FileText size={16} /> Pricing</Link></li>
+              <li><Link to="/agents"><Bot size={16} /> For Agents</Link></li>
             </ul>
           </div>
           <div className={`footer-section footer-accordion footer-section--creators ${expandedSections.has('creators') ? 'is-expanded' : ''}`}>
