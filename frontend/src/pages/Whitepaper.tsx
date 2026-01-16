@@ -18,7 +18,7 @@ import type { CSSProperties } from 'react';
 
 // Data used to drive the “typing” animation in the faux editor header
 const INTRO_LINES = [
-  { type: 'title', text: 'Readia.io Whitepaper' },
+  { type: 'title', text: 'Logos Whitepaper' },
   { type: 'subtitle', text: 'A new way to monetize written content' },
   { type: 'meta', text: 'Last edited • November 17, 2025' },
 ] as const;
@@ -40,7 +40,7 @@ const FLOW_LANES = [
   },
   {
     key: 'penny',
-    title: 'Readia + x402',
+    title: 'Logos + x402',
     emoji: '⚡️',
     tagline: 'Secure and fast',
     steps: [
@@ -80,8 +80,8 @@ const SECTION_DEFINITIONS = [
     body: (
       <>
         <p>
-          In 2025, publishing and accessing content should feel as fluid as sending a message. We believe you should only pay 
-          for what you read, own your access forever, and reward the creator directly. Readia.io puts creators 
+          In 2025, publishing and accessing content should feel as fluid as sending a message. We believe you should only pay
+          for what you read, own your access forever, and reward the creator directly. Logos puts creators
           at the center, and economics stay transparent because the user is always in control.
         </p>
         <ul>
@@ -96,8 +96,8 @@ const SECTION_DEFINITIONS = [
   },
   {
     key: 'how',
-    insertLabel: 'Next block: 3. How Readia Works',
-    title: '3. How Readia Works',
+    insertLabel: 'Next block: 3. How Logos Works',
+    title: '3. How Logos Works',
     body: (
       <ul>
         <li>
@@ -207,13 +207,13 @@ type SectionKey = (typeof SECTION_DEFINITIONS)[number]['key'];
 const ABSTRACT_CONTENT = (
   <>
     <p>
-      Readia.io reimagines how we monetize written content online. Enabled by the latest advancements in crypto, 
-      we created a payment flow that deletes all middlemen from the equations. It's writers, readers, and 
+      Logos reimagines how we monetize written content online. Enabled by the latest advancements in crypto,
+      we created a payment flow that deletes all middlemen from the equations. It's writers, readers, and
       nothing in between.
-      
+
       Creators set a price between $0.01 and $1.00, readers unlock individual articles in a single click, and payouts settle
-      in seconds on-chain. This means no subscriptions, no ads, no account setup, and no payment information required. 
-      <br></br><br></br>To start earning on Readia, all you need is a wallet, a cup of coffee, and a keyboard. 
+      in seconds on-chain. This means no subscriptions, no ads, no account setup, and no payment information required.
+      <br></br><br></br>To start earning on Logos, all you need is a wallet, a cup of coffee, and a keyboard. 
       
       Under the hood we rely on the x402 protocol—HTTP’s long-reserved “Payment Required” status which has been developed 
       into a full-fledged payment system. Due to the absence of fees, microtransactions become viable for the first time ever. 
@@ -607,8 +607,8 @@ function Whitepaper() {
                 <p className="editor-section-label">9. We'd love to have you</p>
                 <RevealGroup>
                   <p>
-                    Readia.io is the home for people who believe knowledge should travel at the speed of a light. If
-                    you’re a writer frustrated with legacy platforms or a reader tired of expensive & intrusive paywalls, we
+                    Logos is the home for people who believe knowledge should travel at the speed of light. If
+                    you're a writer frustrated with legacy platforms or a reader tired of expensive & intrusive paywalls, we
                     built this for you.
                   </p>
                   <ul>
@@ -627,8 +627,8 @@ function Whitepaper() {
           <section className="about-cta">
             <h2>Join the Revolution</h2>
             <p>
-              Whether you're a creator looking to monetize your content or a reader seeking 
-              quality content without subscription commitments, Readia.io is built for you.
+              Whether you're a creator looking to monetize your content or a reader seeking
+              quality content without subscription commitments, Logos is built for you.
             </p>
             <div className="cta-buttons">
               <a href="/explore" className="cta-button primary">Browse Articles</a>

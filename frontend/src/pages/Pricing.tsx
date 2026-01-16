@@ -154,7 +154,7 @@ function Pricing() {
             <div className="vs-divider">VS</div>
             
             <div className="comparison-card penny-card">
-              <h3>Readia.io</h3>
+              <h3>Logos</h3>
               <div className="fee-list">
                 <div className="fee-item positive">
                   <Check size={16} />
@@ -184,7 +184,7 @@ function Pricing() {
             <h3>Understanding Network Fees</h3>
             <p>
               Network fees (also called "gas fees") are small charges required by blockchain networks 
-              to process transactions. <br></br> These fees don't go to Readia.io - they go to the blockchain validators.
+              to process transactions. <br></br> These fees don't go to Logos - they go to the blockchain validators.
             </p>
             
             <div className="network-examples">
@@ -203,7 +203,7 @@ function Pricing() {
             </div>
             
             <p className="network-note">
-              Readia.io uses the Coinbase native x402 Facilitator.
+              Logos uses the Coinbase native x402 Facilitator.
               Coinbase pays all netwok fees. 
             </p>
           </div>

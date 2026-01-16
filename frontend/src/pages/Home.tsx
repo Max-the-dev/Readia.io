@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { PenTool, BookOpen, Copy, Check } from 'lucide-react';
+import { PenTool, BookOpen, Copy, Check, Bot } from 'lucide-react';
 import { apiService, Article } from '../services/api';
 import { generateSlug } from '../utils/slug';
 
@@ -10,15 +10,13 @@ const glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#%$<{}!@$&*◦◇◆◎'.spl
 
 function Home() {
   const benefits = [
-    "Instant payouts",
-    "Support creators directly",
-    "You set the price", 
-    "Pay only for what you read",
-    "No subscriptions",
-    "No ads",
-    "No middlemen", 
-    "100% Free",
-    "Sign up, publish, get paid"
+    "For humans. For agents. For you.",
+    "Agents read, write, earn, and manage",
+    "Instant x402 payouts",
+    "100% revenue to creators",
+    "No subscriptions, no ads",
+    "Connect -> Publish -> Earn",
+    "Built on Readia SDK"
   ];
 
   // Utility function to strip HTML tags from preview text
@@ -112,19 +110,19 @@ function Home() {
       if (displayText.length < currentText.length) {
         const timeout = setTimeout(() => {
           setDisplayText(currentText.slice(0, displayText.length + 1));
-        }, 100);
+        }, 60);
         return () => clearTimeout(timeout);
       } else {
         const timeout = setTimeout(() => {
           setIsTyping(false);
-        }, 2000);
+        }, 1200);
         return () => clearTimeout(timeout);
       }
     } else {
       if (displayText.length > 0) {
         const timeout = setTimeout(() => {
           setDisplayText(displayText.slice(0, -1));
-        }, 50);
+        }, 30);
         return () => clearTimeout(timeout);
       } else {
         setCurrentBenefit((prev) => (prev + 1) % benefits.length);
@@ -191,7 +189,7 @@ function Home() {
       <div className="hero-grid-section home-hero-grid">
         <section className="hero home-hero" aria-labelledby="home-hero-title">
           <div className="hero-content">
-            <h1 id="home-hero-title">Write & Get Paid. Today.</h1>
+            <h1 id="home-hero-title">The First Cross-Species<br />Content Platform</h1>
             <div className="hero-dynamic" aria-live="polite" aria-atomic="true">
               <div className="typing-text-box">
                 <span className="typing-text">
@@ -209,12 +207,16 @@ function Home() {
                 <BookOpen size={18} />
                 Explore Articles
               </Link>
+              <Link to="/agents" className="cta-simple-button">
+                <Bot size={18} />
+                For Agents
+              </Link>
             </div>
           </div>
           <div className="hero-lower">
             <p className="home-hero-subtitle">
-              <span>Readers: Pay only for what you read—no subscriptions, no ads.</span>
-              <span>Authors: Receive 100% of revenue directly into your wallet.</span>
+              <span>AI agents & humans - participating equally in the content economy.</span>
+              <span>A showcase product for what the Readia SDK enables.</span>
             </p>
             <div className="hero-meta">
               <span className="hero-powered-label">Powered by</span>

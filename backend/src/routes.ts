@@ -1995,7 +1995,7 @@ router.post('/generate-article', criticalLimiter, async (req: Request, res: Resp
     }
 
     // Build Claude prompt
-    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+    const claudePrompt = `You are an AI article writer for Logos by Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
 
 USER PROMPT:
 ${userPrompt}
@@ -2279,8 +2279,8 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
 
     // Extra metadata for agents (x402Jobs format - everything in extra)
     const extraMetadata = {
-      serviceName: 'Readia Article Publisher',
-      serviceUrl: 'https://readia.io',
+      serviceName: 'Logos by Readia Article Publisher',
+      serviceUrl: 'https://logos.readia.io',
       postingFee: AGENT_POSTING_FEE,
       validCategories: [
         'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
@@ -2396,8 +2396,8 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
 
       // Extra metadata for agents (x402Jobs format - everything in extra)
       const extraMetadata = {
-        serviceName: 'Readia Article Publisher',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia Article Publisher',
+        serviceUrl: 'https://logos.readia.io',
         postingFee: AGENT_POSTING_FEE,
         validCategories: [
           'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
@@ -2544,12 +2544,12 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    if (!verification.valid) {
+    if (!verification.isValid) {
       console.log(`[agent/postArticle] ❌ Verify failed:`, JSON.stringify(verification, null, 2));
       console.log(`[agent/postArticle] Payment requirement:`, JSON.stringify(paymentRequirement, null, 2));
       return res.status(400).json({
         success: false,
-        error: `Payment verification failed: ${verification.error || 'unknown_reason'}`,
+        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`,
         debug: { verification, requirement: paymentRequirement }
       });
     }
@@ -2660,7 +2660,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       });
     }
 
-    const txHash = settlement.transactionHash;
+    const txHash = settlement.transaction;
     const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     // Log successful payment
@@ -3002,8 +3002,8 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
       // Extra metadata for agents (x402Jobs format - everything in extra)
       const extraMetadata = {
-        serviceName: 'Readia Secondary Wallet Manager',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia Secondary Wallet Manager',
+        serviceUrl: 'https://logos.readia.io',
         fee: AGENT_SECONDARY_WALLET_FEE,
         usage: 'POST with JSON body: {network, payoutAddress}',
         authorization: 'To ADD: pay with PRIMARY wallet. To UPDATE: pay with PRIMARY or current SECONDARY wallet.'
@@ -3135,12 +3135,12 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
     // Verify payment with OpenFacilitator
     const verification = await openFacilitator.verify(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
 
-    if (!verification.valid) {
-      console.log(`[agent/setSecondaryWallet] Payment verification failed: ${verification.error}`);
+    if (!verification.isValid) {
+      console.log(`[agent/setSecondaryWallet] Payment verification failed: ${verification.invalidReason}`);
       return res.status(400).json({
         success: false,
         error: 'Payment verification failed',
-        details: verification.error
+        details: verification.invalidReason
       });
     }
 
@@ -3274,15 +3274,15 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
     const settlement = await openFacilitator.settle(paymentPayload as unknown as OFPaymentPayload, paymentRequirement);
 
     if (!settlement.success) {
-      console.error('[agent/setSecondaryWallet] Settlement failed:', settlement.error);
+      console.error('[agent/setSecondaryWallet] Settlement failed:', settlement.errorReason);
       return res.status(500).json({
         success: false,
         error: 'Payment settlement failed. Please try again.',
-        details: settlement.error || 'Unknown settlement error'
+        details: settlement.errorReason || 'Unknown settlement error'
       });
     }
 
-    const txHash = settlement.transactionHash;
+    const txHash = settlement.transaction;
     const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     console.log(`[agent/setSecondaryWallet] 💰 Payment settled
@@ -4448,8 +4448,8 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
 
       // Extra metadata for agents
       const extraMetadata = {
-        serviceName: 'Readia AI Article Generator',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia AI Article Generator',
+        serviceUrl: 'https://logos.readia.io',
         generationFee: AGENT_GENERATE_ARTICLE_FEE,
         description: 'General-purpose AI article generation. Write about anything: news, tutorials, recipes, opinion pieces, analysis, creative content, and more. For news-related prompts, live data is fetched from Google News. Output is formatted for direct use with postArticle endpoint.',
         usage: 'POST with { "prompt": "your prompt here" }. Works for any topic.',
@@ -4563,10 +4563,10 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
       });
     }
 
-    if (!verification.valid) {
+    if (!verification.isValid) {
       return res.status(400).json({
         success: false,
-        error: `Payment verification failed: ${verification.error || 'unknown_reason'}`
+        error: `Payment verification failed: ${verification.invalidReason || 'unknown_reason'}`
       });
     }
 
@@ -4591,7 +4591,7 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
       });
     }
 
-    const txHash = settlement.transactionHash;
+    const txHash = settlement.transaction;
     const networkType = hasTransaction ? 'SVM' : 'EVM';
 
     // Extract payer address for logging
@@ -4669,7 +4669,7 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
 
     const userPrompt = prompt || 'Write about the most interesting trending tech news. Pick a compelling story and provide insightful analysis.';
 
-    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+    const claudePrompt = `You are an AI article writer for Logos by Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
 
 USER PROMPT:
 ${userPrompt}

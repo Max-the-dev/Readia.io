@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-import { LayoutDashboard, PenTool, Search } from 'lucide-react';
+import { LayoutDashboard, PenTool, Search, Menu, X } from 'lucide-react';
 import AppKitConnectButton from './AppKitConnectButton';
 import AuthStatusBadges from './AuthStatusBadges';
 import ThemeToggle from './ThemeToggle';
@@ -18,11 +18,19 @@ function Header() {
   const showLibraryBar = ['/explore', '/dashboard'].includes(location.pathname) ||
     location.pathname.startsWith('/article/');
 
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Library state
   const [historyItems, setHistoryItems] = useState<UserArticleMeta[]>([]);
   const [favoriteItems, setFavoriteItems] = useState<UserArticleMeta[]>([]);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [libraryModalTab, setLibraryModalTab] = useState<'history' | 'favorites'>('history');
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Fetch library data when authenticated
   useEffect(() => {
@@ -74,7 +82,8 @@ function Header() {
           <div className="header-left">
             <ThemeToggle />
             <Link to="/" className="logo">
-              <h1>Readia.io</h1>
+              <span className="logo-text">Logos</span>
+              <span className="logo-by">by Readia</span>
             </Link>
           </div>
           <nav className="nav-links-center">
@@ -95,8 +104,40 @@ function Header() {
             <AppKitConnectButton />
             <AuthStatusBadges />
           </div>
+          {/* Mobile menu button */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </header>
+
+      {/* Mobile menu overlay */}
+      {mobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)}>
+          <nav className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+            <Link to="/explore" className="mobile-menu-link">
+              <Search size={20} />
+              <span>Explore</span>
+            </Link>
+            <Link to="/write" className="mobile-menu-link">
+              <PenTool size={20} />
+              <span>Write</span>
+            </Link>
+            <Link to="/dashboard" className="mobile-menu-link">
+              <LayoutDashboard size={20} />
+              <span>Dashboard</span>
+            </Link>
+            <div className="mobile-menu-divider" />
+            <div className="mobile-menu-wallet">
+              <AppKitConnectButton />
+            </div>
+          </nav>
+        </div>
+      )}
 
       {/* Library Sub-Header Bar - only on Explore, Article, Dashboard */}
       {showLibraryBar && (

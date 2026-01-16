@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Github, Vote, Coins, Sparkles, FileText, Shield, DollarSign, Heart, Copy, Check, Lock, ChevronDown, Percent, Award, Zap, Gift, TrendingUp, Headphones, Rocket, Users, UserPlus, Flag, ArrowLeftRight, Wallet, EyeOff } from 'lucide-react';
+import { Github, Vote, Coins, Sparkles, FileText, Shield, DollarSign, Heart, Copy, Check, Lock, ChevronDown, Percent, Award, Zap, Gift, TrendingUp, Headphones, Rocket, Users, UserPlus, Flag, ArrowLeftRight, Wallet, EyeOff, Bot } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import XLogo from '../components/XLogo';
 import {
@@ -75,12 +75,13 @@ function Ecosystem() {
   ];
 
   const highlights: { title: string; description: string; bgIcon: LucideIcon }[] = [
-    { title: 'First on x402', description: 'Readia is the first content marketplace built on Coinbase\'s x402 payment protocol—a new standard for internet commerce. We\'re not building on existing rails; we\'re helping define what comes next.', bgIcon: Flag },
+    { title: 'First on x402', description: 'Logos is the first content marketplace built on Coinbase\'s x402 payment protocol—a new standard for internet commerce. We\'re not building on existing rails; we\'re helping define what comes next.', bgIcon: Flag },
+    { title: 'Agent-Native', description: 'AI agents can read, write, earn, and manage content autonomously—no API keys, no accounts. Payment is authentication. The first platform where agents participate equally alongside humans.', bgIcon: Bot },
     { title: 'No Middlemen', description: 'No ads interrupting your reading. No personal data harvested and sold. No payment processors skimming fees. Just direct, transparent transactions between consumers and creators.', bgIcon: ArrowLeftRight },
     { title: 'Instant Full Payouts', description: 'Creators receive 100% of every payment the moment it happens. No waiting for monthly payouts. No platform fees eating into your earnings. Transaction costs are near-zero, so more money stays in your pocket.', bgIcon: Wallet },
     { title: 'Secure by Design', description: 'Every transaction is cryptographically secured and publicly verifiable on the blockchain. No centralized database to breach, no credentials to steal. Security isn\'t a feature—it\'s the foundation.', bgIcon: Shield },
     { title: 'Private by Default', description: 'No sign-up forms asking for your life story and credit card information. No personal data required. Stay anonymous or build a reputation publically — your choice.', bgIcon: EyeOff },
-    { title: 'For Everyone', description: 'Whether you\'re crypto-native or have never touched a wallet, Readia meets you where you are. Sign up and pay with familiar methods like X OAuth and Apple Pay. Start earning instantly - zero learning curve.', bgIcon: Users },
+    { title: 'For Everyone', description: 'Whether you\'re crypto-native or have never touched a wallet, Logos meets you where you are. Sign up and pay with familiar methods like X OAuth and Apple Pay. Start earning instantly - zero learning curve.', bgIcon: Users },
   ];
 
   interface Milestone {
@@ -148,9 +149,9 @@ function Ecosystem() {
           \n - Exclusive features & discounts' },
         { title: 'Mobile Optimization', expandable: true, description: 'Optimize platform for mobile devices to enhance accessibility and user experience on smartphones and tablets.' },
         { title: 'Platform Features', expandable: true,
-          description: 'Continue building out platform featues for Readia and ShillQuest: \
-          \n\n - (Readia) Advanced discovery & Author profiles \
-          \n - (Readia) LLM writing assistant integration \
+          description: 'Continue building out platform featues for Logos and ShillQuest: \
+          \n\n - (Logos) Advanced discovery & Author profiles \
+          \n - (Logos) LLM writing assistant integration \
           \n - (ShillQuest) Enhanced analytics and reporting \
           \n - (ShillQuest) Additional social media integrations (e.g., Instagram, TikTok) \
           \n - (ShillQuest) Integrated browser extension'
@@ -206,11 +207,13 @@ function Ecosystem() {
 
   const partnerships = [
     { name: 'x402', category: 'x402 Foundation', description: "Promoting and supporting x402 projects", link: 'https://www.x402.org/' },
+    { name: 'x402Jobs', category: 'Infrastructure', description: 'Agent job board for x402 services', link: 'https://x402.org/jobs' },
+    { name: 'PayAI Network', category: 'Facilitator', description: 'x402 transaction facilitator', link: 'https://payai.network/' },
+    { name: 'OpenFacilitator', category: 'Infrastructure', description: 'Open-source x402 facilitator', link: 'https://www.openfacilitator.io/' },
     { name: 'SKALE', category: 'Infrastructure', description: 'The most advanced x402 network', link: 'https://www.skale.space/', tba: true },
     { name: 'SoHo', category: 'Credit', description: 'Credit system provider', link: '', tba: true },
     { name: 'CoinGecko', category: 'Listing', description: 'Exchange listing and audit', link: 'https://www.coingecko.com/en/coins/readia-io' },
     { name: 'Jupiter', category: 'Listing', description: 'Decentralized exchange listing', link: `https://jup.ag/tokens/${CONTRACT_ADDRESS}` },
-    { name: 'Coinbase', category: 'Facilitator', description: 'x402 transaction facilitator', link: `https://www.coinbase.com/developer-platform/products/x402` },
     { name: 'Corbits', category: 'Infrastructure', description: 'x402 subscription model provider', link: `https://corbits.dev/`, tba: true }
   ];
 
@@ -226,11 +229,11 @@ function Ecosystem() {
           <h1>The Readia Ecosystem</h1>
           <div className="ecosystem-showcase">
             <div className="ecosystem-grid">
-              {/* Readia.io - Live */}
+              {/* Logos - Live */}
               <Link to="/" className="ecosystem-card ecosystem-card--live" style={{ '--card-index': 0 } as React.CSSProperties}>
                 <div className="ecosystem-card__icon"><FileText size={24} /></div>
                 <div className="ecosystem-card__content">
-                  <h3 className="ecosystem-card__name">Readia.io</h3>
+                  <h3 className="ecosystem-card__name">Logos</h3>
                   <span className="ecosystem-card__type">Content Marketplace</span>
                 </div>
                 <span className="ecosystem-badge ecosystem-badge--live">

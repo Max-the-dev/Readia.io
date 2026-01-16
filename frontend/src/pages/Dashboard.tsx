@@ -1023,34 +1023,34 @@ function Dashboard() {
             ) : filteredArticles.length > 0 ? (
               filteredArticles.map((article) => (
                 <div key={article.id} className="table-row">
-                  <div className="table-cell article-info">
+                  <div className="table-cell article-info" data-label="Article">
                     <Link to={`/article/${article.id}/${generateSlug(article.title)}`} className="article-title-link">
                       <div className="article-title">{article.title}</div>
                     </Link>
                   </div>
-                  <div className="table-cell">
+                  <div className="table-cell" data-label="Published">
                     <div className="date-info">
                       <div className="date-primary">{new Date(article.publishDate).toLocaleDateString()}</div>
                       <div className="date-relative">{getRelativeTimeString(article.publishDate)}</div>
                     </div>
                   </div>
-                  <div className="table-cell">
+                  <div className="table-cell" data-label="Price">
                     ${article.price.toFixed(2)}
                   </div>
-                  <div className="table-cell">
+                  <div className="table-cell" data-label="Views">
                     {article.views.toLocaleString()}
                   </div>
-                  <div className="table-cell">
+                  <div className="table-cell" data-label="Readers">
                     {article.purchases}
                   </div>
-                  <div className="table-cell earnings">
+                  <div className="table-cell earnings" data-label="Earnings">
                     ${article.earnings.toFixed(2)}
                   </div>
-                  <div className="table-cell">
+                  <div className="table-cell" data-label="Rate">
                     {/* Calculate conversion rate. Display 0 if none */}
                     {article.views > 0 ? ((article.purchases / article.views) * 100).toFixed(1) : '0'}%
                   </div>
-                  <div className="table-cell actions">
+                  <div className="table-cell actions" data-label="Actions">
                     <Link to={`/edit/${article.id}`} className="action-btn edit-btn" title="Edit article">
                       <Edit />
                     </Link>

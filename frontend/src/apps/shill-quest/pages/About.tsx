@@ -161,7 +161,7 @@ function About({ setPage }: AboutProps) {
           </div>
           <div className="values-grid">
             <div className="value-card">
-              <h3>Readia.io</h3>
+              <h3>Logos</h3>
               <p>
                 The core platform. Writers set prices per article, readers pay micropayments
                 to unlock. No subscriptions, no ads.

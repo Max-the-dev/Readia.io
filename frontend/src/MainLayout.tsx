@@ -21,26 +21,28 @@ import X402Test from './pages/X402Test';
 import Ecosystem from './pages/Ecosystem';
 import Explore from './pages/Explore';
 import Whitepaper from './pages/Whitepaper';
+import Agents from './pages/Agents';
 import NotFound from './pages/NotFound';
 import { useWalletConnectionManager } from './hooks/useWalletConnectionManager';
 
-const DEFAULT_TITLE = 'Readia.io - Micropayment Content Platform';
+const DEFAULT_TITLE = 'Logos by Readia - Micropayment Content Platform';
 const ROUTE_TITLES: Record<string, string> = {
-  '/': 'Readia.io - Micropayment Content Platform',
-  '/write': 'Readia - Write an Article',
-  '/dashboard': 'Readia Dashboard',
-  '/whitepaper': 'Readia Whitepaper',
-  '/about': 'About Readia',
-  '/mission': 'Readia Mission',
-  '/how-it-works': 'How Readia Works',
-  '/pricing': 'Readia Pricing',
-  '/resources': 'Readia Resources',
-  '/help': 'Readia Help Center',
-  '/privacy': 'Readia Privacy Policy',
-  '/terms': 'Readia Terms of Service',
-  '/contact': 'Contact Readia',
-  '/x402-test': 'Readia x402 Test',
-  '/explore': 'Explore Readia',
+  '/': 'Logos by Readia - Micropayment Content Platform',
+  '/write': 'Logos - Write an Article',
+  '/dashboard': 'Logos Dashboard',
+  '/whitepaper': 'Logos Whitepaper',
+  '/about': 'About Logos',
+  '/mission': 'Logos Mission',
+  '/how-it-works': 'How Logos Works',
+  '/pricing': 'Logos Pricing',
+  '/resources': 'Logos Resources',
+  '/help': 'Logos Help Center',
+  '/privacy': 'Logos Privacy Policy',
+  '/terms': 'Logos Terms of Service',
+  '/contact': 'Contact Logos',
+  '/x402-test': 'Logos x402 Test',
+  '/explore': 'Explore Logos',
+  '/agents': 'Logos for Agents',
 };
 
 function usePageTitle() {
@@ -51,9 +53,9 @@ function usePageTitle() {
 
     if (!title) {
       if (pathname.startsWith('/article/')) {
-        title = 'Readia Article';
+        title = 'Logos Article';
       } else if (pathname.startsWith('/edit/')) {
-        title = 'Readia Editor';
+        title = 'Logos Editor';
       } else {
         title = DEFAULT_TITLE;
       }
@@ -89,6 +91,7 @@ function MainLayout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/x402-test" element={<X402Test />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

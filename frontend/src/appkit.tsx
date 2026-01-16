@@ -15,7 +15,7 @@ const networks: [AppKitNetwork, ...AppKitNetwork[]] = isProduction
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
 const metadata = {
-  name: 'Readia.io',
+  name: 'Logos',
   description: 'Content Monetization Reimagined',
   url: window.location.origin,
   icons: ['https://penny.io/icon.png'],

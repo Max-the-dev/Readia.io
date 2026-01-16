@@ -16,7 +16,7 @@ function Privacy() {
         <section className="privacy-section">
           <div className="section-header">
             <Shield size={32} />
-            <h2>Privacy-First Design</h2>
+            <h2>Privacy First</h2>
           </div>
           
           <div className="privacy-highlights">
@@ -128,7 +128,7 @@ function Privacy() {
           <div className="privacy-footer">
             <h2>Questions About Privacy?</h2>
             <p>If you have any questions about our privacy practices, please contact us at:</p>
-            <a href="/contact" className="privacy-contact">Send Message</a>
+            <a href="/contact" className="privacy-contact">Contact Us</a>
             <div className="last-updated">
               <p>Last updated: October 28, 2025</p>
             </div>
