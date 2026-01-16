@@ -211,7 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const siweMessage = new SiweMessage({
           domain,
           address,
-          statement: 'Sign in to Readia.io',
+          statement: 'Sign in to Logos',
           uri,
           version: '1',
           chainId: chainId || 84532,
@@ -235,7 +235,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw new Error('Connected Solana wallet does not support message signing');
         }
 
-        message = `Sign in to Readia.io\nNonce: ${nonce}\nDomain: ${domain}`;
+        message = `Sign in to Logos\nNonce: ${nonce}\nDomain: ${domain}`;
         const encoded = new TextEncoder().encode(message);
         const signed = await provider.signMessage(encoded, 'utf8');
         const signatureBytes = signed instanceof Uint8Array ? signed : signed.signature;

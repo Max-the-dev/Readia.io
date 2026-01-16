@@ -265,7 +265,7 @@ function Write() {
   };
 
   const getShareText = () => {
-    return `Check out my Readia.io article ... ${publishedArticleTitle}`;
+    return `Check out my Logos article ... ${publishedArticleTitle}`;
   };
 
   const shareOnX = () => {
@@ -1390,7 +1390,7 @@ function Write() {
                   <div className="confirm-modal-header">
                     <h3>
                       <Bot size={20} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                      Readia Agent
+                      Logos Agent
                     </h3>
                     <button
                       type="button"

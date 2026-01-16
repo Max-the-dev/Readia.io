@@ -61,7 +61,7 @@ function Terms() {
                   <Users size={28} />
                 </div>
                 <h3>Platform Use</h3>
-                <p>Guidelines for using Readia.io as a reader or writer</p>
+                <p>Guidelines for using Logos as a reader or writer</p>
               </div>
               
               <div className="terms-content">
@@ -158,7 +158,7 @@ function Terms() {
           <div className="disclaimer-content">
             <div className="disclaimer-item">
               <h3>Decentralized Nature</h3>
-              <p>Readia.io operates as a decentralized platform. While we provide the interface and infrastructure, content transactions occur directly between users through blockchain networks. We do not act as an intermediary in financial transactions.</p>
+              <p>Logos operates as a decentralized platform. While we provide the interface and infrastructure, content transactions occur directly between users through blockchain networks. We do not act as an intermediary in financial transactions.</p>
             </div>
 
             <div className="disclaimer-item">
@@ -183,7 +183,7 @@ function Terms() {
           <div className="terms-footer">
             <h2>Questions About Terms?</h2>
             <p>If you have questions about these terms or need clarification, please contact us:</p>
-            <a href="/contact" className="terms-contact">Send Message</a>
+            <a href="/contact" className="terms-contact">Contact Us</a>
             <div className="last-updated">
               <p>Last updated: October 28, 2025</p>
               <p>These terms are effective immediately upon posting.</p>

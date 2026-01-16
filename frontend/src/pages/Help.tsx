@@ -17,7 +17,7 @@ function Help() {
         <section className="help-section">
           <div className="section-header">
             <HelpCircle size={32} />
-            <h2>Frequently Asked Questions</h2>
+            <h2>FAQ</h2>
           </div>
           
           <div className="faq-list">
@@ -25,8 +25,8 @@ function Help() {
               <h3>Getting Started</h3>
               <div className="faq-questions">
                 <details className="faq-question">
-                  <summary>What is Readia.io?</summary>
-                  <p>Readia.io is a micropayment platform that allows writers to monetize their content through small payments ($0.01-$1.00) from readers. Writers set prices per article, and readers pay only for what they want to read.</p>
+                  <summary>What is Logos?</summary>
+                  <p>Logos is a micropayment platform that allows writers to monetize their content through small payments ($0.01-$1.00) from readers. Writers set prices per article, and readers pay only for what they want to read.</p>
                 </details>
                 <details className="faq-question">
                   <summary>How do I get started as a reader?</summary>
@@ -48,7 +48,7 @@ function Help() {
                 </details>
                 <details className="faq-question">
                   <summary>What are the transaction fees?</summary>
-                  <p>Network fees range from $0.05 on Solana to $0.01 on Base. Readia.io charges no platform fees - you keep 100% of your earnings.</p>
+                  <p>Network fees range from $0.05 on Solana to $0.01 on Base. Logos charges no platform fees - you keep 100% of your earnings.</p>
                 </details>
                 <details className="faq-question">
                   <summary>Which networks are supported?</summary>

@@ -6,7 +6,7 @@ function HowItWorks() {
       <div className="container">
         {/* Hero Section */}
         <div className="how-it-works-hero">
-          <h1>How Readia.io Works</h1>
+          <h1>How Logos Works</h1>
           <p className="hero-subtitle">
             Simple micropayments for quality content. <br></br> Pay only for what you read, earn from every reader.
           </p>
@@ -158,7 +158,7 @@ function HowItWorks() {
         <section className="how-section">
           <div className="section-header">
             <Users size={32} />
-            <h2>Why Choose Readia.io</h2>
+            <h2>Why Readia</h2>
           </div>
           <div className="benefits-grid">
             <div className="benefit-item">

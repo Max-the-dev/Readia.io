@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MessageSquare, Send, CheckCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { MessageSquare, Send, CheckCircle, ChevronDown } from 'lucide-react';
 
 function Contact() {
   const [formData, setFormData] = useState({
@@ -9,6 +9,29 @@ function Contact() {
     message: ''
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const subjectOptions = [
+    { value: '', label: 'Select a topic' },
+    { value: 'feedback', label: 'General Feedback' },
+    { value: 'bug', label: 'Bug Report' },
+    { value: 'feature', label: 'Feature Request' },
+    { value: 'support', label: 'Technical Support' },
+    { value: 'partnership', label: 'Partnership Inquiry' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -86,21 +109,36 @@ function Contact() {
 
                 <div className="form-group">
                   <label htmlFor="subject">Subject</label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select a topic</option>
-                    <option value="feedback">General Feedback</option>
-                    <option value="bug">Bug Report</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="support">Technical Support</option>
-                    <option value="partnership">Partnership Inquiry</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <div className="custom-select-wrapper" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      className={`custom-select-trigger ${isDropdownOpen ? 'open' : ''}`}
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    >
+                      <span className={formData.subject ? 'has-value' : 'placeholder'}>
+                        {subjectOptions.find(opt => opt.value === formData.subject)?.label || 'Select a topic'}
+                      </span>
+                      <ChevronDown size={18} className={`select-chevron ${isDropdownOpen ? 'rotated' : ''}`} />
+                    </button>
+                    {isDropdownOpen && (
+                      <div className="custom-select-dropdown">
+                        {subjectOptions.filter(opt => opt.value !== '').map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={`custom-select-option ${formData.subject === option.value ? 'selected' : ''}`}
+                            onClick={() => {
+                              setFormData({ ...formData, subject: option.value });
+                              setIsDropdownOpen(false);
+                            }}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <input type="hidden" name="subject" value={formData.subject} required />
+                  </div>
                 </div>
 
                 <div className="form-group">

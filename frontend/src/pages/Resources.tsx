@@ -16,7 +16,7 @@ function Resources() {
     reading: {
       title: "Reading Your First Article",
       icon: <BookOpen size={24} />,
-      description: "Learn how to browse, preview, and purchase articles on Readia.io",
+      description: "Learn how to browse, preview, and purchase articles on Logos",
       steps: [
         "Browse available articles",
         "Connect your wallet", 
@@ -68,7 +68,7 @@ function Resources() {
       steps: [
         "Choose a wallet",
         "Install and setup", 
-        "Connect to Readia.io"
+        "Connect to Logos"
       ],
       detailedSteps: [
         {
@@ -80,15 +80,15 @@ function Resources() {
           details: "Download the wallet app or browser extension from the official website. Create a new wallet and securely store your seed phrase (12-24 words) offline. Never share your seed phrase with anyone."
         },
         {
-          step: "Connect to Readia.io",
-          details: "On Readia.io, click 'Connect Wallet' and select your wallet type. Approve the connection in your wallet app. Switch to a supported network (Polygon, Base, Optimism, or Arbitrum) for lower transaction fees."
+          step: "Connect to Logos",
+          details: "On Logos, click 'Connect Wallet' and select your wallet type. Approve the connection in your wallet app. Switch to a supported network (Polygon, Base, Optimism, or Arbitrum) for lower transaction fees."
         }
       ]
     },
     x402: {
       title: "x402 Protocol Integration",
       icon: <Code size={24} />,
-      description: "Learn how Readia.io implements the x402 micropayment protocol for seamless content monetization.",
+      description: "Learn how Logos implements the x402 micropayment protocol for seamless content monetization.",
       steps: [
         "Understanding x402",
         "Payment flow setup",
@@ -119,7 +119,7 @@ function Resources() {
         <div className="resources-hero">
           <h1>Resources & Documentation</h1>
           <p className="hero-subtitle">
-            Everything you need to get started with Readia.io <br />
+            Everything you need to get started with Logos <br />
           </p>
         </div>
 
@@ -188,7 +188,7 @@ function Resources() {
         <section className="resources-section">
           <div className="section-header">
             <Code size={32} />
-            <h2>Technical Documentation</h2>
+            <h2>Documentation</h2>
           </div>
           <p className="section-description">
           </p>
@@ -196,7 +196,7 @@ function Resources() {
           <div className="docs-grid">
             <div className="doc-item clickable" onClick={() => setSelectedGuide('x402')}>
               <h3>x402 Protocol Integration</h3>
-              <p>Learn how Readia.io implements the x402 micropayment protocol for seamless content monetization.</p>
+              <p>Learn how Logos implements the x402 micropayment protocol for seamless content monetization.</p>
               <div className="doc-tags">
                 <span className="doc-tag">Documentation</span>
                 <span className="doc-tag">Technical</span>
@@ -208,7 +208,7 @@ function Resources() {
             
             <div className="doc-item coming-soon">
               <h3>API Documentation</h3>
-              <p>Learn how to monetize your custom API by integrating with Readia.io</p>
+              <p>Learn how to monetize your custom API by integrating with Logos</p>
               <div className="doc-tags">
                 <span className="doc-tag">API</span>
                 <span className="doc-tag">Development</span>
@@ -299,7 +299,7 @@ function Resources() {
               <div className="download-content">
                 <div className="download-text">
                   <h3>Developer SDK</h3>
-                  <p>SDK for integrating Readia.io into your applications.</p>
+                  <p>SDK for integrating Logos into your applications.</p>
                 </div>
                 <div className="coming-soon-badge">
                   <span>Coming Soon</span>
@@ -313,7 +313,7 @@ function Resources() {
         <section className="resources-section">
           <div className="section-header">
             <Users size={32} />
-            <h2>Community & Support</h2>
+            <h2>Community</h2>
           </div>
           
           <div className="community-links">
@@ -354,7 +354,7 @@ function Resources() {
                 <Video size={48} />
                 <span>Coming Soon</span>
               </div>
-              <h3>Getting Started with Readia.io</h3>
+              <h3>Getting Started with Logos</h3>
               <p>5-minute walkthrough of the platform for new users.</p>
               <div className="coming-soon-badge">
                 <span>Coming Soon</span>

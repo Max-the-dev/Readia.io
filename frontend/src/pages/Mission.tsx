@@ -7,7 +7,7 @@ function Mission() {
       <div className="container">
         {/* Hero Section */}
         <div className="about-hero">
-          <h1>About Readia.io</h1>
+          <h1>About Logos</h1>
           <p className="hero-subtitle">
             Revolutionizing digital content with micropayments using the x402 protocol
           </p>
@@ -21,7 +21,7 @@ function Mission() {
           </div>
           <div className="mission-content">
             <p>
-              At Readia.io, we believe that quality content deserves fair compensation, and readers 
+              At Logos, we believe that quality content deserves fair compensation, and readers 
               should only pay for what they truly value. We're building the future of digital 
               publishing where creators can earn sustainably and readers can access premium content 
               without the burden of expensive subscriptions.
@@ -182,7 +182,7 @@ function Mission() {
           <h2>Join the Revolution</h2>
           <p>
             Whether you're a creator looking to monetize your content or a reader seeking 
-            quality content without subscription commitments, Readia.io is built for you.
+            quality content without subscription commitments, Logos is built for you.
           </p>
           <div className="cta-buttons">
             <a href="/explore" className="cta-button primary">Browse Articles</a>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount, useWalletClient } from 'wagmi';
-import { Info, BookOpen, PenTool, HelpCircle, Mail, Shield, FileText, LayoutDashboard, Library, Laptop, HeartHandshake, Copy, Check, Coins } from 'lucide-react';
+import { Info, BookOpen, PenTool, HelpCircle, Mail, Shield, FileText, LayoutDashboard, Library, Laptop, HeartHandshake, Copy, Check, Coins, ChevronDown } from 'lucide-react';
 import { useAppKitProvider } from '@reown/appkit/react';
 import { x402PaymentService, type SupportedNetwork, type SolanaWalletProvider } from '../services/x402PaymentService';
 import { useAppKitNetwork } from '@reown/appkit/react';
@@ -11,6 +11,7 @@ import { NETWORK_FALLBACK_ICONS, NETWORK_FAMILY_DEFAULTS } from '../constants/ne
 
 function Footer() {
   const [isDonateModalOpen, setIsDonateModalOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [selectedNetworkFamily, setSelectedNetworkFamily] = useState<'base' | 'solana'>('base');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
@@ -150,6 +151,18 @@ function Footer() {
     } catch (error) {
       console.error('Failed to copy donation share link', error);
     }
+  };
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
   };
 
   const closeDonateModal = useCallback(() => {
@@ -391,7 +404,7 @@ function Footer() {
       <div className="container">
         <div className="footer-content">
           <div className="footer-section">
-            <h3>Readia.io</h3>
+            <h3>Logos</h3>
             <p>Publishing Reimagined</p>
             {/* Action Buttons */}
             <div className="footer-actions">
@@ -422,26 +435,47 @@ function Footer() {
               </button>
             </div>
           </div>
-          <div className="footer-section">
-            <h4>Product</h4>
-            <ul>
+          <div className={`footer-section footer-accordion ${expandedSections.has('product') ? 'is-expanded' : ''}`}>
+            <button
+              className="footer-accordion-trigger"
+              onClick={() => toggleSection('product')}
+              aria-expanded={expandedSections.has('product')}
+            >
+              <h4>Product</h4>
+              <ChevronDown size={20} className="footer-accordion-icon" />
+            </button>
+            <ul className="footer-accordion-content">
               <li><Link to="/whitepaper"><FileText size={16} /> Whitepaper</Link></li>
               <li><Link to="/mission"><Info size={16} /> Mission</Link></li>
               <li><Link to="/how-it-works"><BookOpen size={16} /> How it works</Link></li>
               <li><Link to="/pricing"><FileText size={16} /> Pricing</Link></li>
             </ul>
           </div>
-          <div className="footer-section">
-            <h4>Creators</h4>
-            <ul>
+          <div className={`footer-section footer-accordion footer-section--creators ${expandedSections.has('creators') ? 'is-expanded' : ''}`}>
+            <button
+              className="footer-accordion-trigger"
+              onClick={() => toggleSection('creators')}
+              aria-expanded={expandedSections.has('creators')}
+            >
+              <h4>Creators</h4>
+              <ChevronDown size={20} className="footer-accordion-icon" />
+            </button>
+            <ul className="footer-accordion-content">
               <li><Link to="/write"><PenTool size={16}/>Start writing</Link></li>
               <li><Link to="/dashboard"><LayoutDashboard size={16}/>Dashboard</Link></li>
-              <li><Link to="/resources"><Library size={16} /> Resources</Link></li>
             </ul>
           </div>
-          <div className="footer-section">
-            <h4>Support</h4>
-            <ul>
+          <div className={`footer-section footer-accordion ${expandedSections.has('support') ? 'is-expanded' : ''}`}>
+            <button
+              className="footer-accordion-trigger"
+              onClick={() => toggleSection('support')}
+              aria-expanded={expandedSections.has('support')}
+            >
+              <h4>Support</h4>
+              <ChevronDown size={20} className="footer-accordion-icon" />
+            </button>
+            <ul className="footer-accordion-content">
+              <li><Link to="/resources"><Library size={16} /> Resources</Link></li>
               <li><Link to="/help"><HelpCircle size={16}/>Help center</Link></li>
               <li><Link to="/contact"><Mail size={16}/>Contact</Link></li>
               <li><Link to="/privacy"><Shield size={16}/>Privacy</Link></li>
@@ -450,7 +484,7 @@ function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2025 Readia.io. All rights reserved.</p>
+          <p>&copy; 2025 Logos by Readia. All rights reserved.</p>
           <div className="footer-links">
             <Link to="/privacy">Privacy Policy</Link>
             <Link to="/terms">Terms of Service</Link>
@@ -474,7 +508,7 @@ function Footer() {
             <div className="donation-modal-header">
               <div className="donation-modal-title">
                 <HeartHandshake size={18} />
-                <h3 id="donation-modal-title">Support Readia.io</h3>
+                <h3 id="donation-modal-title">Support Logos</h3>
               </div>
               <button
                 type="button"
@@ -488,7 +522,7 @@ function Footer() {
             <div className="donation-modal-grid">
               <section className="donation-summary-column">
                 <div className="donation-impact-card">
-                  <h4>Thank you for using Readia.io</h4>
+                  <h4>Thank you for using Logos</h4>
                   <p>Donations cover hosting fees, improvements, and new features.</p>
                 </div>
 
@@ -500,65 +534,64 @@ function Footer() {
                 </div>
 
                 <div className="donation-manual-section">
-                  <h5>Prefer the old-school way?</h5>
+                  <h5 className="donation-manual-title">
+                    <span className="donation-manual-title-desktop">Prefer the old-school way?</span>
+                    <span className="donation-manual-title-mobile">Platform Addresses</span>
+                  </h5>
                   <div className="donation-manual-grid">
                     <div className="donation-manual-card">
                       <div className="donation-manual-card__header">
                         <span className="donation-manual-network">Solana</span>
                       </div>
-                      <div className="donation-address-row">
+                      <div
+                        className="donation-address-row"
+                        onClick={() => handleCopyAddress(solanaAddress)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCopyAddress(solanaAddress)}
+                      >
+                        <span className="donation-address-label">Solana</span>
                         <code className="donation-address-truncated">
                           {solanaAddress.slice(0, 6)}...{solanaAddress.slice(-4)}
                         </code>
-                        <button
-                          type="button"
-                          className="donation-copy-button"
-                          onClick={() => handleCopyAddress(solanaAddress)}
-                        >
+                        <code className="donation-address-full">
+                          {solanaAddress}
+                        </code>
+                        <span className="donation-copy-indicator">
                           {copiedAddress === solanaAddress ? (
-                            <>
-                              <Check size={14} aria-hidden="true" />
-                              <span>Copied</span>
-                            </>
+                            <Check size={14} aria-hidden="true" />
                           ) : (
-                            <>
-                              <Copy size={14} aria-hidden="true" />
-                              <span>Copy</span>
-                            </>
+                            <Copy size={14} aria-hidden="true" />
                           )}
-                          <span className="sr-only">Copy Solana donation address</span>
-                        </button>
+                        </span>
                       </div>
-                      <p className="donation-full-address"></p>
                     </div>
                     <div className="donation-manual-card">
                       <div className="donation-manual-card__header">
                         <span className="donation-manual-network">Base</span>
                       </div>
-                      <div className="donation-address-row">
+                      <div
+                        className="donation-address-row"
+                        onClick={() => handleCopyAddress(baseAddress)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCopyAddress(baseAddress)}
+                      >
+                        <span className="donation-address-label">Base</span>
                         <code className="donation-address-truncated">
                           {baseAddress.slice(0, 6)}...{baseAddress.slice(-4)}
                         </code>
-                        <button
-                          type="button"
-                          className="donation-copy-button"
-                          onClick={() => handleCopyAddress(baseAddress)}
-                        >
+                        <code className="donation-address-full">
+                          {baseAddress}
+                        </code>
+                        <span className="donation-copy-indicator">
                           {copiedAddress === baseAddress ? (
-                            <>
-                              <Check size={14} aria-hidden="true" />
-                              <span>Copied</span>
-                            </>
+                            <Check size={14} aria-hidden="true" />
                           ) : (
-                            <>
-                              <Copy size={14} aria-hidden="true" />
-                              <span>Copy</span>
-                            </>
+                            <Copy size={14} aria-hidden="true" />
                           )}
-                          <span className="sr-only">Copy Base donation address</span>
-                        </button>
+                        </span>
                       </div>
-                      <p className="donation-full-address"></p>
                     </div>
                   </div>
                 </div>
@@ -713,7 +746,27 @@ function Footer() {
                         </div>
                       )}
                     </div>
-                    
+                    {/* Mobile-only: simple address display */}
+                    <div className="donation-mobile-addresses">
+                      <span className="donation-mobile-addresses-title">Platform Addresses</span>
+                      <code
+                        onClick={() => handleCopyAddress(solanaAddress)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCopyAddress(solanaAddress)}
+                      >
+                        {solanaAddress}
+                      </code>
+                      <code
+                        onClick={() => handleCopyAddress(baseAddress)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCopyAddress(baseAddress)}
+                      >
+                        {baseAddress}
+                      </code>
+                      {copiedAddress && <span className="copied-hint">Copied!</span>}
+                    </div>
                   </>
                 )}
               </section>
