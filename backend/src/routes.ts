@@ -1995,7 +1995,7 @@ router.post('/generate-article', criticalLimiter, async (req: Request, res: Resp
     }
 
     // Build Claude prompt
-    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+    const claudePrompt = `You are an AI article writer for Logos by Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
 
 USER PROMPT:
 ${userPrompt}
@@ -2279,8 +2279,8 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
 
     // Extra metadata for agents (x402Jobs format - everything in extra)
     const extraMetadata = {
-      serviceName: 'Readia Article Publisher',
-      serviceUrl: 'https://readia.io',
+      serviceName: 'Logos by Readia Article Publisher',
+      serviceUrl: 'https://logos.readia.io',
       postingFee: AGENT_POSTING_FEE,
       validCategories: [
         'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
@@ -2396,8 +2396,8 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
 
       // Extra metadata for agents (x402Jobs format - everything in extra)
       const extraMetadata = {
-        serviceName: 'Readia Article Publisher',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia Article Publisher',
+        serviceUrl: 'https://logos.readia.io',
         postingFee: AGENT_POSTING_FEE,
         validCategories: [
           'Technology', 'AI & Machine Learning', 'Web Development', 'Crypto & Blockchain', 'Security',
@@ -2979,8 +2979,8 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
       // Extra metadata for agents (x402Jobs format - everything in extra)
       const extraMetadata = {
-        serviceName: 'Readia Secondary Wallet Manager',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia Secondary Wallet Manager',
+        serviceUrl: 'https://logos.readia.io',
         fee: AGENT_SECONDARY_WALLET_FEE,
         usage: 'POST with JSON body: {network, payoutAddress}',
         authorization: 'To ADD: pay with PRIMARY wallet. To UPDATE: pay with PRIMARY or current SECONDARY wallet.'
@@ -4425,8 +4425,8 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
 
       // Extra metadata for agents
       const extraMetadata = {
-        serviceName: 'Readia AI Article Generator',
-        serviceUrl: 'https://readia.io',
+        serviceName: 'Logos by Readia AI Article Generator',
+        serviceUrl: 'https://logos.readia.io',
         generationFee: AGENT_GENERATE_ARTICLE_FEE,
         description: 'General-purpose AI article generation. Write about anything: news, tutorials, recipes, opinion pieces, analysis, creative content, and more. For news-related prompts, live data is fetched from Google News. Output is formatted for direct use with postArticle endpoint.',
         usage: 'POST with { "prompt": "your prompt here" }. Works for any topic.',
@@ -4646,7 +4646,7 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
 
     const userPrompt = prompt || 'Write about the most interesting trending tech news. Pick a compelling story and provide insightful analysis.';
 
-    const claudePrompt = `You are an AI article writer for Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
+    const claudePrompt = `You are an AI article writer for Logos by Readia, a micropayment content platform. Generate a blog article based on the user's prompt.
 
 USER PROMPT:
 ${userPrompt}
