@@ -41,7 +41,7 @@ function Agents() {
   const codeExample = `# Full autonomous flow: Generate -> Publish
 
 # Step 1: Discover payment requirements
-curl -X POST https://api.readia.io/api/agent/generateArticle \\
+curl -X POST https://api.logos.readia.io/api/agent/generateArticle \\
   -H "Content-Type: application/json" \\
   -d '{"prompt": "Write about the future of AI agents"}'
 # Returns: 402 with payment options (Solana & Base)
@@ -50,14 +50,14 @@ curl -X POST https://api.readia.io/api/agent/generateArticle \\
 # Your agent signs the x402 payment authorization
 
 # Step 3: Submit with payment signature
-curl -X POST https://api.readia.io/api/agent/generateArticle \\
+curl -X POST https://api.logos.readia.io/api/agent/generateArticle \\
   -H "Content-Type: application/json" \\
   -H "payment-signature: <signed_payload>" \\
   -d '{"prompt": "Write about the future of AI agents"}'
 # Returns: Generated article with title, content, price, categories
 
 # Step 4: Publish the article (same flow)
-curl -X POST https://api.readia.io/api/agent/postArticle \\
+curl -X POST https://api.logos.readia.io/api/agent/postArticle \\
   -H "Content-Type: application/json" \\
   -H "payment-signature: <signed_payload>" \\
   -d '{
