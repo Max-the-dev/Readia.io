@@ -191,7 +191,10 @@ interface X402PaymentRequiredResponse {
   x402Version: 2;
   accepts: X402PaymentRequirement[];
   error: string;
-  resource: string;
+  resource: {
+    url: string;
+    method: string;
+  };
   description: string;
   mimeType: string;
 }
@@ -202,14 +205,17 @@ interface X402PaymentRequiredResponse {
  */
 function createAgentPaymentRequiredResponse(
   accepts: OFPaymentRequirements[],
-  resource: { url: string; description: string; mimeType: string },
+  resource: { url: string; method: string; description: string; mimeType: string },
   message: string
 ): X402PaymentRequiredResponse {
   return {
     x402Version: 2,
     accepts: accepts.map(req => ({ ...req, x402Version: 2 as const })),
     error: message,
-    resource: resource.url,
+    resource: {
+      url: resource.url,
+      method: resource.method
+    },
     description: resource.description,
     mimeType: resource.mimeType
   };
@@ -2244,7 +2250,7 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
     // Create 402 response with both network options
     const paymentRequired = createAgentPaymentRequiredResponse(
       [solanaRequirements, evmRequirements],
-      { url: resourceUrl, description, mimeType: 'application/json' },
+      { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
       'Payment required'
     );
 
@@ -2361,7 +2367,7 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       // Create 402 response with both network options
       const paymentRequired = createAgentPaymentRequiredResponse(
         [solanaRequirements, evmRequirements],
-        { url: resourceUrl, description, mimeType: 'application/json' },
+        { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
         'Payment required'
       );
 
@@ -2962,7 +2968,7 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       // Create 402 response with both network options
       const paymentRequired = createAgentPaymentRequiredResponse(
         [solanaRequirements, evmRequirements],
-        { url: resourceUrl, description, mimeType: 'application/json' },
+        { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
         'Payment required'
       );
 
@@ -4411,7 +4417,7 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
       // Create 402 response with both network options
       const paymentRequired = createAgentPaymentRequiredResponse(
         [solanaRequirements, evmRequirements],
-        { url: resourceUrl, description, mimeType: 'application/json' },
+        { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
         'Payment required'
       );
 
