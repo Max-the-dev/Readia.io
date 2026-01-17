@@ -2309,7 +2309,10 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
 
     const responseWithDiscovery = {
       ...paymentRequired,
-      accepts: acceptsWithSchemas
+      accepts: acceptsWithSchemas,
+      // Top-level schemas for x402scan compatibility
+      inputSchema: x402OutputSchema.input,
+      outputSchema: x402OutputSchema.output
     };
 
     res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -2426,7 +2429,10 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
 
       const responseWithDiscovery = {
         ...paymentRequired,
-        accepts: acceptsWithSchemas
+        accepts: acceptsWithSchemas,
+        // Top-level schemas for x402scan compatibility
+        inputSchema: x402OutputSchema.input,
+        outputSchema: x402OutputSchema.output
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -3027,7 +3033,10 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
 
       const responseWithDiscovery = {
         ...paymentRequired,
-        accepts: acceptsWithSchemas
+        accepts: acceptsWithSchemas,
+        // Top-level schemas for x402scan compatibility
+        inputSchema: x402OutputSchema.input,
+        outputSchema: x402OutputSchema.output
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -4499,7 +4508,10 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
 
       const responseWithDiscovery = {
         ...paymentRequired,
-        accepts: acceptsWithSchemas
+        accepts: acceptsWithSchemas,
+        // Top-level schemas for x402scan compatibility
+        inputSchema: x402OutputSchema.input,
+        outputSchema: x402OutputSchema.output
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
