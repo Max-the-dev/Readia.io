@@ -194,9 +194,9 @@ interface X402PaymentRequiredResponse {
   resource: {
     url: string;
     method: string;
+    description: string;
+    mimeType: string;
   };
-  description: string;
-  mimeType: string;
 }
 
 /**
@@ -214,10 +214,10 @@ function createAgentPaymentRequiredResponse(
     error: message,
     resource: {
       url: resource.url,
-      method: resource.method
-    },
-    description: resource.description,
-    mimeType: resource.mimeType
+      method: resource.method,
+      description: resource.description,
+      mimeType: resource.mimeType
+    }
   };
 }
 
