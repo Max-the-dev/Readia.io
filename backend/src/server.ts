@@ -170,9 +170,9 @@ app.use('/api/auth', authRouter);
 // API routes
 app.use('/api', routes);
 
-// x402scan domain verification (production: api.readia.io)
+// x402scan domain verification (api.logos.readia.io)
 app.get('/.well-known/x402-verification.json', (req: Request, res: Response) => {
-  res.json({ x402: '8999eff5401b' });
+  res.json({ x402: '705763d3dc71' });
 });
 
 // x402 Discovery endpoint - lists all x402-enabled resources
