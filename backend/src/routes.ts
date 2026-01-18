@@ -2310,9 +2310,34 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
     const responseWithDiscovery = {
       ...paymentRequired,
       accepts: acceptsWithSchemas,
-      // Top-level schemas for x402scan compatibility
-      inputSchema: x402OutputSchema.input,
-      outputSchema: x402OutputSchema.output
+      // x402scan bazaar extension for discoverable APIs
+      extensions: {
+        bazaar: {
+          info: {
+            input: {
+              title: 'Example Article Title',
+              content: '<p>Example article content in HTML format...</p>',
+              price: 0.10,
+              categories: ['Technology', 'AI & Machine Learning']
+            },
+            output: {
+              success: true,
+              data: {
+                articleId: 123,
+                articleUrl: 'https://logos.readia.io/article/123',
+                purchaseUrl: '/api/articles/123/purchase',
+                authorAddress: '0x...',
+                network: 'eip155:8453',
+                txHash: '0x...'
+              }
+            }
+          },
+          schema: {
+            input: x402OutputSchema.input,
+            output: x402OutputSchema.output
+          }
+        }
+      }
     };
 
     res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -2430,9 +2455,34 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
       const responseWithDiscovery = {
         ...paymentRequired,
         accepts: acceptsWithSchemas,
-        // Top-level schemas for x402scan compatibility
-        inputSchema: x402OutputSchema.input,
-        outputSchema: x402OutputSchema.output
+        // x402scan bazaar extension for discoverable APIs
+        extensions: {
+          bazaar: {
+            info: {
+              input: {
+                title: 'Example Article Title',
+                content: '<p>Example article content in HTML format...</p>',
+                price: 0.10,
+                categories: ['Technology', 'AI & Machine Learning']
+              },
+              output: {
+                success: true,
+                data: {
+                  articleId: 123,
+                  articleUrl: 'https://logos.readia.io/article/123',
+                  purchaseUrl: '/api/articles/123/purchase',
+                  authorAddress: '0x...',
+                  network: 'eip155:8453',
+                  txHash: '0x...'
+                }
+              }
+            },
+            schema: {
+              input: x402OutputSchema.input,
+              output: x402OutputSchema.output
+            }
+          }
+        }
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -2930,6 +2980,105 @@ router.post('/articles/:id/tip', criticalLimiter, async (req: Request, res: Resp
 // ============================================
 
 /**
+ * GET /api/agent/setSecondaryWallet - x402 discovery endpoint
+ *
+ * Returns 402 with payment requirements for x402scan registration.
+ */
+router.get('/agent/setSecondaryWallet', async (req: Request, res: Response) => {
+  try {
+    const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    const evmNetwork: SupportedX402Network = 'eip155:8453';
+
+    if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform payout addresses not configured'
+      });
+    }
+
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/setSecondaryWallet`;
+    const description = `Set secondary payout wallet: $${AGENT_SECONDARY_WALLET_FEE}`;
+
+    const [solanaRequirements, evmRequirements] = await Promise.all([
+      buildAgentPaymentRequirements(solanaNetwork, AGENT_SECONDARY_WALLET_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+      buildAgentPaymentRequirements(evmNetwork, AGENT_SECONDARY_WALLET_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
+    ]);
+
+    const paymentRequired = createAgentPaymentRequiredResponse(
+      [solanaRequirements, evmRequirements],
+      { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
+      'Payment required'
+    );
+
+    const x402OutputSchema = {
+      input: {
+        type: 'http',
+        method: 'POST',
+        bodyType: 'json',
+        bodyFields: {
+          network: { type: 'string', required: true, description: 'Target network CAIP-2 identifier (e.g., solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp)' },
+          payoutAddress: { type: 'string', required: true, description: 'Wallet address on the target network' }
+        }
+      },
+      output: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'Success message' },
+            author: { type: 'object', description: 'Updated author profile with both wallets' },
+            txHash: { type: 'string', description: 'Blockchain transaction hash' }
+          }
+        }
+      }
+    };
+
+    const extraMetadata = {
+      serviceName: 'Logos by Readia Secondary Wallet Manager',
+      serviceUrl: 'https://logos.readia.io',
+      fee: AGENT_SECONDARY_WALLET_FEE,
+      usage: 'POST with JSON body: {network, payoutAddress}'
+    };
+
+    const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
+      ...item,
+      outputSchema: x402OutputSchema,
+      extra: { ...(item.extra || {}), ...extraMetadata }
+    }));
+
+    const responseWithDiscovery = {
+      ...paymentRequired,
+      accepts: acceptsWithSchemas,
+      extensions: {
+        bazaar: {
+          info: {
+            input: {
+              network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+              payoutAddress: 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51'
+            },
+            output: {
+              success: true,
+              data: {
+                message: 'Secondary wallet set successfully',
+                author: { address: '0x...', secondaryPayoutAddress: 'cAXd...' },
+                txHash: '0x...'
+              }
+            }
+          },
+          schema: { input: x402OutputSchema.input, output: x402OutputSchema.output }
+        }
+      }
+    };
+
+    res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+    return res.status(402).json(responseWithDiscovery);
+  } catch (error) {
+    console.error('[agent/setSecondaryWallet GET] Error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to build payment requirements' });
+  }
+});
+
+/**
  * POST /api/agent/setSecondaryWallet - Add or update secondary payout wallet via x402 payment
  *
  * Allows agents to set (add or update) a secondary payout wallet after publishing their first article.
@@ -3034,9 +3183,36 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
       const responseWithDiscovery = {
         ...paymentRequired,
         accepts: acceptsWithSchemas,
-        // Top-level schemas for x402scan compatibility
-        inputSchema: x402OutputSchema.input,
-        outputSchema: x402OutputSchema.output
+        // x402scan bazaar extension for discoverable APIs
+        extensions: {
+          bazaar: {
+            info: {
+              input: {
+                network: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+                payoutAddress: 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51'
+              },
+              output: {
+                success: true,
+                data: {
+                  message: 'Secondary wallet set successfully',
+                  author: {
+                    address: '0x...',
+                    primaryPayoutNetwork: 'eip155:8453',
+                    primaryPayoutAddress: '0x...',
+                    secondaryPayoutNetwork: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+                    secondaryPayoutAddress: 'cAXdcMFHK6y9yTP7AMETzXC7zvTeDBbQ5f4nvSWDx51'
+                  },
+                  txHash: '0x...',
+                  note: 'You can now receive payouts on both networks'
+                }
+              }
+            },
+            schema: {
+              input: x402OutputSchema.input,
+              output: x402OutputSchema.output
+            }
+          }
+        }
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
@@ -4392,6 +4568,105 @@ function parseGoogleNewsRSS(xml: string): Array<{ title: string; link: string; p
   return items;
 }
 
+/**
+ * GET /api/agent/generateArticle - x402 discovery endpoint
+ *
+ * Returns 402 with payment requirements for x402scan registration.
+ */
+router.get('/agent/generateArticle', async (req: Request, res: Response) => {
+  try {
+    const solanaNetwork: SupportedX402Network = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+    const evmNetwork: SupportedX402Network = 'eip155:8453';
+
+    if (!PLATFORM_SOLANA_ADDRESS || !PLATFORM_EVM_ADDRESS) {
+      return res.status(500).json({
+        success: false,
+        error: 'Platform payout addresses not configured'
+      });
+    }
+
+    const resourceUrl = `${req.protocol}://${req.get('host')}/api/agent/generateArticle`;
+    const description = `AI article generation fee: $${AGENT_GENERATE_ARTICLE_FEE}`;
+
+    const [solanaRequirements, evmRequirements] = await Promise.all([
+      buildAgentPaymentRequirements(solanaNetwork, AGENT_GENERATE_ARTICLE_FEE, PLATFORM_SOLANA_ADDRESS, resourceUrl, description),
+      buildAgentPaymentRequirements(evmNetwork, AGENT_GENERATE_ARTICLE_FEE, PLATFORM_EVM_ADDRESS, resourceUrl, description)
+    ]);
+
+    const paymentRequired = createAgentPaymentRequiredResponse(
+      [solanaRequirements, evmRequirements],
+      { url: resourceUrl, method: 'POST', description, mimeType: 'application/json' },
+      'Payment required'
+    );
+
+    const x402OutputSchema = {
+      input: {
+        type: 'http',
+        method: 'POST',
+        bodyType: 'json',
+        bodyFields: {
+          prompt: { type: 'string', required: false, description: 'What would you like to write about? Any topic works.' }
+        }
+      },
+      output: {
+        success: { type: 'boolean' },
+        data: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Generated article title' },
+            content: { type: 'string', description: 'Generated HTML article content' },
+            price: { type: 'number', description: 'Suggested article price' },
+            categories: { type: 'array', description: 'Article categories' },
+            txHash: { type: 'string', description: 'Payment transaction hash' }
+          }
+        }
+      }
+    };
+
+    const extraMetadata = {
+      serviceName: 'Logos by Readia AI Article Generator',
+      serviceUrl: 'https://logos.readia.io',
+      generationFee: AGENT_GENERATE_ARTICLE_FEE,
+      usage: 'POST with { "prompt": "your prompt here" }'
+    };
+
+    const acceptsWithSchemas = paymentRequired.accepts.map((item) => ({
+      ...item,
+      outputSchema: x402OutputSchema,
+      extra: { ...(item.extra || {}), ...extraMetadata }
+    }));
+
+    const responseWithDiscovery = {
+      ...paymentRequired,
+      accepts: acceptsWithSchemas,
+      extensions: {
+        bazaar: {
+          info: {
+            input: { prompt: 'Write a tutorial about React hooks for beginners' },
+            output: {
+              success: true,
+              data: {
+                title: 'Understanding React Hooks',
+                content: '<p>React Hooks revolutionized...</p>',
+                price: 0.10,
+                categories: ['Technology', 'Web Development'],
+                txHash: '0x...'
+              }
+            }
+          },
+          schema: { input: x402OutputSchema.input, output: x402OutputSchema.output }
+        }
+      }
+    };
+
+    res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
+    return res.status(402).json(responseWithDiscovery);
+  } catch (error) {
+    console.error('[agent/generateArticle GET] Error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to build payment requirements' });
+  }
+});
+
 router.post('/agent/generateArticle', async (req: Request, res: Response) => {
   try {
     // Check for x402 payment header (v2 uses payment-signature)
@@ -4509,9 +4784,30 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
       const responseWithDiscovery = {
         ...paymentRequired,
         accepts: acceptsWithSchemas,
-        // Top-level schemas for x402scan compatibility
-        inputSchema: x402OutputSchema.input,
-        outputSchema: x402OutputSchema.output
+        // x402scan bazaar extension for discoverable APIs
+        extensions: {
+          bazaar: {
+            info: {
+              input: {
+                prompt: 'Write a tutorial about React hooks for beginners'
+              },
+              output: {
+                success: true,
+                data: {
+                  title: 'Understanding React Hooks: A Beginner\'s Guide',
+                  content: '<p>React Hooks revolutionized...</p>',
+                  price: 0.10,
+                  categories: ['Technology', 'Web Development'],
+                  txHash: '0x...'
+                }
+              }
+            },
+            schema: {
+              input: x402OutputSchema.input,
+              output: x402OutputSchema.output
+            }
+          }
+        }
       };
 
       res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(responseWithDiscovery)).toString('base64'));
