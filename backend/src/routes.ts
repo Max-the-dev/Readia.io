@@ -2333,8 +2333,14 @@ router.get('/agent/postArticle', async (req: Request, res: Response) => {
             }
           },
           schema: {
-            input: x402OutputSchema.input,
-            output: x402OutputSchema.output
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Article title (1-200 chars)' },
+              content: { type: 'string', description: 'Article content in HTML (50-50,000 chars)' },
+              price: { type: 'number', description: 'Article price in USD ($0.01-$1.00)' },
+              categories: { type: 'array', items: { type: 'string' }, description: 'Article categories (max 5)' }
+            },
+            required: ['title', 'content', 'price']
           }
         }
       }
@@ -2478,8 +2484,14 @@ router.post('/agent/postArticle', async (req: Request, res: Response) => {
               }
             },
             schema: {
-              input: x402OutputSchema.input,
-              output: x402OutputSchema.output
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'Article title (1-200 chars)' },
+                content: { type: 'string', description: 'Article content in HTML (50-50,000 chars)' },
+                price: { type: 'number', description: 'Article price in USD ($0.01-$1.00)' },
+                categories: { type: 'array', items: { type: 'string' }, description: 'Article categories (max 5)' }
+              },
+              required: ['title', 'content', 'price']
             }
           }
         }
@@ -3065,7 +3077,14 @@ router.get('/agent/setSecondaryWallet', async (req: Request, res: Response) => {
               }
             }
           },
-          schema: { input: x402OutputSchema.input, output: x402OutputSchema.output }
+          schema: {
+            type: 'object',
+            properties: {
+              network: { type: 'string', description: 'Target network CAIP-2 identifier (e.g., solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp)' },
+              payoutAddress: { type: 'string', description: 'Wallet address on the target network' }
+            },
+            required: ['network', 'payoutAddress']
+          }
         }
       }
     };
@@ -3208,8 +3227,12 @@ router.post('/agent/setSecondaryWallet', async (req: Request, res: Response) => 
               }
             },
             schema: {
-              input: x402OutputSchema.input,
-              output: x402OutputSchema.output
+              type: 'object',
+              properties: {
+                network: { type: 'string', description: 'Target network CAIP-2 identifier (e.g., solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp)' },
+                payoutAddress: { type: 'string', description: 'Wallet address on the target network' }
+              },
+              required: ['network', 'payoutAddress']
             }
           }
         }
@@ -4654,7 +4677,13 @@ router.get('/agent/generateArticle', async (req: Request, res: Response) => {
               }
             }
           },
-          schema: { input: x402OutputSchema.input, output: x402OutputSchema.output }
+          schema: {
+            type: 'object',
+            properties: {
+              prompt: { type: 'string', description: 'What would you like to write about? Any topic works.' }
+            },
+            required: []
+          }
         }
       }
     };
@@ -4803,8 +4832,11 @@ router.post('/agent/generateArticle', async (req: Request, res: Response) => {
               }
             },
             schema: {
-              input: x402OutputSchema.input,
-              output: x402OutputSchema.output
+              type: 'object',
+              properties: {
+                prompt: { type: 'string', description: 'What would you like to write about? Any topic works.' }
+              },
+              required: []
             }
           }
         }
